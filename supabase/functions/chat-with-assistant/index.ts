@@ -11,6 +11,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const openAIHeaders = {
+  'Authorization': `Bearer ${openAIApiKey}`,
+  'Content-Type': 'application/json',
+  'OpenAI-Beta': 'assistants=v2'  // Updated to v2
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,7 +26,6 @@ serve(async (req) => {
     const { message, assistantType, threadId } = await req.json();
     console.log('Received request:', { message, assistantType, threadId });
 
-    // Select the appropriate assistant ID based on the type
     const assistantId = assistantType === 'frameworks' 
       ? notivatorAssistantId 
       : founderWisdomAssistantId;
@@ -36,11 +41,7 @@ serve(async (req) => {
     if (threadId) {
       const threadResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1'
-        },
+        headers: openAIHeaders,
       });
       
       if (!threadResponse.ok) {
@@ -53,11 +54,7 @@ serve(async (req) => {
     } else {
       const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1'
-        },
+        headers: openAIHeaders,
       });
       
       if (!createThreadResponse.ok) {
@@ -74,11 +71,7 @@ serve(async (req) => {
     // Add message to thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
-      },
+      headers: openAIHeaders,
       body: JSON.stringify({
         role: 'user',
         content: message
@@ -94,11 +87,7 @@ serve(async (req) => {
     // Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
-      },
+      headers: openAIHeaders,
       body: JSON.stringify({
         assistant_id: assistantId
       }),
@@ -128,11 +117,7 @@ serve(async (req) => {
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/runs/${runData.id}`,
         {
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v1'
-          },
+          headers: openAIHeaders,
         }
       );
 
@@ -152,11 +137,7 @@ serve(async (req) => {
       const messagesResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/messages`,
         {
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v1'
-          },
+          headers: openAIHeaders,
         }
       );
 
