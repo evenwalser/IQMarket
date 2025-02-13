@@ -1,24 +1,16 @@
-
 import { useState } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
-
-  return (
-    <div className="min-h-screen bg-[#fafafa]">
+  return <div className="min-h-screen bg-[#fafafa]">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            <img 
-              src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" 
-              alt="Notion Capital"
-              className="h-8 mr-2"
-            />
-            <span className="text-lg font-medium text-gray-900">Knowledge Base</span>
+            <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-8 mr-2" />
+            <span className="text-lg font-medium text-gray-900"></span>
           </div>
           <nav className="space-x-6">
             <Button variant="ghost" className="text-gray-700 hover:text-gray-900">Resources</Button>
@@ -38,18 +30,9 @@ const Index = () => {
               Find insights, resources, and guidance for early-stage startups
             </p>
             <div className="relative max-w-2xl mx-auto">
-              <Input
-                type="text"
-                placeholder="Ask anything about startup growth, funding, or strategies..."
-                className="w-full h-14 pl-12 pr-4 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <Input type="text" placeholder="Ask anything about startup growth, funding, or strategies..." className="w-full h-14 pl-12 pr-4 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Button 
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-900 hover:bg-gray-800"
-                size="sm"
-              >
+              <Button className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-900 hover:bg-gray-800" size="sm">
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </div>
@@ -90,8 +73,7 @@ const Index = () => {
               </Button>
             </div>
             <div className="space-y-4">
-              {['Fundraising Best Practices', 'Go-to-Market Strategy', 'Product-Market Fit'].map((topic) => (
-                <div key={topic} className="bg-white p-6 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors">
+              {['Fundraising Best Practices', 'Go-to-Market Strategy', 'Product-Market Fit'].map(topic => <div key={topic} className="bg-white p-6 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors">
                   <h3 className="font-semibold text-lg mb-2 text-gray-900">{topic}</h3>
                   <p className="text-gray-600 mb-4">
                     Key insights and strategies from Notion Capital's expertise in {topic.toLowerCase()}...
@@ -100,14 +82,11 @@ const Index = () => {
                     <span className="mr-4">Last updated: 2 days ago</span>
                     <span>5 min read</span>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </section>
         </div>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
