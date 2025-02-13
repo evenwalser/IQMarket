@@ -14,7 +14,7 @@ const Index = () => {
       id: "knowledge",
       icon: <BookOpen className="w-5 h-5" />,
       title: "Knowledge Base",
-      description: "Search across founder interviews and insights"
+      description: "Search across founder interviews"
     },
     {
       id: "benchmarks",
@@ -115,11 +115,11 @@ const Index = () => {
                         }`}
                         onClick={() => setSelectedMode(mode.id)}
                       >
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-4">
                           {mode.icon}
-                          <span className="font-medium">{mode.title}</span>
+                          <span className="text-[17px] font-medium tracking-[-0.01em]">{mode.title}</span>
                         </div>
-                        <p className="text-sm text-gray-600 text-left">{mode.description}</p>
+                        <p className="text-[15px] text-gray-600 text-left leading-[1.4]">{mode.description}</p>
                       </Button>
                     </div>
                   ))}
