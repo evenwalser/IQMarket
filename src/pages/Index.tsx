@@ -30,7 +30,7 @@ const Index = () => {
     },
     {
       id: "assistant",
-      icon: <img src="/lovable-uploads/c2262027-b8b6-463f-a60d-e7ca966af0e0.png" alt="AI Assistant" className="w-5 h-5" />,
+      icon: <img src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" alt="AI Assistant" className="w-5 h-5" />,
       title: "AI Assistant",
       description: "Get personalized recommendations"
     }
