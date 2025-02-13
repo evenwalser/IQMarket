@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/Header";
+import { SearchInput } from "@/components/SearchInput";
+import { SearchModes } from "@/components/SearchModes";
+import { ConversationList } from "@/components/ConversationList";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +31,6 @@ const Index = () => {
         throw error;
       }
 
-      // Cast the data to ensure it matches our Conversation type
       const typedData = data?.map(item => ({
         ...item,
         assistant_type: item.assistant_type as AssistantType
@@ -42,33 +42,6 @@ const Index = () => {
       toast.error('Failed to load conversation history');
     }
   };
-
-  const searchModes = [
-    {
-      id: "knowledge",
-      icon: <BookOpen className="w-5 h-5" />,
-      title: "Knowledge Base",
-      description: "Search across founder interview"
-    },
-    {
-      id: "benchmarks",
-      icon: <Code className="w-5 h-5" />,
-      title: "Benchmarks",
-      description: "Access performance metrics and data"
-    },
-    {
-      id: "frameworks",
-      icon: <BookCopy className="w-5 h-5" />,
-      title: "Frameworks",
-      description: "Explore GTM and product strategies"
-    },
-    {
-      id: "assistant",
-      icon: <img src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" alt="AI Assistant" className="w-5 h-5" />,
-      title: "AI Assistant",
-      description: "Get personalized recommendations"
-    }
-  ];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,7 +62,6 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      // Call the edge function
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: searchQuery,
@@ -99,7 +71,6 @@ const Index = () => {
 
       if (error) throw error;
 
-      // Store the conversation in Supabase
       const { error: dbError } = await supabase
         .from('conversations')
         .insert({
@@ -114,9 +85,7 @@ const Index = () => {
         toast.error('Failed to save conversation');
       }
 
-      // Reload conversations to show the new one
       await loadConversations();
-      
       setSearchQuery("");
       toast.success("Response received!");
       
@@ -130,19 +99,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-px">
-          <div className="flex items-center">
-            <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-[84px] mr-2 rounded-lg" />
-            <span className="text-lg font-medium text-gray-900"></span>
-          </div>
-          <nav className="space-x-6">
-            <Button variant="ghost" className="text-gray-700 hover:text-gray-900">Resources</Button>
-            <Button variant="ghost" className="text-gray-700 hover:text-gray-900">Portfolio</Button>
-            <Button variant="ghost" className="text-gray-700 hover:text-gray-900">About</Button>
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto space-y-12">
@@ -153,101 +110,24 @@ const Index = () => {
             </p>
             <div className="relative">
               <div className="flex flex-col gap-4">
-                <div className="relative">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input 
-                        type="text" 
-                        placeholder="Ask anything..." 
-                        className="w-full h-14 pl-12 pr-24 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
-                        value={searchQuery} 
-                        onChange={e => setSearchQuery(e.target.value)} 
-                      />
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          className="relative"
-                          onClick={() => setShowAttachMenu(!showAttachMenu)}
-                        >
-                          <Upload className="h-5 w-5 text-gray-600" />
-                          <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={handleFileUpload}
-                            accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-                          />
-                        </Button>
-                        <Button 
-                          className="bg-gray-900 hover:bg-gray-800"
-                          onClick={handleSearch}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                          ) : (
-                            <ArrowRight className="h-5 w-5" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {searchModes.map((mode) => (
-                    <div key={mode.id}>
-                      <Button
-                        variant="outline"
-                        className={`w-full py-6 px-6 flex items-center justify-between ${
-                          selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
-                        }`}
-                        onClick={() => setSelectedMode(mode.id as AssistantType)}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="shrink-0">
-                            {mode.icon}
-                          </div>
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="text-base font-medium text-gray-900">{mode.title}</span>
-                            <p className="text-sm text-gray-600">{mode.description}</p>
-                          </div>
-                        </div>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                <SearchInput 
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  handleSearch={handleSearch}
+                  isLoading={isLoading}
+                  showAttachMenu={showAttachMenu}
+                  setShowAttachMenu={setShowAttachMenu}
+                  handleFileUpload={handleFileUpload}
+                />
+                <SearchModes 
+                  selectedMode={selectedMode}
+                  setSelectedMode={setSelectedMode}
+                />
               </div>
             </div>
           </section>
 
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Conversations</h2>
-            </div>
-            <div className="space-y-4">
-              {conversations.map((conversation) => (
-                <div key={conversation.id} className="bg-white p-6 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-semibold text-lg text-gray-900">Q: {conversation.query}</h3>
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full capitalize">
-                      {conversation.assistant_type}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 whitespace-pre-wrap">A: {conversation.response}</p>
-                  <div className="mt-4 text-sm text-gray-500">
-                    {new Date(conversation.created_at).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-              {conversations.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
-                  No conversations yet. Start by asking a question above!
-                </div>
-              )}
-            </div>
-          </section>
+          <ConversationList conversations={conversations} />
         </div>
       </main>
     </div>
