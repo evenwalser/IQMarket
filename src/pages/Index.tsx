@@ -39,8 +39,6 @@ const Index = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // File handling logic will go here
     console.log("File uploaded:", file.name);
   };
 
@@ -112,7 +110,7 @@ const Index = () => {
                     <Button
                       key={mode.id}
                       variant="outline"
-                      className={`h-auto flex flex-col items-start p-4 space-y-2 ${
+                      className={`h-auto min-h-[120px] flex flex-col items-start p-4 space-y-2 ${
                         selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
                       }`}
                       onClick={() => setSelectedMode(mode.id)}
@@ -121,7 +119,7 @@ const Index = () => {
                         {mode.icon}
                         <span className="font-medium">{mode.title}</span>
                       </div>
-                      <p className="text-sm text-gray-600 text-left">{mode.description}</p>
+                      <p className="text-sm text-gray-600 text-left break-words">{mode.description}</p>
                     </Button>
                   ))}
                 </div>
