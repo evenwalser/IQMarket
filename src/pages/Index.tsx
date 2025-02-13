@@ -1,10 +1,10 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,7 +12,30 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  const loadConversations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        throw error;
+      }
+
+      setConversations(data || []);
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      toast.error('Failed to load conversation history');
+    }
+  };
+
   const searchModes = [
     {
       id: "knowledge",
@@ -59,25 +82,34 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
+        body: {
+          message: searchQuery,
+          assistantType: selectedMode
+        },
+      });
+
+      if (error) throw error;
+
+      // Store the conversation in Supabase
+      const { error: dbError } = await supabase
+        .from('conversations')
+        .insert({
+          query: searchQuery,
+          response: data.response,
+          assistant_type: selectedMode,
+          thread_id: data.thread_id
+        });
+
+      if (dbError) {
+        console.error('Error storing conversation:', dbError);
+        toast.error('Failed to save conversation');
+      }
+
+      // Reload conversations to show the new one
+      await loadConversations();
       
-      // Create a mock response
-      const mockResponse = {
-        response: `This is a mock response for your query: "${searchQuery}"`,
-      };
-
-      // Add conversation to local state
-      const newConversation: Conversation = {
-        id: Date.now().toString(),
-        query: searchQuery,
-        response: mockResponse.response,
-        assistant_type: selectedMode,
-        thread_id: 'direct',
-        created_at: new Date().toISOString()
-      };
-
-      setConversations(prev => [newConversation, ...prev]);
       setSearchQuery("");
       toast.success("Response received!");
       
@@ -91,7 +123,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-px">
           <div className="flex items-center">
@@ -106,10 +137,8 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto space-y-12">
-          {/* Search Section */}
           <section className="text-center space-y-6">
             <h1 className="text-4xl font-bold text-gray-900">Notion Capital Intelligence</h1>
             <p className="text-gray-600 text-lg font-normal">
@@ -159,7 +188,6 @@ const Index = () => {
                   </div>
                 </div>
                 
-                {/* Search Modes */}
                 <div className="grid grid-cols-2 gap-3">
                   {searchModes.map((mode) => (
                     <div key={mode.id}>
@@ -187,7 +215,6 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Conversations */}
           <section className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">Recent Conversations</h2>
