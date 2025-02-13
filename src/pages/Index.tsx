@@ -3,10 +3,13 @@ import { useState } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import type { AssistantType } from "@/lib/types";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMode, setSelectedMode] = useState("knowledge");
+  const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
+  const [isLoading, setIsLoading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   
   const searchModes = [
@@ -40,6 +43,46 @@ const Index = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     console.log("File uploaded:", file.name);
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast.error("Please enter a question");
+      return;
+    }
+
+    if (selectedMode !== "knowledge" && selectedMode !== "frameworks") {
+      toast.error("This feature is not yet available");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch("/functions/v1/chat-with-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: searchQuery,
+          assistantType: selectedMode
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get response");
+      }
+
+      toast.success("Response received!");
+      // Here you can handle the response, perhaps by showing it in a modal or adding it to a chat interface
+      console.log("Assistant response:", data.response);
+      
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to get response. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -96,8 +139,16 @@ const Index = () => {
                             accept=".pdf,.doc,.docx,.txt,.csv,image/*"
                           />
                         </Button>
-                        <Button className="bg-gray-900 hover:bg-gray-800">
-                          <ArrowRight className="h-5 w-5" />
+                        <Button 
+                          className="bg-gray-900 hover:bg-gray-800"
+                          onClick={handleSearch}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                          ) : (
+                            <ArrowRight className="h-5 w-5" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -113,7 +164,7 @@ const Index = () => {
                         className={`w-full py-6 px-6 flex items-center justify-between ${
                           selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
                         }`}
-                        onClick={() => setSelectedMode(mode.id)}
+                        onClick={() => setSelectedMode(mode.id as AssistantType)}
                       >
                         <div className="flex items-center gap-4">
                           <div className="shrink-0">
