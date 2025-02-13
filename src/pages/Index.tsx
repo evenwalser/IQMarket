@@ -83,29 +83,37 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch("/functions/v1/chat-with-assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // Call the edge function directly using Supabase
+      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
+        body: {
           message: searchQuery,
           assistantType: selectedMode
-        }),
+        },
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to get response");
+      if (error) throw error;
+
+      // Store the conversation in Supabase
+      const { error: dbError } = await supabase
+        .from('conversations')
+        .insert({
+          query: searchQuery,
+          response: data.response,
+          assistant_type: selectedMode,
+          thread_id: 'direct' // Since we're not using threads in this implementation
+        });
+
+      if (dbError) {
+        console.error('Error storing conversation:', dbError);
+        toast.error('Failed to save conversation');
       }
 
-      toast.success("Response received!");
-      console.log("Assistant response:", data.response);
-      
       // Reload conversations to show the new one
       await loadConversations();
       
       // Clear the search input
       setSearchQuery("");
+      toast.success("Response received!");
       
     } catch (error) {
       console.error("Error:", error);
