@@ -1,11 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,29 +40,6 @@ const Index = () => {
     }
   ];
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  const loadConversations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        throw error;
-      }
-
-      setConversations(data || []);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      toast.error('Failed to load conversation history');
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,35 +59,25 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      // Call the edge function directly using Supabase
-      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {
-          message: searchQuery,
-          assistantType: selectedMode
-        },
-      });
-
-      if (error) throw error;
-
-      // Store the conversation in Supabase
-      const { error: dbError } = await supabase
-        .from('conversations')
-        .insert({
-          query: searchQuery,
-          response: data.response,
-          assistant_type: selectedMode,
-          thread_id: 'direct' // Since we're not using threads in this implementation
-        });
-
-      if (dbError) {
-        console.error('Error storing conversation:', dbError);
-        toast.error('Failed to save conversation');
-      }
-
-      // Reload conversations to show the new one
-      await loadConversations();
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Clear the search input
+      // Create a mock response
+      const mockResponse = {
+        response: `This is a mock response for your query: "${searchQuery}"`,
+      };
+
+      // Add conversation to local state
+      const newConversation: Conversation = {
+        id: Date.now().toString(),
+        query: searchQuery,
+        response: mockResponse.response,
+        assistant_type: selectedMode,
+        thread_id: 'direct',
+        created_at: new Date().toISOString()
+      };
+
+      setConversations(prev => [newConversation, ...prev]);
       setSearchQuery("");
       toast.success("Response received!");
       
