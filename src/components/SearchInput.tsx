@@ -30,25 +30,34 @@ export const SearchInput = ({
           placeholder="Ask anything..." 
           className="w-full h-14 pl-12 pr-24 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
           value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)} 
+          onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              handleSearch();
+            }
+          }}
         />
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
-          <Button 
-            variant="ghost"
-            size="sm"
-            className="relative"
-            onClick={() => setShowAttachMenu(!showAttachMenu)}
-          >
-            <Upload className="h-5 w-5 text-gray-600" />
+          <div className="relative">
+            <Button 
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+            >
+              <Upload className="h-5 w-5 text-gray-600" />
+            </Button>
             <input
               type="file"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={handleFileUpload}
               accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+              onClick={e => e.stopPropagation()}
             />
-          </Button>
+          </div>
           <Button 
+            type="button"
             className="bg-gray-900 hover:bg-gray-800"
             onClick={handleSearch}
             disabled={isLoading}
