@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ const Index = () => {
       <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-12 mr-2 rounded-lg" />
+            <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-[84px] mr-2 rounded-lg" />
             <span className="text-lg font-medium text-gray-900"></span>
           </div>
           <nav className="space-x-6">
