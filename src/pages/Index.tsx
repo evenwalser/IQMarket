@@ -1,20 +1,51 @@
 
 import { useState } from "react";
-import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown } from "lucide-react";
+import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, Globe, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedMode, setSelectedMode] = useState("knowledge");
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  
+  const searchModes = [
+    {
+      id: "knowledge",
+      icon: <BookOpen className="w-5 h-5" />,
+      title: "Knowledge Base",
+      description: "Search across founder interviews and insights"
+    },
+    {
+      id: "benchmarks",
+      icon: <Code className="w-5 h-5" />,
+      title: "Benchmarks",
+      description: "Access performance metrics and data"
+    },
+    {
+      id: "frameworks",
+      icon: <BookCopy className="w-5 h-5" />,
+      title: "Frameworks",
+      description: "Explore GTM and product strategies"
+    },
+    {
+      id: "assistant",
+      icon: <Globe className="w-5 h-5" />,
+      title: "AI Assistant",
+      description: "Get personalized recommendations"
+    }
+  ];
 
-  const filters = {
-    type: ["Founder Interviews", "Benchmark Data", "Strategy Frameworks"],
-    stage: ["Start", "Build", "Scale"]
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // File handling logic will go here
+    console.log("File uploaded:", file.name);
   };
 
-  return <div className="min-h-screen bg-[#fafafa]">
+  return (
+    <div className="min-h-screen bg-[#fafafa]">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-px">
@@ -32,67 +63,67 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="pt-24 pb-16 px-4">
-        <div className="max-w-3xl mx-auto space-y-12">
+        <div className="max-w-4xl mx-auto space-y-12">
           {/* Search Section */}
           <section className="text-center space-y-6">
             <h1 className="text-4xl font-bold text-gray-900">Notion Capital Intelligence</h1>
             <p className="text-gray-600 text-lg font-normal">
               Access founder wisdom, benchmark data, and strategic frameworks
             </p>
-            <div className="relative max-w-2xl mx-auto">
+            <div className="relative">
               <div className="flex flex-col gap-4">
                 <div className="relative">
-                  <Input 
-                    type="text" 
-                    placeholder="Search across our knowledge base..." 
-                    className="w-full h-14 pl-12 pr-4 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
-                    value={searchQuery} 
-                    onChange={e => setSearchQuery(e.target.value)} 
-                  />
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Button className="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-900 hover:bg-gray-800" size="sm">
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </div>
-                <div className="flex gap-4 justify-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-gray-700"
-                    onClick={() => setShowFilters(!showFilters)}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter by Type
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                  {showFilters && (
-                    <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-100 p-4 z-10">
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="font-semibold mb-2">Content Type</h3>
-                          <div className="space-y-2">
-                            {filters.type.map((type) => (
-                              <label key={type} className="flex items-center gap-2">
-                                <input type="checkbox" className="rounded" />
-                                <span>{type}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold mb-2">Company Stage</h3>
-                          <div className="space-y-2">
-                            {filters.stage.map((stage) => (
-                              <label key={stage} className="flex items-center gap-2">
-                                <input type="checkbox" className="rounded" />
-                                <span>{stage}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input 
+                        type="text" 
+                        placeholder="Ask anything..." 
+                        className="w-full h-14 pl-12 pr-24 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                      />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+                        <Button 
+                          variant="ghost"
+                          size="sm"
+                          className="relative"
+                          onClick={() => setShowAttachMenu(!showAttachMenu)}
+                        >
+                          <Upload className="h-5 w-5 text-gray-600" />
+                          <input
+                            type="file"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={handleFileUpload}
+                            accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                          />
+                        </Button>
+                        <Button className="bg-gray-900 hover:bg-gray-800">
+                          <ArrowRight className="h-5 w-5" />
+                        </Button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                </div>
+                
+                {/* Search Modes */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {searchModes.map((mode) => (
+                    <Button
+                      key={mode.id}
+                      variant="outline"
+                      className={`h-auto flex flex-col items-start p-4 space-y-2 ${
+                        selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
+                      }`}
+                      onClick={() => setSelectedMode(mode.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {mode.icon}
+                        <span className="font-medium">{mode.title}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 text-left">{mode.description}</p>
+                    </Button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -168,7 +199,8 @@ const Index = () => {
           </section>
         </div>
       </main>
-    </div>;
+    </div>
+  );
 };
 
 export default Index;
