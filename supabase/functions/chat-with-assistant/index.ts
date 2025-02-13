@@ -18,6 +18,7 @@ serve(async (req) => {
 
   try {
     const { message, assistantType, threadId } = await req.json();
+    console.log('Received request:', { message, assistantType, threadId });
 
     // Select the appropriate assistant ID based on the type
     const assistantId = assistantType === 'frameworks' 
@@ -27,6 +28,8 @@ serve(async (req) => {
     if (!assistantId) {
       throw new Error(`Assistant ID not found for type: ${assistantType}`);
     }
+
+    console.log('Using assistant ID:', assistantId);
 
     // Create or retrieve thread
     let thread;
@@ -39,6 +42,13 @@ serve(async (req) => {
           'OpenAI-Beta': 'assistants=v1'
         },
       });
+      
+      if (!threadResponse.ok) {
+        const error = await threadResponse.text();
+        console.error('Thread retrieval error:', error);
+        throw new Error(`Failed to retrieve thread: ${error}`);
+      }
+      
       thread = await threadResponse.json();
     } else {
       const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
@@ -49,11 +59,20 @@ serve(async (req) => {
           'OpenAI-Beta': 'assistants=v1'
         },
       });
+      
+      if (!createThreadResponse.ok) {
+        const error = await createThreadResponse.text();
+        console.error('Thread creation error:', error);
+        throw new Error(`Failed to create thread: ${error}`);
+      }
+      
       thread = await createThreadResponse.json();
     }
 
+    console.log('Thread:', thread);
+
     // Add message to thread
-    await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -65,6 +84,12 @@ serve(async (req) => {
         content: message
       }),
     });
+
+    if (!messageResponse.ok) {
+      const error = await messageResponse.text();
+      console.error('Message creation error:', error);
+      throw new Error(`Failed to create message: ${error}`);
+    }
 
     // Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
@@ -79,12 +104,27 @@ serve(async (req) => {
       }),
     });
 
+    if (!runResponse.ok) {
+      const error = await runResponse.text();
+      console.error('Run creation error:', error);
+      throw new Error(`Failed to create run: ${error}`);
+    }
+
     const runData = await runResponse.json();
+    console.log('Run created:', runData);
 
     // Poll for completion
     let runStatus;
+    let attempts = 0;
+    const maxAttempts = 30; // Maximum 30 seconds wait time
+    
     do {
+      if (attempts >= maxAttempts) {
+        throw new Error('Run timed out after 30 seconds');
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/runs/${runData.id}`,
         {
@@ -95,8 +135,16 @@ serve(async (req) => {
           },
         }
       );
+
+      if (!statusResponse.ok) {
+        const error = await statusResponse.text();
+        console.error('Status check error:', error);
+        throw new Error(`Failed to check run status: ${error}`);
+      }
+
       runStatus = await statusResponse.json();
       console.log('Run status:', runStatus.status);
+      attempts++;
     } while (runStatus.status === 'in_progress' || runStatus.status === 'queued');
 
     if (runStatus.status === 'completed') {
@@ -111,8 +159,19 @@ serve(async (req) => {
           },
         }
       );
+
+      if (!messagesResponse.ok) {
+        const error = await messagesResponse.text();
+        console.error('Messages retrieval error:', error);
+        throw new Error(`Failed to retrieve messages: ${error}`);
+      }
+
       const messagesData = await messagesResponse.json();
       const lastMessage = messagesData.data[0];
+
+      if (!lastMessage?.content?.[0]?.text?.value) {
+        throw new Error('No response content found in the message');
+      }
 
       return new Response(
         JSON.stringify({
@@ -122,11 +181,12 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else {
+      console.error('Run failed with status:', runStatus);
       throw new Error(`Run ended with status: ${runStatus.status}`);
     }
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in chat-with-assistant:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
