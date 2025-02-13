@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,13 @@ const Index = () => {
         throw error;
       }
 
-      setConversations(data || []);
+      // Cast the data to ensure it matches our Conversation type
+      const typedData = data?.map(item => ({
+        ...item,
+        assistant_type: item.assistant_type as AssistantType
+      })) || [];
+
+      setConversations(typedData);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('Failed to load conversation history');
