@@ -1,5 +1,5 @@
 
-export type AssistantType = "knowledge" | "frameworks";
+export type AssistantType = "knowledge" | "frameworks" | "benchmarks" | "assistant";
 
 export interface AssistantMessage {
   role: "user" | "assistant";
