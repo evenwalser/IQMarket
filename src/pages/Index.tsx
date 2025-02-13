@@ -105,21 +105,23 @@ const Index = () => {
                 </div>
                 
                 {/* Search Modes */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {searchModes.map((mode) => (
-                    <div key={mode.id} className="h-[140px]">
+                    <div key={mode.id} className="h-[84px]">
                       <Button
                         variant="outline"
-                        className={`w-full h-full flex flex-col items-start p-4 ${
+                        className={`w-full h-full flex flex-col justify-center items-start py-4 px-5 ${
                           selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
                         }`}
                         onClick={() => setSelectedMode(mode.id)}
                       >
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-3 w-full">
                           {mode.icon}
-                          <span className="text-lg font-medium">{mode.title}</span>
+                          <div className="flex flex-col items-start">
+                            <span className="text-[15px] font-medium text-gray-900">{mode.title}</span>
+                            <p className="text-[13px] text-gray-600">{mode.description}</p>
+                          </div>
                         </div>
-                        <p className="text-[15px] text-gray-600 text-left leading-relaxed">{mode.description}</p>
                       </Button>
                     </div>
                   ))}
