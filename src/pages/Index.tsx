@@ -25,7 +25,7 @@ const Index = () => {
         <div className="max-w-3xl mx-auto space-y-12">
           {/* Search Section */}
           <section className="text-center space-y-6">
-            <h1 className="text-4xl font-bold text-gray-900">Access Notion Capital's Knowledge Base</h1>
+            <h1 className="text-4xl font-bold text-gray-900">The Notivator</h1>
             <p className="text-gray-600 text-lg font-normal">
               Find insights, resources, and guidance for early-stage startups
             </p>
