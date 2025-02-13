@@ -129,31 +129,6 @@ const Index = () => {
             </div>
           </section>
 
-          {/* Categories */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                <BookOpen className="text-gray-700" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Founder Wisdom</h3>
-              <p className="text-gray-600">Access insights from successful founders and operators</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                <Building2 className="text-gray-700" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Benchmarking</h3>
-              <p className="text-gray-600">Compare metrics and performance data</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                <Lightbulb className="text-gray-700" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2 text-gray-900">Strategy Guide</h3>
-              <p className="text-gray-600">GTM and product methodologies for each stage</p>
-            </div>
-          </section>
-
           {/* Example Results */}
           <section className="space-y-6">
             <div className="flex items-center justify-between">
