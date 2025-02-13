@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, Brain, BookCopy, Code } from "lucide-react";
+import { Search, ArrowRight, BookOpen, Building2, Lightbulb, Filter, ChevronDown, Upload, BookCopy, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -30,7 +30,7 @@ const Index = () => {
     },
     {
       id: "assistant",
-      icon: <Brain className="w-5 h-5" />,
+      icon: <img src="/lovable-uploads/68728207-256b-4180-bb2e-b48c73bc4203.png" alt="AI Assistant" className="w-5 h-5" />,
       title: "AI Assistant",
       description: "Get personalized recommendations"
     }
