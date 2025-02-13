@@ -110,7 +110,7 @@ const Index = () => {
                     <Button
                       key={mode.id}
                       variant="outline"
-                      className={`h-auto min-h-[120px] flex flex-col items-start p-4 space-y-2 ${
+                      className={`w-full h-full flex flex-col items-start p-6 space-y-3 ${
                         selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
                       }`}
                       onClick={() => setSelectedMode(mode.id)}
@@ -119,7 +119,7 @@ const Index = () => {
                         {mode.icon}
                         <span className="font-medium">{mode.title}</span>
                       </div>
-                      <p className="text-sm text-gray-600 text-left break-words">{mode.description}</p>
+                      <p className="text-sm text-gray-600 text-left w-full">{mode.description}</p>
                     </Button>
                   ))}
                 </div>
