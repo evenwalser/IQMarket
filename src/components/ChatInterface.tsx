@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Paperclip, X } from "lucide-react";
+import { Send, Paperclip, X, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -31,6 +31,12 @@ export const ChatInterface = () => {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    setThreadId(null);
+    toast.success("Chat history cleared");
   };
 
   const uploadFile = async (file: File) => {
@@ -103,13 +109,23 @@ export const ChatInterface = () => {
 
   return (
     <div className="flex flex-col h-[500px]">
-      <div className="flex items-center gap-2 pb-4 border-b border-gray-200">
-        <img 
-          src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" 
-          alt="AI Advisor" 
-          className="w-5 h-5"
-        />
-        <h2 className="text-lg font-semibold text-gray-900">AI Advisor</h2>
+      <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+        <div className="flex items-center gap-2">
+          <img 
+            src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" 
+            alt="AI Advisor" 
+            className="w-5 h-5"
+          />
+          <h2 className="text-lg font-semibold text-gray-900">AI Advisor</h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearChat}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Chat Messages Area */}
