@@ -14,3 +14,19 @@ export interface Conversation {
   assistant_type: AssistantType;
   thread_id: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+  created_at: string;
+  conversation_id: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  created_at: string;
+  last_message_at: string;
+  messages: ChatMessage[];
+}

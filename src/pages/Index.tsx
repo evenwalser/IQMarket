@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { SearchInput } from "@/components/SearchInput";
 import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
+import { ChatInterface } from "@/components/ChatInterface";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,32 +103,38 @@ const Index = () => {
       <Header />
 
       <main className="pt-24 pb-16 px-4">
-        <div className="max-w-4xl mx-auto space-y-12">
-          <section className="text-center space-y-6">
-            <h1 className="text-4xl font-bold text-gray-900">Notion Capital Intelligence</h1>
-            <p className="text-gray-600 text-lg font-normal">
-              Access founder wisdom, benchmark data, and strategic frameworks
-            </p>
-            <div className="relative">
-              <div className="flex flex-col gap-4">
-                <SearchInput 
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  handleSearch={handleSearch}
-                  isLoading={isLoading}
-                  showAttachMenu={showAttachMenu}
-                  setShowAttachMenu={setShowAttachMenu}
-                  handleFileUpload={handleFileUpload}
-                />
-                <SearchModes 
-                  selectedMode={selectedMode}
-                  setSelectedMode={setSelectedMode}
-                />
-              </div>
-            </div>
-          </section>
+        <div className="max-w-[1600px] mx-auto">
+          <h1 className="text-4xl font-bold text-gray-900 text-center mb-12">Notion Capital Intelligence</h1>
+          
+          <div className="flex gap-6">
+            {/* Left Column - Q&A Interface (65%) */}
+            <div className="w-[65%] space-y-12">
+              <section className="space-y-6">
+                <div className="space-y-4">
+                  <SearchInput 
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    handleSearch={handleSearch}
+                    isLoading={isLoading}
+                    showAttachMenu={showAttachMenu}
+                    setShowAttachMenu={setShowAttachMenu}
+                    handleFileUpload={handleFileUpload}
+                  />
+                  <SearchModes 
+                    selectedMode={selectedMode}
+                    setSelectedMode={setSelectedMode}
+                  />
+                </div>
+              </section>
 
-          <ConversationList conversations={conversations} />
+              <ConversationList conversations={conversations} />
+            </div>
+
+            {/* Right Column - Chat Interface (35%) */}
+            <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6">
+              <ChatInterface />
+            </div>
+          </div>
         </div>
       </main>
     </div>
