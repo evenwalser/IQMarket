@@ -33,11 +33,11 @@ serve(async (req) => {
       throw new Error(`Failed to get assistant ID: ${assistantError.message}`);
     }
 
-    const assistantId = assistantData;
-    if (!assistantId) {
+    if (!assistantData) {
       throw new Error(`No assistant ID found for type: ${assistantType}`);
     }
 
+    const assistantId = assistantData;
     console.log('Using assistant ID:', assistantId);
 
     // Create a thread
