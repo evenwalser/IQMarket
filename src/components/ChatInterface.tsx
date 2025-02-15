@@ -1,14 +1,19 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { Send, Paperclip, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  attachments?: Array<{
+    type: 'image' | 'file';
+    url: string;
+    name: string;
+  }>;
 }
 
 export const ChatInterface = () => {
@@ -16,22 +21,65 @@ export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadFile = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${crypto.randomUUID()}.${fileExt}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('chat-attachments')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('chat-attachments')
+      .getPublicUrl(filePath);
+
+    return {
+      url: publicUrl,
+      name: file.name,
+      type: file.type.startsWith('image/') ? 'image' : 'file' as 'image' | 'file'
+    };
+  };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() && attachments.length === 0) return;
 
     try {
       setIsLoading(true);
       const userMessage = message;
       setMessage("");
-      
+
+      // Upload attachments
+      const uploadedFiles = await Promise.all(attachments.map(uploadFile));
+      setAttachments([]);
+
       // Add user message to chat
-      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+      setMessages(prev => [...prev, { 
+        role: 'user', 
+        content: userMessage,
+        attachments: uploadedFiles
+      }]);
 
       const { data, error } = await supabase.functions.invoke('chat-with-ai-advisor', {
         body: {
           message: userMessage,
-          threadId: threadId
+          threadId: threadId,
+          attachments: uploadedFiles
         },
       });
 
@@ -83,16 +131,72 @@ export const ChatInterface = () => {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {msg.content}
+                <div>{msg.content}</div>
+                {msg.attachments?.map((attachment, i) => (
+                  <div key={i} className="mt-2">
+                    {attachment.type === 'image' ? (
+                      <img 
+                        src={attachment.url} 
+                        alt={attachment.name}
+                        className="max-w-full rounded-md"
+                      />
+                    ) : (
+                      <a 
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm underline"
+                      >
+                        {attachment.name}
+                      </a>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           ))
         )}
       </div>
 
+      {/* Attachments Preview */}
+      {attachments.length > 0 && (
+        <div className="border-t border-gray-200 pt-2">
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                <span className="text-sm truncate max-w-[150px]">{file.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0"
+                  onClick={() => removeAttachment(index)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Message Input */}
       <div className="border-t border-gray-200 pt-4">
         <div className="flex gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            multiple
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
           <Input
             type="text"
             placeholder="Type your message..."
@@ -109,7 +213,7 @@ export const ChatInterface = () => {
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!message.trim() || isLoading}
+            disabled={(!message.trim() && attachments.length === 0) || isLoading}
             size="icon"
           >
             <Send className="h-4 w-4" />

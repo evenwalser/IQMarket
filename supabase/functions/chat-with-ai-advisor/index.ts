@@ -22,8 +22,12 @@ serve(async (req) => {
   }
 
   try {
-    const { message, threadId } = await req.json();
-    console.log('Received request:', { message, threadId });
+    const { message, threadId, attachments } = await req.json();
+    console.log('Received request:', { message, threadId, attachments });
+
+    if (!aiAdvisorAssistantId) {
+      throw new Error('AI Advisor Assistant ID not found');
+    }
 
     // Create or retrieve thread
     let thread;
@@ -57,13 +61,44 @@ serve(async (req) => {
 
     console.log('Thread:', thread);
 
+    // Prepare message content
+    const messageContent = [];
+    
+    // Add text content if present
+    if (message?.trim()) {
+      messageContent.push({
+        type: 'text',
+        text: message
+      });
+    }
+
+    // Add image attachments if present
+    if (attachments?.length > 0) {
+      for (const attachment of attachments) {
+        if (attachment.type === 'image') {
+          messageContent.push({
+            type: 'image_url',
+            image_url: {
+              url: attachment.url
+            }
+          });
+        } else {
+          // For non-image files, add them as links in the text
+          messageContent.push({
+            type: 'text',
+            text: `\nAttached file: ${attachment.name} - ${attachment.url}`
+          });
+        }
+      }
+    }
+
     // Add message to thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: openAIHeaders,
       body: JSON.stringify({
         role: 'user',
-        content: message
+        content: messageContent
       }),
     });
 
