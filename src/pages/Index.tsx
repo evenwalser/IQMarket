@@ -8,15 +8,18 @@ import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Sparkles } from "lucide-react";
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
   const [isLoading, setIsLoading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+
   useEffect(() => {
     loadConversations();
   }, []);
+
   const loadConversations = async () => {
     try {
       const {
@@ -38,11 +41,13 @@ const Index = () => {
       toast.error('Failed to load conversation history');
     }
   };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     console.log("File uploaded:", file.name);
   };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a question");
@@ -87,18 +92,24 @@ const Index = () => {
       setIsLoading(false);
     }
   };
-  return <div className="min-h-screen bg-[#fafafa]">
+
+  return (
+    <div className="min-h-screen bg-[#fafafa]">
       <Header />
 
       <main className="pt-0">
         <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
           animate-gradient-background backdrop-blur-sm pb-24">
-          <div className="max-w-[1600px] mx-auto px-4 pt-36 bg-[#f2f2f2]">
-            <div className="text-center mb-16 relative">
+          <div className="max-w-[1600px] mx-auto px-4 pt-20 bg-[#f2f2f2]">
+            <div className="text-center mb-8 relative">
               <div className="inline-flex items-center gap-3 group">
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
                 <div className="flex items-center gap-2">
-                  <img src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" alt="Notion" className="w-32 h-auto object-cover" />
+                  <img 
+                    src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
+                    alt="Notion" 
+                    className="w-32 h-auto object-cover"
+                  />
                   <h1 className="font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight text-4xl">
                     Intelligence
                   </h1>
@@ -108,19 +119,28 @@ const Index = () => {
             </div>
 
             <div className="flex gap-6">
-              {/* Left Column - Q&A Interface (65%) */}
               <div className="w-[65%] space-y-12">
                 <section className="space-y-6">
                   <div className="space-y-4">
-                    <SearchInput searchQuery={searchQuery} setSearchQuery={setSearchQuery} handleSearch={handleSearch} isLoading={isLoading} showAttachMenu={showAttachMenu} setShowAttachMenu={setShowAttachMenu} handleFileUpload={handleFileUpload} />
-                    <SearchModes selectedMode={selectedMode} setSelectedMode={setSelectedMode} />
+                    <SearchInput 
+                      searchQuery={searchQuery}
+                      setSearchQuery={setSearchQuery}
+                      handleSearch={handleSearch}
+                      isLoading={isLoading}
+                      showAttachMenu={showAttachMenu}
+                      setShowAttachMenu={setShowAttachMenu}
+                      handleFileUpload={handleFileUpload}
+                    />
+                    <SearchModes 
+                      selectedMode={selectedMode}
+                      setSelectedMode={setSelectedMode}
+                    />
                   </div>
                 </section>
 
                 <ConversationList conversations={conversations} />
               </div>
 
-              {/* Right Column - Chat Interface (35%) */}
               <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6 h-fit">
                 <ChatInterface />
               </div>
@@ -128,6 +148,8 @@ const Index = () => {
           </div>
         </div>
       </main>
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
