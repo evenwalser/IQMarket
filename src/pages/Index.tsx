@@ -93,7 +93,7 @@ const Index = () => {
       <main className="pt-0">
         <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
           animate-gradient-background backdrop-blur-sm pb-24">
-          <div className="max-w-[1600px] mx-auto px-4 pt-36">
+          <div className="max-w-[1600px] mx-auto px-4 pt-36 bg-[#f2f2f2]">
             <div className="text-center mb-16 relative">
               <div className="inline-flex items-center gap-3 group">
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
