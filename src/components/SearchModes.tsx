@@ -46,9 +46,14 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
       <Button
         key={mode.id}
         variant="outline"
-        className={`flex-1 py-4 px-4 flex items-center justify-between ${
-          selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
-        } ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`flex-1 py-4 px-4 flex items-center justify-between relative
+          before:absolute before:inset-0 before:rounded-md before:p-[1px] 
+          before:transition-opacity before:duration-300
+          before:bg-gradient-to-r before:from-purple-600 before:via-blue-500 before:to-purple-600
+          before:opacity-0 before:-z-10
+          hover:before:opacity-100
+          ${selectedMode === mode.id ? 'before:opacity-100 bg-gray-50/80' : ''}
+          ${!mode.enabled ? 'opacity-50 cursor-not-allowed before:hidden' : ''}`}
         onClick={() => {
           if (mode.enabled) {
             setSelectedMode(mode.id);
