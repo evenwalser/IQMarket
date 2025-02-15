@@ -8,6 +8,7 @@ interface SearchMode {
   icon: JSX.Element;
   title: string;
   description: string;
+  enabled: boolean;
 }
 
 const searchModes: SearchMode[] = [
@@ -15,19 +16,22 @@ const searchModes: SearchMode[] = [
     id: "knowledge",
     icon: <BookOpen className="w-5 h-5" />,
     title: "Knowledge Base",
-    description: "Search across founder interview"
+    description: "Search across founder interview",
+    enabled: true
   },
   {
     id: "benchmarks",
     icon: <Code className="w-5 h-5" />,
     title: "Benchmarks",
-    description: "Access performance metrics and data"
+    description: "Access performance metrics and data",
+    enabled: false
   },
   {
     id: "frameworks",
     icon: <BookCopy className="w-5 h-5" />,
     title: "Frameworks",
-    description: "Explore GTM and product strategies"
+    description: "Explore GTM and product strategies",
+    enabled: false
   }
 ];
 
@@ -44,8 +48,13 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
         variant="outline"
         className={`flex-1 py-4 px-4 flex items-center justify-between ${
           selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
-        }`}
-        onClick={() => setSelectedMode(mode.id)}
+        } ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => {
+          if (mode.enabled) {
+            setSelectedMode(mode.id);
+          }
+        }}
+        disabled={!mode.enabled}
       >
         <div className="flex items-center gap-2">
           <div className="shrink-0">
@@ -53,7 +62,9 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
           </div>
           <div className="flex flex-col items-start gap-0.5">
             <span className="text-sm font-medium text-gray-900">{mode.title}</span>
-            <p className="text-xs text-gray-600">{mode.description}</p>
+            <p className="text-xs text-gray-600">
+              {mode.enabled ? mode.description : "Coming soon"}
+            </p>
           </div>
         </div>
       </Button>

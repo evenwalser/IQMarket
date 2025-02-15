@@ -56,7 +56,8 @@ const Index = () => {
       return;
     }
 
-    if (selectedMode !== "knowledge" && selectedMode !== "frameworks") {
+    // Only allow knowledge base queries for now
+    if (selectedMode !== "knowledge") {
       toast.error("This feature is not yet available");
       return;
     }
