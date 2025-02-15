@@ -14,21 +14,21 @@ interface SearchMode {
 const searchModes: SearchMode[] = [
   {
     id: "knowledge",
-    icon: <BookOpen className="w-5 h-5" />,
+    icon: <BookOpen className="w-5 h-5 transition-colors group-hover:stroke-[url(#gradient)] group-[[data-state=selected]]:stroke-[url(#gradient)]" />,
     title: "Knowledge Base",
     description: "Search across founder interview",
     enabled: true
   },
   {
     id: "benchmarks",
-    icon: <Code className="w-5 h-5" />,
+    icon: <Code className="w-5 h-5 transition-colors group-hover:stroke-[url(#gradient)] group-[[data-state=selected]]:stroke-[url(#gradient)]" />,
     title: "Benchmarks",
     description: "Access performance metrics and data",
     enabled: true
   },
   {
     id: "frameworks",
-    icon: <BookCopy className="w-5 h-5" />,
+    icon: <BookCopy className="w-5 h-5 transition-colors group-hover:stroke-[url(#gradient)] group-[[data-state=selected]]:stroke-[url(#gradient)]" />,
     title: "Frameworks",
     description: "Explore GTM and product strategies",
     enabled: true
@@ -42,13 +42,29 @@ interface SearchModesProps {
 
 export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps) => (
   <div className="flex gap-3">
+    <svg className="absolute w-0 h-0">
+      <defs>
+        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style={{ stopColor: '#9b87f5' }} />
+          <stop offset="50%" style={{ stopColor: '#0EA5E9' }} />
+          <stop offset="100%" style={{ stopColor: '#9b87f5' }} />
+        </linearGradient>
+        <linearGradient id="borderGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style={{ stopColor: '#9b87f5' }} />
+          <stop offset="50%" style={{ stopColor: '#0EA5E9' }} />
+          <stop offset="100%" style={{ stopColor: '#9b87f5' }} />
+        </linearGradient>
+      </defs>
+    </svg>
     {searchModes.map((mode) => (
       <Button
         key={mode.id}
         variant="outline"
-        className={`flex-1 py-4 px-4 flex items-center justify-between border-2 ${
-          selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
-        } ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        data-state={selectedMode === mode.id ? 'selected' : 'default'}
+        className={`group flex-1 py-4 px-4 flex items-center justify-between border-2 transition-all
+          hover:border-transparent hover:bg-gradient-to-r hover:from-purple-600 hover:via-blue-500 hover:to-purple-600 hover:bg-clip-border
+          ${selectedMode === mode.id ? 'border-transparent bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-border bg-gray-50' : ''}
+          ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onClick={() => {
           if (mode.enabled) {
             setSelectedMode(mode.id);
