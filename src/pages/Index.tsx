@@ -8,7 +8,7 @@ import { SearchInput } from "@/components/SearchInput";
 import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
-import { Sparkles } from "lucide-react";
+import { Sparkles, NotebookPen } from "lucide-react";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,17 +103,20 @@ const Index = () => {
     <div className="min-h-screen bg-[#fafafa]">
       <Header />
 
-      <main className="pt-36 pb-16">
+      <main className="pt-0">
         <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
           animate-gradient-background backdrop-blur-sm pb-24">
-          <div className="max-w-[1600px] mx-auto px-4">
+          <div className="max-w-[1600px] mx-auto px-4 pt-36">
             <div className="text-center mb-16 relative">
               <div className="inline-flex items-center gap-3 group">
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
-                  animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
-                  Notion Capital Intelligence
-                </h1>
+                <div className="flex items-center gap-2">
+                  <NotebookPen className="w-12 h-12 text-black" />
+                  <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
+                    animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
+                    Intelligence
+                  </h1>
+                </div>
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
               </div>
             </div>
