@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
+import type { ChatVisualization } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { SearchInput } from "@/components/SearchInput";
@@ -31,11 +32,24 @@ const Index = () => {
       
       if (error) throw error;
       
-      const typedData = data?.map(item => ({
-        ...item,
-        assistant_type: item.assistant_type as AssistantType,
-        visualizations: item.visualizations || []
-      })) || [];
+      const typedData = data?.map(item => {
+        // Ensure visualizations conform to ChatVisualization type
+        const parsedVisualizations = (item.visualizations || []).map((viz: any) => ({
+          type: viz.type as 'table' | 'chart',
+          data: viz.data,
+          headers: viz.headers,
+          chartType: viz.chartType as 'line' | 'bar' | undefined,
+          xKey: viz.xKey,
+          yKeys: viz.yKeys,
+          height: viz.height
+        })) as ChatVisualization[];
+
+        return {
+          ...item,
+          assistant_type: item.assistant_type as AssistantType,
+          visualizations: parsedVisualizations
+        };
+      }) || [];
       
       setConversations(typedData);
     } catch (error) {
@@ -73,8 +87,17 @@ const Index = () => {
         throw new Error('No response received from assistant');
       }
 
-      // Extract visualizations from the response if they exist
-      const visualizations = data.visualizations || [];
+      // Ensure visualizations conform to ChatVisualization type
+      const visualizations = (data.visualizations || []).map((viz: any) => ({
+        type: viz.type as 'table' | 'chart',
+        data: viz.data,
+        headers: viz.headers,
+        chartType: viz.chartType as 'line' | 'bar' | undefined,
+        xKey: viz.xKey,
+        yKeys: viz.yKeys,
+        height: viz.height
+      })) as ChatVisualization[];
+
       console.log('Received visualizations:', visualizations);
 
       const { error: dbError } = await supabase
