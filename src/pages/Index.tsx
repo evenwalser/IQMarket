@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -22,19 +23,19 @@ const Index = () => {
 
   const loadConversations = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('conversations').select('*').order('created_at', {
-        ascending: false
-      }).limit(10);
-      if (error) {
-        throw error;
-      }
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
       const typedData = data?.map(item => ({
         ...item,
         assistant_type: item.assistant_type as AssistantType
       })) || [];
+      
       setConversations(typedData);
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -43,9 +44,13 @@ const Index = () => {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    console.log("File uploaded:", file.name);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      // Log file details to verify upload
+      console.log("Processing file:", file.name, file.type);
+    }
   };
 
   const handleSearch = async () => {
@@ -55,34 +60,34 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('chat-with-assistant', {
+      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: searchQuery,
           assistantType: selectedMode
         }
       });
+      
       if (error) throw error;
       if (!data || !data.response) {
         throw new Error('No response received from assistant');
       }
-      const {
-        error: dbError
-      } = await supabase.from('conversations').insert({
-        query: searchQuery,
-        response: data.response,
-        assistant_type: selectedMode,
-        thread_id: data.thread_id,
-        assistant_id: data.assistant_id // Store the assistant ID
-      });
+
+      const { error: dbError } = await supabase
+        .from('conversations')
+        .insert({
+          query: searchQuery,
+          response: data.response,
+          assistant_type: selectedMode,
+          thread_id: data.thread_id,
+          assistant_id: data.assistant_id
+        });
+
       if (dbError) {
         console.error('Error storing conversation:', dbError);
         toast.error('Failed to save conversation');
       } else {
-        await loadConversations(); // Reload conversations after successful insert
-        setSearchQuery(""); // Clear search input
+        await loadConversations();
+        setSearchQuery("");
         toast.success("Response received!");
       }
     } catch (error) {
