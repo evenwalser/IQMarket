@@ -3,14 +3,54 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
 
-  const handleSendMessage = () => {
-    // Will implement chat functionality in next step
-    console.log("Sending message:", message);
-    setMessage("");
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+
+    try {
+      setIsLoading(true);
+      const userMessage = message;
+      setMessage("");
+      
+      // Add user message to chat
+      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+      const { data, error } = await supabase.functions.invoke('chat-with-ai-advisor', {
+        body: {
+          message: userMessage,
+          threadId: threadId
+        },
+      });
+
+      if (error) throw error;
+
+      // Set thread ID for conversation continuity
+      if (data.thread_id) {
+        setThreadId(data.thread_id);
+      }
+
+      // Add assistant's response to chat
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -25,10 +65,29 @@ export const ChatInterface = () => {
       </div>
 
       {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <div className="text-center text-gray-500 mt-4">
-          Start a conversation with your AI advisor
-        </div>
+      <div className="flex-1 overflow-y-auto py-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500">
+            Start a conversation with your AI advisor
+          </div>
+        ) : (
+          messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                  msg.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Message Input */}
@@ -46,10 +105,11 @@ export const ChatInterface = () => {
               }
             }}
             className="flex-1"
+            disabled={isLoading}
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!message.trim()}
+            disabled={!message.trim() || isLoading}
             size="icon"
           >
             <Send className="h-4 w-4" />
