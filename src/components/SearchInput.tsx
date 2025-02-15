@@ -27,6 +27,7 @@ export const SearchInput = ({
 }: SearchInputProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const startRecording = async () => {
     try {
@@ -39,6 +40,9 @@ export const SearchInput = ({
       };
 
       recorder.onstop = async () => {
+        toast.loading('Converting speech to text...', { id: 'transcription' });
+        setIsTranscribing(true);
+        
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const reader = new FileReader();
         
@@ -46,6 +50,7 @@ export const SearchInput = ({
           const base64Audio = (reader.result as string).split(',')[1];
           
           try {
+            console.log('Sending audio to OpenAI Whisper API...');
             const { data, error } = await supabase.functions.invoke('voice-to-text', {
               body: { audio: base64Audio }
             });
@@ -54,10 +59,13 @@ export const SearchInput = ({
             if (!data?.text) throw new Error('No transcription received');
 
             setSearchQuery(data.text);
-            toast.success('Voice input transcribed!');
+            toast.success('Successfully transcribed via OpenAI Whisper!', { id: 'transcription' });
+            console.log('Transcription received:', data.text);
           } catch (error) {
             console.error('Transcription error:', error);
-            toast.error('Failed to transcribe voice input');
+            toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
+          } finally {
+            setIsTranscribing(false);
           }
         };
 
@@ -67,7 +75,7 @@ export const SearchInput = ({
       setMediaRecorder(recorder);
       recorder.start();
       setIsRecording(true);
-      toast.success('Recording started...');
+      toast.success('Recording started...', { id: 'recording' });
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
@@ -81,6 +89,7 @@ export const SearchInput = ({
       // Stop all audio tracks
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
       setMediaRecorder(null);
+      toast.success('Recording stopped', { id: 'recording' });
     }
   };
 
@@ -136,9 +145,9 @@ export const SearchInput = ({
               variant="ghost"
               size="sm"
               type="button"
-              className={`p-0 h-auto hover:bg-transparent transition-colors ${isRecording ? 'text-red-500' : ''}`}
+              className={`p-0 h-auto hover:bg-transparent transition-colors ${isRecording ? 'text-red-500' : ''} ${isTranscribing ? 'opacity-50' : ''}`}
               onClick={handleMicClick}
-              disabled={isLoading}
+              disabled={isLoading || isTranscribing}
             >
               <Mic className={`h-5 w-5 ${isRecording ? 'animate-pulse' : ''}`} />
             </Button>
