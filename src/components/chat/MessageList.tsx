@@ -1,11 +1,39 @@
 
 import { ChatMessage } from "@/types/chat";
+import { DataTable } from "./visualizations/DataTable";
+import { DataChart } from "./visualizations/DataChart";
 
 interface MessageListProps {
   messages: ChatMessage[];
 }
 
 export const MessageList = ({ messages }: MessageListProps) => {
+  const renderVisualization = (visualization: any) => {
+    if (!visualization) return null;
+
+    switch (visualization.type) {
+      case 'table':
+        return (
+          <DataTable 
+            data={visualization.data} 
+            headers={visualization.headers} 
+          />
+        );
+      case 'chart':
+        return (
+          <DataChart 
+            data={visualization.data}
+            type={visualization.chartType}
+            xKey={visualization.xKey}
+            yKeys={visualization.yKeys}
+            height={visualization.height}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   if (messages.length === 0) {
     return (
       <div className="text-center text-gray-500">
@@ -28,7 +56,12 @@ export const MessageList = ({ messages }: MessageListProps) => {
                 : 'bg-gray-100 text-gray-900'
             }`}
           >
-            <div>{msg.content}</div>
+            <div className="whitespace-pre-wrap">{msg.content}</div>
+            {msg.visualizations?.map((viz, i) => (
+              <div key={i} className="mt-4">
+                {renderVisualization(viz)}
+              </div>
+            ))}
             {msg.attachments?.map((attachment, i) => (
               <div key={i} className="mt-2">
                 {attachment.type === 'image' ? (
