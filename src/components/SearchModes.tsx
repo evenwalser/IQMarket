@@ -9,6 +9,7 @@ interface SearchMode {
   title: string;
   description: string;
   enabled: boolean;
+  titleColor: string;
 }
 
 const searchModes: SearchMode[] = [
@@ -17,21 +18,24 @@ const searchModes: SearchMode[] = [
     icon: <BookOpen className="w-5 h-5" />,
     title: "Knowledge Base",
     description: "Search across founder interview",
-    enabled: true
+    enabled: true,
+    titleColor: "rgb(114, 29, 255)"
   },
   {
     id: "benchmarks",
     icon: <Code className="w-5 h-5" />,
     title: "Benchmarks",
     description: "Access performance metrics and data",
-    enabled: true
+    enabled: true,
+    titleColor: "rgb(241, 177, 177)"
   },
   {
     id: "frameworks",
     icon: <BookCopy className="w-5 h-5" />,
     title: "Frameworks",
     description: "Explore GTM and product strategies",
-    enabled: true
+    enabled: true,
+    titleColor: "rgb(70, 218, 114)"
   }
 ];
 
@@ -61,7 +65,12 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
             {mode.icon}
           </div>
           <div className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-medium text-gray-900">{mode.title}</span>
+            <span 
+              className="text-sm font-medium"
+              style={{ color: mode.titleColor }}
+            >
+              {mode.title}
+            </span>
             <p className="text-xs text-gray-600">
               {mode.enabled ? mode.description : "Coming soon"}
             </p>
