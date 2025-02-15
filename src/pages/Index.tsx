@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
 import type { ChatVisualization } from "@/types/chat";
+import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { SearchInput } from "@/components/SearchInput";
@@ -33,16 +34,21 @@ const Index = () => {
       if (error) throw error;
       
       const typedData = data?.map(item => {
-        // Ensure visualizations conform to ChatVisualization type
-        const parsedVisualizations = (item.visualizations || []).map((viz: any) => ({
-          type: viz.type as 'table' | 'chart',
-          data: viz.data,
-          headers: viz.headers,
-          chartType: viz.chartType as 'line' | 'bar' | undefined,
-          xKey: viz.xKey,
-          yKeys: viz.yKeys,
-          height: viz.height
-        })) as ChatVisualization[];
+        // Convert the visualizations to the correct format for display
+        const parsedVisualizations = (item.visualizations || []).map((viz: Json) => {
+          if (typeof viz === 'object' && viz !== null) {
+            return {
+              type: (viz as any).type as 'table' | 'chart',
+              data: (viz as any).data || [],
+              headers: (viz as any).headers as string[] | undefined,
+              chartType: (viz as any).chartType as 'line' | 'bar' | undefined,
+              xKey: (viz as any).xKey as string | undefined,
+              yKeys: (viz as any).yKeys as string[] | undefined,
+              height: (viz as any).height as number | undefined
+            } satisfies ChatVisualization;
+          }
+          return null;
+        }).filter((viz): viz is ChatVisualization => viz !== null);
 
         return {
           ...item,
@@ -63,7 +69,6 @@ const Index = () => {
     if (!files || files.length === 0) return;
 
     for (const file of Array.from(files)) {
-      // Log file details to verify upload
       console.log("Processing file:", file.name, file.type);
     }
   };
@@ -87,16 +92,16 @@ const Index = () => {
         throw new Error('No response received from assistant');
       }
 
-      // Ensure visualizations conform to ChatVisualization type
+      // Convert the visualization data to match the database schema
       const visualizations = (data.visualizations || []).map((viz: any) => ({
-        type: viz.type as 'table' | 'chart',
+        type: viz.type,
         data: viz.data,
         headers: viz.headers,
-        chartType: viz.chartType as 'line' | 'bar' | undefined,
+        chartType: viz.chartType,
         xKey: viz.xKey,
         yKeys: viz.yKeys,
         height: viz.height
-      })) as ChatVisualization[];
+      })) as Json[];
 
       console.log('Received visualizations:', visualizations);
 
