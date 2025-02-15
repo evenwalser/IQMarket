@@ -14,7 +14,7 @@ export const ChatInterface = () => {
   };
 
   return (
-    <div className="flex flex-col h-[800px]">
+    <div className="flex flex-col h-[600px]">
       <div className="flex items-center gap-2 pb-4 border-b border-gray-200">
         <img 
           src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" 
