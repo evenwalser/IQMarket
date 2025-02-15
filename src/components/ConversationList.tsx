@@ -1,6 +1,13 @@
 
 import type { Conversation } from "@/lib/types";
 
+// Define the color mapping for assistant types
+const assistantTypeColors: Record<string, string> = {
+  knowledge: "rgb(114, 29, 255)", // Bright Purple
+  frameworks: "rgb(70, 218, 114)", // Vibrant Green
+  benchmarks: "rgb(241, 177, 177)" // Soft Pink
+};
+
 interface ConversationListProps {
   conversations: Conversation[];
 }
@@ -15,7 +22,13 @@ export const ConversationList = ({ conversations }: ConversationListProps) => (
         <div key={conversation.id} className="bg-white p-6 rounded-lg border border-gray-100 hover:border-gray-300 transition-colors">
           <div className="flex justify-between items-start mb-4">
             <h3 className="font-semibold text-lg text-gray-900">Q: {conversation.query}</h3>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded-full capitalize">
+            <span 
+              className="text-xs px-2 py-1 rounded-full capitalize"
+              style={{ 
+                backgroundColor: `${assistantTypeColors[conversation.assistant_type]}15`,
+                color: assistantTypeColors[conversation.assistant_type]
+              }}
+            >
               {conversation.assistant_type}
             </span>
           </div>
