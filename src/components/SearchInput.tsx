@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search, Mic, Upload } from "lucide-react";
+import { Search, Speech, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -139,7 +139,7 @@ export const SearchInput = ({
             </div>
           </div>
 
-          {/* Right icons - Mic and Search */}
+          {/* Right icons - Speech and Search */}
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
             <Button
               variant="ghost"
@@ -149,7 +149,9 @@ export const SearchInput = ({
               onClick={handleMicClick}
               disabled={isLoading || isTranscribing}
             >
-              <Mic className={`h-5 w-5 ${isRecording ? 'animate-pulse' : ''}`} />
+              <Speech 
+                className={`h-5 w-5 transition-all duration-300 ${isRecording ? 'animate-pulse scale-110' : ''}`}
+              />
             </Button>
             <Button
               type="button"
