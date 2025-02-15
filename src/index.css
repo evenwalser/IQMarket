@@ -64,3 +64,19 @@
   animation: gradient 8s ease infinite;
 }
 
+@keyframes gradient-background {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-background {
+  background-size: 200% 200%;
+  animation: gradient-background 15s ease infinite;
+}
