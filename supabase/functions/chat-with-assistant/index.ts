@@ -99,11 +99,11 @@ serve(async (req) => {
     // Poll for completion
     let runStatus;
     let attempts = 0;
-    const maxAttempts = 30; // Maximum 30 seconds wait time
+    const maxAttempts = 60; // Increased to 60 seconds wait time
     
     do {
       if (attempts >= maxAttempts) {
-        throw new Error('Run timed out after 30 seconds');
+        throw new Error('Run timed out after 60 seconds');
       }
       
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -133,7 +133,7 @@ serve(async (req) => {
     if (runStatus.status === 'completed') {
       // Get messages
       const messagesResponse = await fetch(
-        `https://api.openai.com/v1/threads/${thread.id}/messages`,
+        `https://api.openai.com/v1/threads/${thread.id}/messages?limit=1`,
         {
           headers: {
             'Authorization': `Bearer ${openAIApiKey}`,
@@ -150,15 +150,27 @@ serve(async (req) => {
       }
 
       const messagesData = await messagesResponse.json();
-      const lastMessage = messagesData.data[0];
+      console.log('Messages data:', messagesData);
 
-      if (!lastMessage?.content?.[0]?.text?.value) {
-        throw new Error('No response content found in the message');
+      if (!messagesData.data || messagesData.data.length === 0) {
+        throw new Error('No messages found in the response');
+      }
+
+      const lastMessage = messagesData.data[0];
+      console.log('Last message:', lastMessage);
+
+      if (!lastMessage.content || lastMessage.content.length === 0) {
+        throw new Error('Message content is empty');
+      }
+
+      const messageContent = lastMessage.content[0];
+      if (messageContent.type !== 'text' || !messageContent.text?.value) {
+        throw new Error('Invalid message content format');
       }
 
       return new Response(
         JSON.stringify({
-          response: lastMessage.content[0].text.value,
+          response: messageContent.text.value,
           thread_id: thread.id,
           assistant_id: assistantId
         }),
