@@ -8,6 +8,7 @@ import { SearchInput } from "@/components/SearchInput";
 import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
+import { Sparkles } from "lucide-react";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,7 +105,19 @@ const Index = () => {
 
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-[1600px] mx-auto">
-          <h1 className="text-4xl font-bold text-gray-900 text-center mb-12">Notion Capital Intelligence</h1>
+          <div className="text-center mb-12 relative">
+            <div className="inline-flex items-center gap-3 group">
+              <Sparkles className="w-6 h-6 text-purple-500 group-hover:text-purple-600 transition-colors" />
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent 
+                animate-gradient relative hover:scale-[1.02] transition-transform">
+                Notion Capital Intelligence
+              </h1>
+              <Sparkles className="w-6 h-6 text-purple-500 group-hover:text-purple-600 transition-colors" />
+            </div>
+            <div className="mt-2 text-gray-600 font-medium">
+              Powered by Advanced AI Technology
+            </div>
+          </div>
           
           <div className="flex gap-6">
             {/* Left Column - Q&A Interface (65%) */}
