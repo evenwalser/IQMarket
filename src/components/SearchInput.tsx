@@ -108,7 +108,7 @@ export const SearchInput = ({
           <Input 
             type="text" 
             placeholder="Ask anything..." 
-            className="w-full h-14 pl-12 pr-24 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
+            className="w-full h-14 pl-12 pr-28 rounded-lg border border-gray-200 focus:border-gray-400 transition-colors text-gray-900 placeholder:text-gray-500" 
             value={searchQuery} 
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => {
@@ -140,7 +140,7 @@ export const SearchInput = ({
           </div>
 
           {/* Right icons - Mic and Search */}
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
