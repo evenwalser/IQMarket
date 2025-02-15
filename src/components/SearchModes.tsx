@@ -62,9 +62,12 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
         variant="outline"
         data-state={selectedMode === mode.id ? 'selected' : 'default'}
         className={`group flex-1 py-4 px-4 flex items-center justify-between border-2 transition-all
-          hover:border-transparent hover:bg-gradient-to-r hover:from-purple-600 hover:via-blue-500 hover:to-purple-600 hover:bg-clip-border
-          ${selectedMode === mode.id ? 'border-transparent bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-border bg-gray-50' : ''}
-          ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          before:absolute before:inset-0 before:rounded-md before:border-2 before:border-transparent
+          before:transition-all before:bg-gradient-to-r before:from-purple-600 before:via-blue-500 before:to-purple-600
+          before:opacity-0 before:content-[''] before:bg-clip-border
+          hover:border-transparent hover:before:opacity-100
+          ${selectedMode === mode.id ? 'border-transparent before:opacity-100' : ''}
+          ${!mode.enabled ? 'opacity-50 cursor-not-allowed before:hidden' : ''}`}
         onClick={() => {
           if (mode.enabled) {
             setSelectedMode(mode.id);
