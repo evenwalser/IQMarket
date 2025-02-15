@@ -159,18 +159,24 @@ serve(async (req) => {
       const lastMessage = messagesData.data[0];
       console.log('Last message:', lastMessage);
 
-      if (!lastMessage.content || lastMessage.content.length === 0) {
-        throw new Error('Message content is empty');
+      // Extract the message content safely
+      let responseText = '';
+      if (lastMessage.content && Array.isArray(lastMessage.content)) {
+        for (const content of lastMessage.content) {
+          if (content.type === 'text') {
+            responseText += content.text.value + ' ';
+          }
+        }
+        responseText = responseText.trim();
       }
 
-      const messageContent = lastMessage.content[0];
-      if (messageContent.type !== 'text' || !messageContent.text?.value) {
-        throw new Error('Invalid message content format');
+      if (!responseText) {
+        throw new Error('No text content found in the message');
       }
 
       return new Response(
         JSON.stringify({
-          response: messageContent.text.value,
+          response: responseText,
           thread_id: thread.id,
           assistant_id: assistantId
         }),
