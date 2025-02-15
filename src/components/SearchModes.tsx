@@ -15,7 +15,7 @@ interface SearchMode {
 const searchModes: SearchMode[] = [
   {
     id: "knowledge",
-    icon: <BookOpen className="w-5 h-5" />,
+    icon: <BookOpen className="w-5 h-5" style={{ color: "rgb(114, 29, 255)" }} />,
     title: "Knowledge Base",
     description: "Search across founder interview",
     enabled: true,
@@ -23,7 +23,7 @@ const searchModes: SearchMode[] = [
   },
   {
     id: "benchmarks",
-    icon: <Code className="w-5 h-5" />,
+    icon: <Code className="w-5 h-5" style={{ color: "rgb(241, 177, 177)" }} />,
     title: "Benchmarks",
     description: "Access performance metrics and data",
     enabled: true,
@@ -31,7 +31,7 @@ const searchModes: SearchMode[] = [
   },
   {
     id: "frameworks",
-    icon: <BookCopy className="w-5 h-5" />,
+    icon: <BookCopy className="w-5 h-5" style={{ color: "rgb(70, 218, 114)" }} />,
     title: "Frameworks",
     description: "Explore GTM and product strategies",
     enabled: true,
