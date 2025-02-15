@@ -23,10 +23,11 @@ export const ConversationList = ({ conversations }: ConversationListProps) => (
           <div className="flex justify-between items-start mb-4">
             <h3 className="font-semibold text-lg text-gray-900">Q: {conversation.query}</h3>
             <span 
-              className="text-xs px-2 py-1 rounded-full capitalize"
+              className="text-xs px-2 py-1 rounded-full capitalize border"
               style={{ 
                 backgroundColor: `${assistantTypeColors[conversation.assistant_type]}15`,
-                color: assistantTypeColors[conversation.assistant_type]
+                color: assistantTypeColors[conversation.assistant_type],
+                borderColor: assistantTypeColors[conversation.assistant_type]
               }}
             >
               {conversation.assistant_type}
