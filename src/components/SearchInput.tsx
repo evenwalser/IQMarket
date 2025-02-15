@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Search, Mic, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,7 @@ export const SearchInput = ({
   const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
-    handleFileUpload(e);
+    handleFileUpload(e); // Call the parent handler as well
   };
 
   const removeAttachment = (index: number) => {
@@ -145,6 +146,7 @@ export const SearchInput = ({
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleAttachmentUpload}
                 accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                multiple
                 onClick={e => e.stopPropagation()}
               />
             </div>
