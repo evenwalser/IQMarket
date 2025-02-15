@@ -131,7 +131,7 @@ const Index = () => {
             </div>
 
             {/* Right Column - Chat Interface (35%) */}
-            <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6">
+            <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6 h-fit">
               <ChatInterface />
             </div>
           </div>
