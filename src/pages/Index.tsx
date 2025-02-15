@@ -108,20 +108,20 @@ const Index = () => {
           animate-gradient-background backdrop-blur-sm pb-24">
           <div className="max-w-[1600px] mx-auto px-4 pt-36">
             <div className="text-center mb-16 relative">
-              <div className="inline-flex items-center justify-center gap-3 group">
-                <Sparkles className="w-7 h-7 text-purple-500/70 group-hover:text-purple-600 transition-colors animate-pulse" />
-                <div className="flex items-center gap-0">
+              <div className="inline-flex items-center gap-3 group">
+                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
+                <div className="flex items-center gap-2">
                   <img 
                     src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
                     alt="Notion" 
-                    className="w-28 h-auto -mr-1"
+                    className="w-32 h-auto"
                   />
                   <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
                     animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
                     Intelligence
                   </h1>
                 </div>
-                <Sparkles className="w-7 h-7 text-purple-500/70 group-hover:text-purple-600 transition-colors animate-pulse" />
+                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
               </div>
             </div>
 
