@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -102,11 +103,11 @@ const Index = () => {
     <div className="min-h-screen bg-[#fafafa]">
       <Header />
 
-      <main className="pt-24 pb-16">
+      <main className="pt-36 pb-16">
         <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
           animate-gradient-background backdrop-blur-sm pb-24">
           <div className="max-w-[1600px] mx-auto px-4">
-            <div className="text-center mb-12 relative">
+            <div className="text-center mb-16 relative">
               <div className="inline-flex items-center gap-3 group">
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
                 <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
