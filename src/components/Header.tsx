@@ -9,9 +9,27 @@ export const Header = () => (
         <span className="text-lg font-medium text-gray-900"></span>
       </div>
       <nav className="space-x-6">
-        <Button variant="ghost" className="text-gray-700 hover:text-gray-900">Resources</Button>
-        <Button variant="ghost" className="text-gray-700 hover:text-gray-900">Portfolio</Button>
-        <Button variant="ghost" className="text-gray-700 hover:text-gray-900">About</Button>
+        <Button 
+          variant="ghost" 
+          className="text-gray-700 hover:text-gray-900"
+          onClick={() => window.open('https://www.notion.vc/platform', '_blank')}
+        >
+          Platform
+        </Button>
+        <Button 
+          variant="ghost" 
+          className="text-gray-700 hover:text-gray-900"
+          onClick={() => window.open('https://www.notion.vc/portfolio', '_blank')}
+        >
+          Portfolio
+        </Button>
+        <Button 
+          variant="ghost" 
+          className="text-gray-700 hover:text-gray-900"
+          onClick={() => window.open('https://www.notion.vc/why-notion', '_blank')}
+        >
+          About
+        </Button>
       </nav>
     </div>
   </header>
