@@ -72,6 +72,10 @@ const Index = () => {
 
       if (error) throw error;
 
+      if (!data || !data.response) {
+        throw new Error('No response received from assistant');
+      }
+
       const { error: dbError } = await supabase
         .from('conversations')
         .insert({
@@ -84,11 +88,11 @@ const Index = () => {
       if (dbError) {
         console.error('Error storing conversation:', dbError);
         toast.error('Failed to save conversation');
+      } else {
+        await loadConversations(); // Reload conversations after successful insert
+        setSearchQuery(""); // Clear search input
+        toast.success("Response received!");
       }
-
-      await loadConversations();
-      setSearchQuery("");
-      toast.success("Response received!");
       
     } catch (error) {
       console.error("Error:", error);
