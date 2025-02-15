@@ -46,7 +46,7 @@ export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps)
       <Button
         key={mode.id}
         variant="outline"
-        className={`flex-1 py-4 px-4 flex items-center justify-between ${
+        className={`flex-1 py-4 px-4 flex items-center justify-between border-2 ${
           selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
         } ${!mode.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onClick={() => {
