@@ -1,11 +1,18 @@
 
 import type { Conversation } from "@/lib/types";
+import { BookOpen, Code, BookCopy } from "lucide-react";
 
 // Define the color mapping for assistant types
 const assistantTypeColors: Record<string, string> = {
   knowledge: "rgb(114, 29, 255)", // Bright Purple
   frameworks: "rgb(70, 218, 114)", // Vibrant Green
   benchmarks: "rgb(241, 177, 177)" // Soft Pink
+};
+
+const assistantTypeIcons: Record<string, JSX.Element> = {
+  knowledge: <BookOpen className="w-4 h-4" />,
+  frameworks: <BookCopy className="w-4 h-4" />,
+  benchmarks: <Code className="w-4 h-4" />
 };
 
 interface ConversationListProps {
@@ -23,13 +30,18 @@ export const ConversationList = ({ conversations }: ConversationListProps) => (
           <div className="flex justify-between items-start mb-4">
             <h3 className="font-semibold text-lg text-gray-900">Q: {conversation.query}</h3>
             <span 
-              className="text-xs px-2 py-1 rounded-full capitalize border"
+              className="text-xs px-2 py-1 rounded-full capitalize border flex items-center gap-1.5"
               style={{ 
                 backgroundColor: `${assistantTypeColors[conversation.assistant_type]}15`,
                 color: assistantTypeColors[conversation.assistant_type],
                 borderColor: assistantTypeColors[conversation.assistant_type]
               }}
             >
+              <span style={{ color: assistantTypeColors[conversation.assistant_type] }}>
+                {React.cloneElement(assistantTypeIcons[conversation.assistant_type], {
+                  color: assistantTypeColors[conversation.assistant_type]
+                })}
+              </span>
               {conversation.assistant_type}
             </span>
           </div>
