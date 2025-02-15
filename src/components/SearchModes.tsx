@@ -24,14 +24,14 @@ const searchModes: SearchMode[] = [
     icon: <Code className="w-5 h-5" />,
     title: "Benchmarks",
     description: "Access performance metrics and data",
-    enabled: false
+    enabled: true
   },
   {
     id: "frameworks",
     icon: <BookCopy className="w-5 h-5" />,
     title: "Frameworks",
     description: "Explore GTM and product strategies",
-    enabled: false
+    enabled: true
   }
 ];
 

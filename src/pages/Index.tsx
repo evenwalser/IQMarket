@@ -56,12 +56,6 @@ const Index = () => {
       return;
     }
 
-    // Only allow knowledge base queries for now
-    if (selectedMode !== "knowledge") {
-      toast.error("This feature is not yet available");
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
@@ -83,7 +77,8 @@ const Index = () => {
           query: searchQuery,
           response: data.response,
           assistant_type: selectedMode,
-          thread_id: data.thread_id
+          thread_id: data.thread_id,
+          assistant_id: data.assistant_id // Store the assistant ID
         });
 
       if (dbError) {

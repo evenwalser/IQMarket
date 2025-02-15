@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       conversations: {
         Row: {
+          assistant_id: string | null
           assistant_type: string
           created_at: string
           id: string
@@ -19,6 +20,7 @@ export type Database = {
           thread_id: string
         }
         Insert: {
+          assistant_id?: string | null
           assistant_type: string
           created_at?: string
           id?: string
@@ -27,6 +29,7 @@ export type Database = {
           thread_id: string
         }
         Update: {
+          assistant_id?: string | null
           assistant_type?: string
           created_at?: string
           id?: string
@@ -41,7 +44,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_assistant_id: {
+        Args: {
+          assistant_type: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
