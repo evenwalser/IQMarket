@@ -33,7 +33,8 @@ const Index = () => {
       
       const typedData = data?.map(item => ({
         ...item,
-        assistant_type: item.assistant_type as AssistantType
+        assistant_type: item.assistant_type as AssistantType,
+        visualizations: item.visualizations || []
       })) || [];
       
       setConversations(typedData);
@@ -72,6 +73,10 @@ const Index = () => {
         throw new Error('No response received from assistant');
       }
 
+      // Extract visualizations from the response if they exist
+      const visualizations = data.visualizations || [];
+      console.log('Received visualizations:', visualizations);
+
       const { error: dbError } = await supabase
         .from('conversations')
         .insert({
@@ -79,7 +84,8 @@ const Index = () => {
           response: data.response,
           assistant_type: selectedMode,
           thread_id: data.thread_id,
-          assistant_id: data.assistant_id
+          assistant_id: data.assistant_id,
+          visualizations: visualizations
         });
 
       if (dbError) {

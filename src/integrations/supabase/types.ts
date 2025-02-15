@@ -18,6 +18,7 @@ export type Database = {
           query: string
           response: string
           thread_id: string
+          visualizations: Json[] | null
         }
         Insert: {
           assistant_id?: string | null
@@ -27,6 +28,7 @@ export type Database = {
           query: string
           response: string
           thread_id: string
+          visualizations?: Json[] | null
         }
         Update: {
           assistant_id?: string | null
@@ -36,6 +38,7 @@ export type Database = {
           query?: string
           response?: string
           thread_id?: string
+          visualizations?: Json[] | null
         }
         Relationships: []
       }
@@ -52,7 +55,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      visualization_type: "table" | "chart"
     }
     CompositeTypes: {
       [_ in never]: never
