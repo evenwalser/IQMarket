@@ -3,8 +3,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const founderWisdomAssistantId = Deno.env.get('FOUNDER_WISDOM_ASSISTANT_ID');
-const notivatorAssistantId = Deno.env.get('NOTIVATOR_ASSISTANT_ID');
+const knowledgeAssistantId = Deno.env.get('KNOWLEDGE_ASSISTANT_ID');
+const benchmarksAssistantId = Deno.env.get('BENCHMARKS_ASSISTANT_ID');
+const frameworksAssistantId = Deno.env.get('FRAMEWORKS_ASSISTANT_ID');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,7 @@ const corsHeaders = {
 const openAIHeaders = {
   'Authorization': `Bearer ${openAIApiKey}`,
   'Content-Type': 'application/json',
-  'OpenAI-Beta': 'assistants=v2'  // Updated to v2
+  'OpenAI-Beta': 'assistants=v2'
 };
 
 serve(async (req) => {
@@ -26,15 +27,23 @@ serve(async (req) => {
     const { message, assistantType, threadId } = await req.json();
     console.log('Received request:', { message, assistantType, threadId });
 
-    const assistantId = assistantType === 'frameworks' 
-      ? notivatorAssistantId 
-      : founderWisdomAssistantId;
-
-    if (!assistantId) {
-      throw new Error(`Assistant ID not found for type: ${assistantType}`);
+    // Determine which assistant to use based on the type
+    let assistantId;
+    switch (assistantType) {
+      case 'benchmarks':
+        assistantId = benchmarksAssistantId;
+        break;
+      case 'frameworks':
+        assistantId = frameworksAssistantId;
+        break;
+      case 'knowledge':
+      default:
+        assistantId = knowledgeAssistantId;
     }
 
-    console.log('Using assistant ID:', assistantId);
+    if (!assistantId) {
+      throw new Error(`No assistant ID found for type: ${assistantType}`);
+    }
 
     // Create or retrieve thread
     let thread;
