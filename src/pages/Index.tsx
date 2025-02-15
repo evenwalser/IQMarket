@@ -8,7 +8,7 @@ import { SearchInput } from "@/components/SearchInput";
 import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
-import { Sparkles, NotebookPen } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,7 +111,11 @@ const Index = () => {
               <div className="inline-flex items-center gap-3 group">
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
                 <div className="flex items-center gap-2">
-                  <NotebookPen className="w-12 h-12 text-black" />
+                  <img 
+                    src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
+                    alt="Notion" 
+                    className="w-32 h-auto"
+                  />
                   <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
                     animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
                     Intelligence
