@@ -1,10 +1,10 @@
-
 import { useState } from "react";
-import { Search, Mic, Upload } from "lucide-react";
+import { Search, Mic, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AttachmentList } from "@/components/chat/AttachmentList";
 
 interface SearchInputProps {
   searchQuery: string;
@@ -28,6 +28,7 @@ export const SearchInput = ({
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const startRecording = async () => {
     try {
@@ -101,9 +102,19 @@ export const SearchInput = ({
     }
   };
 
+  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    handleFileUpload(e);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="relative">
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2">
         <div className="relative flex-1">
           <Input 
             type="text" 
@@ -132,7 +143,7 @@ export const SearchInput = ({
               <input
                 type="file"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={handleFileUpload}
+                onChange={handleAttachmentUpload}
                 accept=".pdf,.doc,.docx,.txt,.csv,image/*"
                 onClick={e => e.stopPropagation()}
               />
@@ -157,11 +168,22 @@ export const SearchInput = ({
               size="sm"
               className="p-0 h-auto hover:bg-transparent"
               onClick={handleSearch}
+              disabled={isLoading}
             >
-              <Search className="h-5 w-5 text-gray-600" />
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 text-gray-600 animate-spin" />
+              ) : (
+                <Search className="h-5 w-5 text-gray-600" />
+              )}
             </Button>
           </div>
         </div>
+
+        {/* Attachments display */}
+        <AttachmentList 
+          attachments={attachments} 
+          onRemove={removeAttachment} 
+        />
       </div>
     </div>
   );
