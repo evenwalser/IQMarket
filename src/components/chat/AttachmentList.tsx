@@ -33,10 +33,10 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
   if (attachments.length === 0) return null;
 
   return (
-    <div className="border-t border-gray-200 pt-2">
+    <div className="mt-2 mb-4">
       <div className="flex flex-wrap gap-2">
         {attachments.map((file, index) => (
-          <div key={index} className="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-lg group relative">
+          <div key={index} className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg group relative">
             {/* Preview or Icon */}
             <div className="w-8 h-8 flex items-center justify-center">
               {previews[index] ? (
@@ -46,7 +46,7 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
                   className="w-8 h-8 object-cover rounded"
                 />
               ) : (
-                <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
                   {file.type.startsWith('image/') ? (
                     <ImageIcon className="h-4 w-4 text-gray-500" />
                   ) : (
