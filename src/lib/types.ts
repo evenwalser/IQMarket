@@ -1,4 +1,6 @@
 
+import { ChatVisualization } from "@/types/chat";
+
 export type AssistantType = "knowledge" | "frameworks" | "benchmarks" | "assistant";
 
 export interface AssistantMessage {
@@ -13,6 +15,7 @@ export interface Conversation {
   response: string;
   assistant_type: AssistantType;
   thread_id: string;
+  visualizations?: ChatVisualization[];
 }
 
 export interface ChatMessage {
