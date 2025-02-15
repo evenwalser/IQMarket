@@ -103,49 +103,52 @@ const Index = () => {
     <div className="min-h-screen bg-[#fafafa]">
       <Header />
 
-      <main className="pt-24 pb-16 px-4">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="text-center mb-12 relative">
-            <div className="inline-block p-8 rounded-2xl bg-gradient-to-r from-purple-600/10 via-blue-500/10 to-purple-600/10 
-              animate-gradient-background backdrop-blur-sm border border-white/20 shadow-xl">
-              <div className="inline-flex items-center gap-3 group">
-                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
-                  animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
-                  Notion Capital Intelligence
-                </h1>
-                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
+      <main className="pt-24 pb-16">
+        <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
+          animate-gradient-background backdrop-blur-sm pb-24">
+          <div className="max-w-[1600px] mx-auto px-4">
+            <div className="text-center mb-12 relative">
+              <div className="inline-block p-8 rounded-2xl bg-gradient-to-r from-purple-600/10 via-blue-500/10 to-purple-600/10 
+                animate-gradient-background backdrop-blur-sm border border-white/20 shadow-xl">
+                <div className="inline-flex items-center gap-3 group">
+                  <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
+                  <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent 
+                    animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight">
+                    Notion Capital Intelligence
+                  </h1>
+                  <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex gap-6">
-            {/* Left Column - Q&A Interface (65%) */}
-            <div className="w-[65%] space-y-12">
-              <section className="space-y-6">
-                <div className="space-y-4">
-                  <SearchInput 
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    handleSearch={handleSearch}
-                    isLoading={isLoading}
-                    showAttachMenu={showAttachMenu}
-                    setShowAttachMenu={setShowAttachMenu}
-                    handleFileUpload={handleFileUpload}
-                  />
-                  <SearchModes 
-                    selectedMode={selectedMode}
-                    setSelectedMode={setSelectedMode}
-                  />
-                </div>
-              </section>
 
-              <ConversationList conversations={conversations} />
-            </div>
+            <div className="flex gap-6">
+              {/* Left Column - Q&A Interface (65%) */}
+              <div className="w-[65%] space-y-12">
+                <section className="space-y-6">
+                  <div className="space-y-4">
+                    <SearchInput 
+                      searchQuery={searchQuery}
+                      setSearchQuery={setSearchQuery}
+                      handleSearch={handleSearch}
+                      isLoading={isLoading}
+                      showAttachMenu={showAttachMenu}
+                      setShowAttachMenu={setShowAttachMenu}
+                      handleFileUpload={handleFileUpload}
+                    />
+                    <SearchModes 
+                      selectedMode={selectedMode}
+                      setSelectedMode={setSelectedMode}
+                    />
+                  </div>
+                </section>
 
-            {/* Right Column - Chat Interface (35%) */}
-            <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6 h-fit">
-              <ChatInterface />
+                <ConversationList conversations={conversations} />
+              </div>
+
+              {/* Right Column - Chat Interface (35%) */}
+              <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6 h-fit">
+                <ChatInterface />
+              </div>
             </div>
           </div>
         </div>
