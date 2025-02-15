@@ -37,27 +37,26 @@ interface SearchModesProps {
 }
 
 export const SearchModes = ({ selectedMode, setSelectedMode }: SearchModesProps) => (
-  <div className="grid grid-cols-2 gap-3">
+  <div className="flex gap-3">
     {searchModes.map((mode) => (
-      <div key={mode.id}>
-        <Button
-          variant="outline"
-          className={`w-full py-6 px-6 flex items-center justify-between ${
-            selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
-          }`}
-          onClick={() => setSelectedMode(mode.id)}
-        >
-          <div className="flex items-center gap-4">
-            <div className="shrink-0">
-              {mode.icon}
-            </div>
-            <div className="flex flex-col items-start gap-1">
-              <span className="text-base font-medium text-gray-900">{mode.title}</span>
-              <p className="text-sm text-gray-600">{mode.description}</p>
-            </div>
+      <Button
+        key={mode.id}
+        variant="outline"
+        className={`flex-1 py-4 px-4 flex items-center justify-between ${
+          selectedMode === mode.id ? 'border-gray-900 bg-gray-50' : ''
+        }`}
+        onClick={() => setSelectedMode(mode.id)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="shrink-0">
+            {mode.icon}
           </div>
-        </Button>
-      </div>
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="text-sm font-medium text-gray-900">{mode.title}</span>
+            <p className="text-xs text-gray-600">{mode.description}</p>
+          </div>
+        </div>
+      </Button>
     ))}
   </div>
 );
