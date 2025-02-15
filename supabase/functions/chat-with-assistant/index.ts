@@ -25,19 +25,14 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Get the assistant ID using the database function
-    const { data: assistantData, error: assistantError } = await supabase
+    const { data: assistantId, error: assistantError } = await supabase
       .rpc('get_assistant_id', { assistant_type: assistantType });
 
-    if (assistantError) {
+    if (assistantError || !assistantId) {
       console.error('Error getting assistant ID:', assistantError);
-      throw new Error(`Failed to get assistant ID: ${assistantError.message}`);
+      throw new Error(`Failed to get assistant ID for type ${assistantType}`);
     }
 
-    if (!assistantData) {
-      throw new Error(`No assistant ID found for type: ${assistantType}`);
-    }
-
-    const assistantId = assistantData;
     console.log('Using assistant ID:', assistantId);
 
     // Create a thread
