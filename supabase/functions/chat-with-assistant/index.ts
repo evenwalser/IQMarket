@@ -1,21 +1,15 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const knowledgeAssistantId = Deno.env.get('KNOWLEDGE_ASSISTANT_ID');
-const benchmarksAssistantId = Deno.env.get('BENCHMARKS_ASSISTANT_ID');
-const frameworksAssistantId = Deno.env.get('FRAMEWORKS_ASSISTANT_ID');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const openAIHeaders = {
-  'Authorization': `Bearer ${openAIApiKey}`,
-  'Content-Type': 'application/json',
-  'OpenAI-Beta': 'assistants=v2'
 };
 
 serve(async (req) => {
@@ -24,63 +18,55 @@ serve(async (req) => {
   }
 
   try {
-    const { message, assistantType, threadId } = await req.json();
-    console.log('Received request:', { message, assistantType, threadId });
+    const { message, assistantType } = await req.json();
+    console.log('Received request:', { message, assistantType });
 
-    // Determine which assistant to use based on the type
-    let assistantId;
-    switch (assistantType) {
-      case 'benchmarks':
-        assistantId = benchmarksAssistantId;
-        break;
-      case 'frameworks':
-        assistantId = frameworksAssistantId;
-        break;
-      case 'knowledge':
-      default:
-        assistantId = knowledgeAssistantId;
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Get the assistant ID using the database function
+    const { data: assistantData, error: assistantError } = await supabase
+      .rpc('get_assistant_id', { assistant_type: assistantType });
+
+    if (assistantError) {
+      console.error('Error getting assistant ID:', assistantError);
+      throw new Error(`Failed to get assistant ID: ${assistantError.message}`);
     }
 
+    const assistantId = assistantData;
     if (!assistantId) {
       throw new Error(`No assistant ID found for type: ${assistantType}`);
     }
 
-    // Create or retrieve thread
-    let thread;
-    if (threadId) {
-      const threadResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}`, {
-        method: 'GET',
-        headers: openAIHeaders,
-      });
-      
-      if (!threadResponse.ok) {
-        const error = await threadResponse.text();
-        console.error('Thread retrieval error:', error);
-        throw new Error(`Failed to retrieve thread: ${error}`);
-      }
-      
-      thread = await threadResponse.json();
-    } else {
-      const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
-        method: 'POST',
-        headers: openAIHeaders,
-      });
-      
-      if (!createThreadResponse.ok) {
-        const error = await createThreadResponse.text();
-        console.error('Thread creation error:', error);
-        throw new Error(`Failed to create thread: ${error}`);
-      }
-      
-      thread = await createThreadResponse.json();
+    console.log('Using assistant ID:', assistantId);
+
+    // Create a thread
+    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+    });
+
+    if (!threadResponse.ok) {
+      const error = await threadResponse.text();
+      console.error('Thread creation error:', error);
+      throw new Error(`Failed to create thread: ${error}`);
     }
 
-    console.log('Thread:', thread);
+    const thread = await threadResponse.json();
+    console.log('Thread created:', thread);
 
     // Add message to thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
-      headers: openAIHeaders,
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
       body: JSON.stringify({
         role: 'user',
         content: message
@@ -96,7 +82,11 @@ serve(async (req) => {
     // Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
-      headers: openAIHeaders,
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
       body: JSON.stringify({
         assistant_id: assistantId
       }),
@@ -126,7 +116,11 @@ serve(async (req) => {
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/runs/${runData.id}`,
         {
-          headers: openAIHeaders,
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2'
+          },
         }
       );
 
@@ -146,7 +140,11 @@ serve(async (req) => {
       const messagesResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/messages`,
         {
-          headers: openAIHeaders,
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2'
+          },
         }
       );
 
@@ -166,7 +164,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           response: lastMessage.content[0].text.value,
-          thread_id: thread.id
+          thread_id: thread.id,
+          assistant_id: assistantId
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
