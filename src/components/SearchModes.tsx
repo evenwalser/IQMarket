@@ -28,12 +28,6 @@ const searchModes: SearchMode[] = [
     icon: <BookCopy className="w-5 h-5" />,
     title: "Frameworks",
     description: "Explore GTM and product strategies"
-  },
-  {
-    id: "assistant",
-    icon: <img src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" alt="AI Assistant" className="w-5 h-5" />,
-    title: "AI Assistant",
-    description: "Get personalized recommendations"
   }
 ];
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
@@ -16,14 +16,18 @@ export const ChatInterface = () => {
   return (
     <div className="flex flex-col h-[800px]">
       <div className="flex items-center gap-2 pb-4 border-b border-gray-200">
-        <MessageSquare className="w-5 h-5 text-gray-600" />
-        <h2 className="text-lg font-semibold text-gray-900">AI Assistant Chat</h2>
+        <img 
+          src="/lovable-uploads/a0d0f1b5-2c6e-40c6-a503-fb5a3d773811.png" 
+          alt="AI Advisor" 
+          className="w-5 h-5"
+        />
+        <h2 className="text-lg font-semibold text-gray-900">AI Advisor</h2>
       </div>
 
       {/* Chat Messages Area */}
       <div className="flex-1 overflow-y-auto py-4">
         <div className="text-center text-gray-500 mt-4">
-          Start a conversation with your AI assistant
+          Start a conversation with your AI advisor
         </div>
       </div>
 
