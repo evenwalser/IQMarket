@@ -44,25 +44,6 @@ serve(async (req) => {
 
     console.log('Using assistant ID:', assistantId);
 
-    // Create a thread
-    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-    });
-
-    if (!threadResponse.ok) {
-      const error = await threadResponse.text();
-      console.error('Thread creation error:', error);
-      throw new Error(`Failed to create thread: ${error}`);
-    }
-
-    const thread = await threadResponse.json();
-    console.log('Thread created:', thread);
-
     // Upload files to OpenAI first
     const uploadedFiles = [];
     if (attachments && attachments.length > 0) {
@@ -118,18 +99,34 @@ serve(async (req) => {
       }
     }
 
-    // Add message to the thread
-    const messagePayload = {
-      role: 'user',
-      content: message,
-    };
+    // Create a thread
+    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+    });
 
-    // If we have files, add them to the message
-    if (uploadedFiles.length > 0) {
-      messagePayload.file_ids = uploadedFiles;
+    if (!threadResponse.ok) {
+      const error = await threadResponse.text();
+      console.error('Thread creation error:', error);
+      throw new Error(`Failed to create thread: ${error}`);
     }
 
-    console.log('Sending message with payload:', messagePayload);
+    const thread = await threadResponse.json();
+    console.log('Thread created:', thread);
+
+    // Add message to the thread using file attachments in the content
+    const messageContent = uploadedFiles.length > 0 
+      ? [
+          { type: "text", text: message },
+          ...uploadedFiles.map(fileId => ({ type: "file_path", file_path: fileId }))
+        ]
+      : message;
+
+    console.log('Sending message with content:', messageContent);
 
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
@@ -138,7 +135,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(messagePayload),
+      body: JSON.stringify({
+        role: 'user',
+        content: messageContent
+      }),
     });
 
     if (!messageResponse.ok) {
