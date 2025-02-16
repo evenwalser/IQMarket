@@ -9,7 +9,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend,
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Label
 } from 'recharts';
 
 interface DataChartProps {
@@ -24,6 +25,40 @@ export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartPr
   if (!data || data.length === 0) return null;
 
   const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+
+  // For horizontal bar chart (when yKeys contains category)
+  const isHorizontalBar = yKeys.includes('category');
+
+  if (type === 'bar' && isHorizontalBar) {
+    return (
+      <div className="my-4">
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            layout="vertical"
+            data={data}
+            margin={{
+              top: 20,
+              right: 30,
+              left: 150, // Increased left margin for category labels
+              bottom: 40,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" domain={[70, 100]}>
+              <Label value="Gross Revenue Retention (%)" position="bottom" offset={0} />
+            </XAxis>
+            <YAxis dataKey="category" type="category" />
+            <Tooltip />
+            <Bar dataKey="value" fill="#8884d8" />
+            {/* Add reference lines for thresholds */}
+            <ReferenceLine x={80} stroke="grey" strokeDasharray="3 3" label="Bottom Quartile" />
+            <ReferenceLine x={90} stroke="grey" strokeDasharray="3 3" label="Median" />
+            <ReferenceLine x={95} stroke="grey" strokeDasharray="3 3" label="Top Quartile" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
   return (
     <div className="my-4">

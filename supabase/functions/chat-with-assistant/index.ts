@@ -1,11 +1,5 @@
-
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,12 +13,13 @@ serve(async (req) => {
 
   try {
     const { message, assistantType } = await req.json();
-    console.log('Received request:', { message, assistantType });
 
-    // Initialize Supabase client with service role key
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Get the assistant ID using the database function
     const { data: assistantId, error: assistantError } = await supabase
       .rpc('get_assistant_id', { assistant_type: assistantType });
 
@@ -35,7 +30,6 @@ serve(async (req) => {
 
     console.log('Using assistant ID:', assistantId);
 
-    // Create a thread
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
@@ -54,7 +48,6 @@ serve(async (req) => {
     const thread = await threadResponse.json();
     console.log('Thread created:', thread);
 
-    // Add message to thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -74,7 +67,6 @@ serve(async (req) => {
       throw new Error(`Failed to create message: ${error}`);
     }
 
-    // Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: {
@@ -96,11 +88,10 @@ serve(async (req) => {
     const runData = await runResponse.json();
     console.log('Run created:', runData);
 
-    // Poll for completion
     let runStatus;
     let attempts = 0;
-    const maxAttempts = 60; // 60 seconds wait time
-    
+    const maxAttempts = 60;
+
     do {
       if (attempts >= maxAttempts) {
         throw new Error('Run timed out after 60 seconds');
@@ -131,7 +122,6 @@ serve(async (req) => {
     } while (runStatus.status === 'in_progress' || runStatus.status === 'queued');
 
     if (runStatus.status === 'completed') {
-      // Get messages
       const messagesResponse = await fetch(
         `https://api.openai.com/v1/threads/${thread.id}/messages?limit=1`,
         {
@@ -159,7 +149,6 @@ serve(async (req) => {
       const lastMessage = messagesData.data[0];
       console.log('Last message:', lastMessage);
 
-      // Extract the message content safely
       let responseText = '';
       if (lastMessage.content && Array.isArray(lastMessage.content)) {
         for (const content of lastMessage.content) {
@@ -174,11 +163,29 @@ serve(async (req) => {
         throw new Error('No text content found in the message');
       }
 
+      const benchmarkData = [
+        { category: 'Bottom Quartile (80-85%)', value: 82.5 },
+        { category: 'Median (91%)', value: 91 },
+        { category: 'Top Quartile (95%)', value: 95 },
+        { category: 'Top Decile (99-100%)', value: 99.5 },
+        { category: 'Your GRR (78%)', value: 78 }
+      ];
+
+      const visualization = {
+        type: 'chart',
+        data: benchmarkData,
+        chartType: 'bar',
+        xKey: 'value',
+        yKeys: ['category'],
+        height: 400
+      };
+
       return new Response(
         JSON.stringify({
           response: responseText,
           thread_id: thread.id,
-          assistant_id: assistantId
+          assistant_id: assistantId,
+          visualizations: [visualization]
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
