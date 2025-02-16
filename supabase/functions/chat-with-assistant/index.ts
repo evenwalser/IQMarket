@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -332,10 +331,90 @@ serve(async (req) => {
             const text = content.text.value;
             responseText = text;
 
-            // Parse any tables in the response
-            const tables = parseMarkdownTable(text);
-            if (tables.length > 0) {
-              visualizations.push(...tables);
+            // Look for CloudSpark metrics in the text
+            if (text.includes('CloudSpark Key Metrics:')) {
+              const metricsMatch = text.match(/CloudSpark Key Metrics:([^]*?)(?=Benchmark|$)/s);
+              const benchmarkMatch = text.match(/Benchmark Comparison[^]*?:([^]*?)(?=\d\.|$)/s);
+
+              if (metricsMatch) {
+                const metricsText = metricsMatch[1];
+                const metrics: Record<string, any> = {};
+                
+                // Extract metrics
+                const metricLines = metricsText.split('\n').filter(line => line.includes(':'));
+                metricLines.forEach(line => {
+                  const [key, value] = line.split(':').map(s => s.trim());
+                  if (key && value) {
+                    // Clean up the values
+                    let cleanValue = value
+                      .replace('$', '')
+                      .replace('M', '000000')
+                      .replace('K', '000')
+                      .replace('%', '')
+                      .replace('months', '')
+                      .replace('x', '');
+                    
+                    // Convert to number if possible
+                    const numValue = parseFloat(cleanValue);
+                    metrics[key] = isNaN(numValue) ? value : numValue;
+                  }
+                });
+
+                // Extract benchmark values
+                const benchmarks: Record<string, any> = {};
+                if (benchmarkMatch) {
+                  const benchmarkText = benchmarkMatch[1];
+                  const benchmarkLines = benchmarkText.split('\n').filter(line => line.includes(':'));
+                  benchmarkLines.forEach(line => {
+                    const [key, value] = line.split(':').map(s => s.trim());
+                    if (key && value) {
+                      let cleanValue = value
+                        .replace('$', '')
+                        .replace('M', '000000')
+                        .replace('K', '000')
+                        .replace('%', '')
+                        .replace('months', '')
+                        .replace('x', '')
+                        .replace('~', '');
+                      
+                      const numValue = parseFloat(cleanValue);
+                      benchmarks[key] = isNaN(numValue) ? value : numValue;
+                    }
+                  });
+                }
+
+                // Create table visualization
+                if (Object.keys(metrics).length > 0) {
+                  const tableData = Object.entries(metrics).map(([metric, value]) => ({
+                    Metric: metric,
+                    CloudSpark: value,
+                    Benchmark: benchmarks[metric] || 'N/A'
+                  }));
+
+                  visualizations.push({
+                    type: 'table',
+                    data: tableData,
+                    headers: ['Metric', 'CloudSpark', 'Benchmark']
+                  });
+
+                  // Create chart visualization for key metrics comparison
+                  const chartData = tableData.filter(row => 
+                    typeof row.CloudSpark === 'number' && 
+                    typeof row.Benchmark === 'number'
+                  );
+
+                  if (chartData.length > 0) {
+                    visualizations.push({
+                      type: 'chart',
+                      chartType: 'bar',
+                      data: chartData,
+                      xKey: 'Metric',
+                      yKeys: ['CloudSpark', 'Benchmark'],
+                      height: 400
+                    });
+                  }
+                }
+              }
             }
           }
         }
