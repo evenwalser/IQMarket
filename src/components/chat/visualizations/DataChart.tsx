@@ -1,3 +1,4 @@
+
 import { 
   LineChart, 
   Line, 
@@ -37,8 +38,8 @@ export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartPr
 
   if (type === 'bar' && isHorizontalBar) {
     return (
-      <div className="my-4 p-6 bg-white rounded-lg shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">GRR Benchmark Analysis</h3>
+      <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">GRR Benchmark Analysis</h3>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             layout="vertical"
@@ -141,7 +142,7 @@ export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartPr
   }
 
   return (
-    <div className="my-4">
+    <div className="my-4 mx-auto max-w-4xl">
       <ResponsiveContainer width="100%" height={height}>
         {type === 'line' ? (
           <LineChart data={data}>

@@ -11,7 +11,7 @@ export const DataTable = ({ data, headers }: DataTableProps) => {
   const tableHeaders = headers || Object.keys(data[0]);
 
   return (
-    <div className="overflow-x-auto my-4">
+    <div className="overflow-x-auto my-4 mx-auto max-w-4xl">
       <table className="w-full border-collapse table-auto">
         <thead>
           <tr className="bg-gray-100">
