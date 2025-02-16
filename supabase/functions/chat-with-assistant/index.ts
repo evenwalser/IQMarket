@@ -51,16 +51,9 @@ serve(async (req) => {
     const thread = await threadResponse.json();
     console.log('Thread created:', thread);
 
-    // Add message with attachments to the thread
-    const messagePayload: any = {
-      role: 'user',
-      content: message,
-    };
-
+    // Upload files to OpenAI first
+    const uploadedFiles = [];
     if (attachments && attachments.length > 0) {
-      messagePayload.file_ids = [];
-      
-      // Upload each attachment to OpenAI
       for (const attachment of attachments) {
         console.log('Processing attachment:', attachment);
         
@@ -85,13 +78,19 @@ serve(async (req) => {
           }
           
           const fileData = await uploadResponse.json();
-          messagePayload.file_ids.push(fileData.id);
+          uploadedFiles.push(fileData.id);
           console.log('File uploaded to OpenAI:', fileData);
         } catch (error) {
           console.error('Error uploading file to OpenAI:', error);
         }
       }
     }
+
+    // Add message to the thread
+    const messageData = {
+      role: 'user',
+      content: message,
+    };
 
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
@@ -100,7 +99,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(messagePayload),
+      body: JSON.stringify(messageData),
     });
 
     if (!messageResponse.ok) {
@@ -109,7 +108,15 @@ serve(async (req) => {
       throw new Error(`Failed to create message: ${error}`);
     }
 
-    // Run the assistant
+    // Run the assistant with the uploaded files
+    const runData = {
+      assistant_id: assistantId,
+    };
+
+    if (uploadedFiles.length > 0) {
+      runData.file_ids = uploadedFiles;
+    }
+
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: {
@@ -117,9 +124,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify({
-        assistant_id: assistantId
-      }),
+      body: JSON.stringify(runData),
     });
 
     if (!runResponse.ok) {
@@ -128,8 +133,8 @@ serve(async (req) => {
       throw new Error(`Failed to create run: ${error}`);
     }
 
-    const runData = await runResponse.json();
-    console.log('Run created:', runData);
+    const run = await runResponse.json();
+    console.log('Run created:', run);
 
     // Poll for completion
     let runStatus;
@@ -144,7 +149,7 @@ serve(async (req) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const statusResponse = await fetch(
-        `https://api.openai.com/v1/threads/${thread.id}/runs/${runData.id}`,
+        `https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`,
         {
           headers: {
             'Authorization': `Bearer ${openAIApiKey}`,
