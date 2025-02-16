@@ -7,154 +7,86 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Helper function to extract metrics data from text
-function extractMetricsData(text: string) {
+// Helper function to extract metrics from text
+function extractMetrics(text: string) {
   const metrics: Record<string, any>[] = [];
   const lines = text.split('\n');
-  let currentData: Record<string, any> = {};
-  let isInCodeBlock = false;
-  let dataFound = false;
+  let currentSection = '';
+  let currentMetrics: Record<string, string> = {};
 
   for (const line of lines) {
-    // Skip code blocks
-    if (line.includes('```')) {
-      isInCodeBlock = !isInCodeBlock;
-      continue;
-    }
-    if (isInCodeBlock || line.includes('import') || line.includes('plt.')) {
+    // Skip code blocks and empty lines
+    if (line.startsWith('```') || line.trim() === '' || line.startsWith('import ') || line.includes('plt.')) {
       continue;
     }
 
-    // Look for metric declarations
-    if (line.includes('=')) {
-      const parts = line.split('=').map(part => part.trim());
-      if (parts.length === 2) {
-        let values: number[] = [];
-        // Try to extract array of numbers
-        const match = parts[1].match(/\[([\d., ]+)\]/);
-        if (match) {
-          values = match[1].split(',').map(v => parseFloat(v.trim()));
-          if (!isNaN(values[0])) {
-            const key = parts[0]
-              .replace('_values', '')
-              .replace('_medians', '')
-              .replace('_', ' ')
-              .trim();
-            currentData[key] = values;
-            dataFound = true;
-          }
-        }
+    // Check for metric sections
+    if (line.includes('Key Metrics:')) {
+      currentSection = 'company';
+      continue;
+    } else if (line.includes('Benchmark') || line.includes('Industry Standard')) {
+      currentSection = 'benchmark';
+      if (Object.keys(currentMetrics).length > 0) {
+        metrics.push(currentMetrics);
+        currentMetrics = {};
       }
-    } else if (line.includes(':')) {
-      // Handle key-value pair format
+      continue;
+    }
+
+    // Extract metric if line contains a colon
+    if (line.includes(':')) {
       const [key, valueStr] = line.split(':').map(s => s.trim());
       if (key && valueStr) {
-        const value = valueStr
+        // Clean up the value
+        let value = valueStr
           .replace('$', '')
-          .replace('M', '')
+          .replace('M', '000000')
+          .replace('K', '000')
           .replace('%', '')
           .replace('months', '')
           .replace('x', '')
           .replace('~', '')
+          .replace('(', '')
+          .replace(')', '')
           .trim();
-        
+
+        // Try to convert to number
         const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          if (!currentData.metrics) {
-            currentData.metrics = [];
-          }
-          currentData.metrics.push({
-            name: key,
-            value: numValue
-          });
-          dataFound = true;
+        const finalValue = isNaN(numValue) ? value : numValue;
+
+        // Store metric with its section
+        if (currentSection === 'company') {
+          currentMetrics[key] = finalValue;
+        } else if (currentSection === 'benchmark' && Object.keys(currentMetrics).length > 0) {
+          currentMetrics[`${key} (Benchmark)`] = finalValue;
         }
       }
     }
   }
 
-  if (dataFound) {
-    metrics.push(currentData);
+  // Add the last set of metrics if not empty
+  if (Object.keys(currentMetrics).length > 0) {
+    metrics.push(currentMetrics);
   }
 
   return metrics;
 }
 
-// Function to create visualizations from metrics data
-function createVisualizations(metricsData: Record<string, any>[]) {
-  const visualizations = [];
-
-  for (const data of metricsData) {
-    if (data.metrics) {
-      // Create table visualization
-      visualizations.push({
-        type: 'table',
-        data: data.metrics,
-        headers: ['Metric', 'Value']
-      });
-
-      // Create bar chart visualization
-      visualizations.push({
-        type: 'chart',
-        chartType: 'bar',
-        data: data.metrics,
-        xKey: 'name',
-        yKeys: ['value'],
-        height: 400
-      });
-    } else {
-      // Handle array data format
-      const metrics = Object.keys(data).filter(key => Array.isArray(data[key]));
-      if (metrics.length > 0) {
-        const chartData = [];
-        const categories = ['Current', 'Median', 'Top Quartile'];
-        
-        metrics.forEach((metric, index) => {
-          const values = data[metric];
-          if (Array.isArray(values)) {
-            values.forEach((value, i) => {
-              chartData.push({
-                metric,
-                category: categories[i],
-                value
-              });
-            });
-          }
-        });
-
-        if (chartData.length > 0) {
-          // Create comparison table
-          visualizations.push({
-            type: 'table',
-            data: chartData,
-            headers: ['Metric', 'Category', 'Value']
-          });
-
-          // Create grouped bar chart
-          visualizations.push({
-            type: 'chart',
-            chartType: 'bar',
-            data: chartData,
-            xKey: 'metric',
-            yKeys: categories.map(cat => `${cat} Value`),
-            height: 400
-          });
-        }
-      }
-    }
-  }
-
-  return visualizations;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   try {
     const { message, assistantType, attachments } = await req.json();
-    console.log('Received request:', { message, assistantType, attachments });
+    console.log('Received request:', { 
+      message, 
+      assistantType, 
+      attachments: attachments?.map(a => ({ url: a.url, name: a.name }))
+    });
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -364,11 +296,15 @@ serve(async (req) => {
       );
 
       if (!messagesResponse.ok) {
-        throw new Error('Failed to retrieve messages');
+        const error = await messagesResponse.text();
+        console.error('Messages retrieval error:', error);
+        throw new Error(`Failed to retrieve messages: ${error}`);
       }
 
       const messagesData = await messagesResponse.json();
       const lastMessage = messagesData.data[0];
+      console.log('Last message:', lastMessage);
+
       let responseText = '';
       let visualizations = [];
 
@@ -379,12 +315,34 @@ serve(async (req) => {
             responseText = text;
 
             // Extract metrics and create visualizations
-            const metricsData = extractMetricsData(text);
-            console.log('Extracted metrics data:', metricsData);
-            
-            if (metricsData.length > 0) {
-              visualizations = createVisualizations(metricsData);
-              console.log('Created visualizations:', visualizations);
+            const metrics = extractMetrics(text);
+            console.log('Extracted metrics:', metrics);
+
+            if (metrics.length > 0) {
+              // Create table visualization
+              const tableData = Object.entries(metrics[0]).map(([metric, value]) => ({
+                Metric: metric,
+                Value: value
+              }));
+
+              visualizations.push({
+                type: 'table',
+                data: tableData,
+                headers: ['Metric', 'Value']
+              });
+
+              // Create chart visualization for numerical metrics
+              const chartData = tableData.filter(row => typeof row.Value === 'number');
+              if (chartData.length > 0) {
+                visualizations.push({
+                  type: 'chart',
+                  chartType: 'bar',
+                  data: chartData,
+                  xKey: 'Metric',
+                  yKeys: ['Value'],
+                  height: 400
+                });
+              }
             }
           }
         }
@@ -395,9 +353,14 @@ serve(async (req) => {
           response: responseText,
           thread_id: thread.id,
           assistant_id: assistantId,
-          visualizations
+          visualizations: visualizations
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        }
       );
     } else {
       console.error('Run failed with status:', runStatus);
@@ -407,10 +370,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in chat-with-assistant:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack 
+      }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        }
       }
     );
   }
