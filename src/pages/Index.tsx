@@ -34,7 +34,6 @@ const Index = () => {
       if (error) throw error;
       
       const typedData = data?.map(item => {
-        // Convert the visualizations to the correct format for display
         const parsedVisualizations = (item.visualizations || []).map((viz: Json) => {
           if (typeof viz === 'object' && viz !== null) {
             const visualization: ChatVisualization = {
@@ -42,7 +41,6 @@ const Index = () => {
               data: (viz as any).data || []
             };
 
-            // Add optional properties only if they exist
             if ((viz as any).headers) visualization.headers = (viz as any).headers as string[];
             if ((viz as any).chartType) visualization.chartType = (viz as any).chartType as 'line' | 'bar';
             if ((viz as any).xKey) visualization.xKey = (viz as any).xKey as string;
@@ -84,10 +82,27 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
+      // Get the uploaded attachments from the database
+      const { data: chatAttachments, error: fetchError } = await supabase
+        .from('chat_attachments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (fetchError) throw fetchError;
+
+      // Format attachments for the API call
+      const formattedAttachments = chatAttachments?.map(att => ({
+        url: supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl,
+        name: att.file_name,
+        type: att.content_type.startsWith('image/') ? 'image' : 'file'
+      })) || [];
+
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: searchQuery,
-          assistantType: selectedMode
+          assistantType: selectedMode,
+          attachments: formattedAttachments
         }
       });
       
