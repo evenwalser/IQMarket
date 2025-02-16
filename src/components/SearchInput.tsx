@@ -1,13 +1,11 @@
-import { useState } from "react";
-import { Search, Mic, Upload, Loader2 } from "lucide-react";
+
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { AttachmentList } from "@/components/chat/AttachmentList";
-import type { Database } from "@/integrations/supabase/types";
-
-type ChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
+import { SearchControls } from "@/components/search/SearchControls";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useFileAttachments } from "@/hooks/useFileAttachments";
 
 interface SearchInputProps {
   searchQuery: string;
@@ -28,148 +26,8 @@ export const SearchInput = ({
   setShowAttachMenu,
   handleFileUpload
 }: SearchInputProps) => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadedAttachments, setUploadedAttachments] = useState<ChatAttachment[]>([]);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      const audioChunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
-      recorder.onstop = async () => {
-        toast.loading('Converting speech to text...', { id: 'transcription' });
-        setIsTranscribing(true);
-        
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        
-        reader.onload = async () => {
-          const base64Audio = (reader.result as string).split(',')[1];
-          
-          try {
-            console.log('Sending audio to OpenAI Whisper API...');
-            const { data, error } = await supabase.functions.invoke('voice-to-text', {
-              body: { audio: base64Audio }
-            });
-
-            if (error) throw error;
-            if (!data?.text) throw new Error('No transcription received');
-
-            setSearchQuery(data.text);
-            toast.success('Successfully transcribed via OpenAI Whisper!', { id: 'transcription' });
-            console.log('Transcription received:', data.text);
-          } catch (error) {
-            console.error('Transcription error:', error);
-            toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
-          } finally {
-            setIsTranscribing(false);
-          }
-        };
-
-        reader.readAsDataURL(audioBlob);
-      };
-
-      setMediaRecorder(recorder);
-      recorder.start();
-      setIsRecording(true);
-      toast.success('Recording started...', { id: 'recording' });
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      toast.error('Could not access microphone');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      setMediaRecorder(null);
-      toast.success('Recording stopped', { id: 'recording' });
-    }
-  };
-
-  const handleMicClick = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-    
-    try {
-      for (const file of files) {
-        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('chat-attachments')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data, error: insertError } = await supabase
-          .from('chat_attachments')
-          .insert({
-            file_path: filePath,
-            file_name: file.name,
-            content_type: file.type,
-            size: file.size
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-
-        if (data) {
-          setUploadedAttachments(prev => [...prev, data]);
-          toast.success(`File ${file.name} uploaded successfully`);
-        }
-      }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error('Failed to upload file: ' + (error as Error).message);
-    }
-
-    handleFileUpload(e);
-  };
-
-  const removeAttachment = async (index: number) => {
-    const removedAttachment = uploadedAttachments[index];
-    
-    try {
-      const { error: storageError } = await supabase.storage
-        .from('chat-attachments')
-        .remove([removedAttachment.file_path]);
-
-      if (storageError) throw storageError;
-
-      const { error: deleteError } = await supabase
-        .from('chat_attachments')
-        .delete()
-        .eq('id', removedAttachment.id);
-
-      if (deleteError) throw deleteError;
-
-      setAttachments(prev => prev.filter((_, i) => i !== index));
-      setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
-      toast.success('File removed successfully');
-    } catch (error) {
-      console.error('Error removing file:', error);
-      toast.error('Failed to remove file: ' + (error as Error).message);
-    }
-  };
+  const { isRecording, isTranscribing, handleMicClick } = useVoiceRecording(setSearchQuery);
+  const { attachments, handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
   return (
     <div className="relative space-y-2">
@@ -200,39 +58,23 @@ export const SearchInput = ({
             <input
               type="file"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleAttachmentUpload}
+              onChange={e => {
+                handleAttachmentUpload(e);
+                handleFileUpload(e);
+              }}
               accept=".pdf,.doc,.docx,.txt,.csv,image/*"
               multiple
               onClick={e => e.stopPropagation()}
             />
           </div>
         </div>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            className={`p-0 h-auto hover:bg-transparent transition-colors ${isRecording ? 'text-red-500' : ''} ${isTranscribing ? 'opacity-50' : ''}`}
-            onClick={handleMicClick}
-            disabled={isLoading || isTranscribing}
-          >
-            <Mic className={`h-5 w-5 ${isRecording ? 'animate-pulse' : ''}`} />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="p-0 h-auto hover:bg-transparent"
-            onClick={handleSearch}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 text-gray-600 animate-spin" />
-            ) : (
-              <Search className="h-5 w-5 text-gray-600" />
-            )}
-          </Button>
-        </div>
+        <SearchControls
+          isLoading={isLoading}
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          onMicClick={handleMicClick}
+          onSearch={handleSearch}
+        />
       </div>
       <AttachmentList 
         attachments={attachments} 
