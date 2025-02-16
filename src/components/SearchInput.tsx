@@ -5,15 +5,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentList } from "@/components/chat/AttachmentList";
+import type { Database } from "@/integrations/supabase/types";
 
-interface UploadedAttachment {
-  id: string;
-  file_path: string;
-  file_name: string;
-  content_type: string;
-  size: number;
-  created_at: string;
-}
+type ChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
 
 interface SearchInputProps {
   searchQuery: string;
@@ -38,7 +32,7 @@ export const SearchInput = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<ChatAttachment[]>([]);
 
   const startRecording = async () => {
     try {
@@ -139,7 +133,7 @@ export const SearchInput = ({
         if (insertError) throw insertError;
 
         if (data) {
-          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
+          setUploadedAttachments(prev => [...prev, data]);
           toast.success(`File ${file.name} uploaded successfully`);
         }
       }
