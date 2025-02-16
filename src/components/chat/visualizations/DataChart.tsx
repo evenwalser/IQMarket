@@ -1,4 +1,3 @@
-
 import { 
   LineChart, 
   Line, 
@@ -25,36 +24,116 @@ interface DataChartProps {
 export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartProps) => {
   if (!data || data.length === 0) return null;
 
-  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+  const colors = {
+    bar: '#8884d8',
+    bottomQuartile: '#FF6B6B',
+    median: '#4ECDC4',
+    topQuartile: '#45B7D1',
+    grid: '#e0e0e0'
+  };
 
   // For horizontal bar chart (when yKeys contains category)
   const isHorizontalBar = yKeys.includes('category');
 
   if (type === 'bar' && isHorizontalBar) {
     return (
-      <div className="my-4">
+      <div className="my-4 p-6 bg-white rounded-lg shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">GRR Benchmark Analysis</h3>
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
             layout="vertical"
             data={data}
             margin={{
               top: 20,
-              right: 30,
-              left: 150, // Increased left margin for category labels
+              right: 40,
+              left: 160,
               bottom: 40,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" domain={[70, 100]}>
-              <Label value="Gross Revenue Retention (%)" position="bottom" offset={0} />
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke={colors.grid}
+              horizontal={true}
+              vertical={true}
+            />
+            <XAxis 
+              type="number" 
+              domain={[70, 100]}
+              tickFormatter={(value) => `${value}%`}
+              style={{
+                fontSize: '12px',
+                fontFamily: 'system-ui'
+              }}
+            >
+              <Label 
+                value="Gross Revenue Retention" 
+                position="bottom" 
+                offset={20}
+                style={{
+                  textAnchor: 'middle',
+                  fontSize: '14px',
+                  fill: '#666',
+                  fontFamily: 'system-ui'
+                }}
+              />
             </XAxis>
-            <YAxis dataKey="category" type="category" />
-            <Tooltip />
-            <Bar dataKey="value" fill="#8884d8" />
-            {/* Add reference lines for thresholds */}
-            <ReferenceLine x={80} stroke="grey" strokeDasharray="3 3" label="Bottom Quartile" />
-            <ReferenceLine x={90} stroke="grey" strokeDasharray="3 3" label="Median" />
-            <ReferenceLine x={95} stroke="grey" strokeDasharray="3 3" label="Top Quartile" />
+            <YAxis 
+              dataKey="category" 
+              type="category"
+              width={150}
+              style={{
+                fontSize: '12px',
+                fontFamily: 'system-ui'
+              }}
+            />
+            <Tooltip 
+              formatter={(value) => [`${value}%`, 'GRR']}
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.96)',
+                border: '1px solid #f0f0f0',
+                borderRadius: '6px',
+                padding: '8px 12px'
+              }}
+            />
+            <Bar 
+              dataKey="value" 
+              fill={colors.bar}
+              radius={[0, 4, 4, 0]}
+              barSize={24}
+            />
+            <ReferenceLine 
+              x={80} 
+              stroke={colors.bottomQuartile}
+              strokeDasharray="3 3" 
+              label={{ 
+                value: "Bottom Quartile",
+                position: 'top',
+                fill: colors.bottomQuartile,
+                fontSize: 12
+              }}
+            />
+            <ReferenceLine 
+              x={90} 
+              stroke={colors.median}
+              strokeDasharray="3 3" 
+              label={{ 
+                value: "Median",
+                position: 'top',
+                fill: colors.median,
+                fontSize: 12
+              }}
+            />
+            <ReferenceLine 
+              x={95} 
+              stroke={colors.topQuartile}
+              strokeDasharray="3 3" 
+              label={{ 
+                value: "Top Quartile",
+                position: 'top',
+                fill: colors.topQuartile,
+                fontSize: 12
+              }}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -76,7 +155,7 @@ export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartPr
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stroke={colors[index % colors.length]}
+                stroke={colors.bar}
               />
             ))}
           </LineChart>
@@ -91,7 +170,7 @@ export const DataChart = ({ data, type, xKey, yKeys, height = 300 }: DataChartPr
               <Bar
                 key={key}
                 dataKey={key}
-                fill={colors[index % colors.length]}
+                fill={colors.bar}
               />
             ))}
           </BarChart>
