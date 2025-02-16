@@ -8,6 +8,88 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Helper function to parse markdown-style tables
+function parseMarkdownTable(text: string) {
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  let tableData = [];
+  let headers: string[] = [];
+  let isParsingTable = false;
+  let currentTable = { data: [], headers: [] as string[] };
+
+  for (let line of lines) {
+    // Check if line contains | to identify table content
+    if (line.includes('|')) {
+      // Clean up the line
+      line = line.replace(/^\||\|$/g, '').trim();
+      const cells = line.split('|').map(cell => cell.trim());
+
+      // Skip separator lines (containing ---)
+      if (line.includes('---')) {
+        continue;
+      }
+
+      if (!isParsingTable) {
+        // This is a header row
+        headers = cells;
+        isParsingTable = true;
+        currentTable.headers = headers;
+      } else {
+        // This is a data row
+        const row: Record<string, any> = {};
+        cells.forEach((cell, index) => {
+          if (index < headers.length) {
+            const header = headers[index];
+            // Clean up the cell value and convert to appropriate type
+            let value = cell.replace(/\*\*/g, '').trim();
+            
+            // Handle different value formats
+            if (value.includes('~')) {
+              value = value.replace('~', '');
+            }
+            if (value.includes('$')) {
+              value = value.replace('$', '').replace('K', '000').replace('M', '000000');
+            }
+            if (value.includes('%')) {
+              value = value.replace('%', '');
+            }
+            if (value === '-' || value === 'N/A' || value === '') {
+              value = null;
+            }
+            
+            // Convert to number if possible
+            const numValue = parseFloat(value);
+            row[header] = isNaN(numValue) ? value : numValue;
+          }
+        });
+        currentTable.data.push(row);
+      }
+    } else {
+      // If we were parsing a table and hit a non-table line, store the current table
+      if (isParsingTable && currentTable.data.length > 0) {
+        tableData.push({
+          type: 'table',
+          data: currentTable.data,
+          headers: currentTable.headers
+        });
+        // Reset for next table
+        currentTable = { data: [], headers: [] };
+        isParsingTable = false;
+      }
+    }
+  }
+
+  // Add the last table if we were still parsing one
+  if (isParsingTable && currentTable.data.length > 0) {
+    tableData.push({
+      type: 'table',
+      data: currentTable.data,
+      headers: currentTable.headers
+    });
+  }
+
+  return tableData;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
@@ -250,47 +332,10 @@ serve(async (req) => {
             const text = content.text.value;
             responseText = text;
 
-            if (text.includes('|') && text.includes('-|-')) {
-              const lines = text.split('\n');
-              const tableData = [];
-              let headers: string[] = [];
-              let isHeader = true;
-
-              for (const line of lines) {
-                if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-                  if (line.includes('-|-')) {
-                    continue;
-                  }
-                  const cells = line.split('|')
-                    .filter(cell => cell.trim())
-                    .map(cell => cell.trim());
-                  
-                  if (isHeader) {
-                    headers = cells;
-                    isHeader = false;
-                  } else {
-                    const row: Record<string, any> = {};
-                    cells.forEach((cell, index) => {
-                      const header = headers[index].replace(/\*\*/g, '');
-                      const value = cell.replace(/\*\*/g, '');
-                      row[header] = value.includes('%') 
-                        ? parseFloat(value.replace('%', ''))
-                        : value.includes('$') 
-                          ? parseFloat(value.replace('$', '').replace('M', '000000').replace('K', '000'))
-                          : isNaN(parseFloat(value)) ? value : parseFloat(value);
-                    });
-                    tableData.push(row);
-                  }
-                }
-              }
-
-              if (tableData.length > 0) {
-                visualizations.push({
-                  type: 'table',
-                  data: tableData,
-                  headers: headers.map(h => h.replace(/\*\*/g, '')),
-                });
-              }
+            // Parse any tables in the response
+            const tables = parseMarkdownTable(text);
+            if (tables.length > 0) {
+              visualizations.push(...tables);
             }
           }
         }
