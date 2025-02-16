@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -12,7 +13,8 @@ serve(async (req) => {
   }
 
   try {
-    const { message, assistantType } = await req.json();
+    const { message, assistantType, attachments } = await req.json();
+    console.log('Received request:', { message, assistantType, attachments });
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -30,6 +32,7 @@ serve(async (req) => {
 
     console.log('Using assistant ID:', assistantId);
 
+    // Create a thread
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
@@ -48,6 +51,48 @@ serve(async (req) => {
     const thread = await threadResponse.json();
     console.log('Thread created:', thread);
 
+    // Add message with attachments to the thread
+    const messagePayload: any = {
+      role: 'user',
+      content: message,
+    };
+
+    if (attachments && attachments.length > 0) {
+      messagePayload.file_ids = [];
+      
+      // Upload each attachment to OpenAI
+      for (const attachment of attachments) {
+        console.log('Processing attachment:', attachment);
+        
+        try {
+          const response = await fetch(attachment.url);
+          const blob = await response.blob();
+          
+          const formData = new FormData();
+          formData.append('file', blob, attachment.name);
+          formData.append('purpose', 'assistants');
+          
+          const uploadResponse = await fetch('https://api.openai.com/v1/files', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+            },
+            body: formData,
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error(`Failed to upload file: ${await uploadResponse.text()}`);
+          }
+          
+          const fileData = await uploadResponse.json();
+          messagePayload.file_ids.push(fileData.id);
+          console.log('File uploaded to OpenAI:', fileData);
+        } catch (error) {
+          console.error('Error uploading file to OpenAI:', error);
+        }
+      }
+    }
+
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -55,10 +100,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify({
-        role: 'user',
-        content: message
-      }),
+      body: JSON.stringify(messagePayload),
     });
 
     if (!messageResponse.ok) {
@@ -67,6 +109,7 @@ serve(async (req) => {
       throw new Error(`Failed to create message: ${error}`);
     }
 
+    // Run the assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: {
@@ -88,6 +131,7 @@ serve(async (req) => {
     const runData = await runResponse.json();
     console.log('Run created:', runData);
 
+    // Poll for completion
     let runStatus;
     let attempts = 0;
     const maxAttempts = 60;
@@ -142,50 +186,74 @@ serve(async (req) => {
       const messagesData = await messagesResponse.json();
       console.log('Messages data:', messagesData);
 
-      if (!messagesData.data || messagesData.data.length === 0) {
-        throw new Error('No messages found in the response');
-      }
-
       const lastMessage = messagesData.data[0];
       console.log('Last message:', lastMessage);
 
       let responseText = '';
+      let visualizations = [];
+
       if (lastMessage.content && Array.isArray(lastMessage.content)) {
         for (const content of lastMessage.content) {
           if (content.type === 'text') {
-            responseText += content.text.value + ' ';
+            // Parse the response text for any visualization data
+            const text = content.text.value;
+            responseText = text;
+
+            // Check if the response contains a table
+            if (text.includes('|') && text.includes('-|-')) {
+              const lines = text.split('\n');
+              const tableData = [];
+              let headers: string[] = [];
+              let isHeader = true;
+
+              for (const line of lines) {
+                if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                  if (line.includes('-|-')) {
+                    continue;
+                  }
+                  const cells = line.split('|')
+                    .filter(cell => cell.trim())
+                    .map(cell => cell.trim());
+                  
+                  if (isHeader) {
+                    headers = cells;
+                    isHeader = false;
+                  } else {
+                    const row: Record<string, any> = {};
+                    cells.forEach((cell, index) => {
+                      // Remove any ** markdown formatting
+                      const header = headers[index].replace(/\*\*/g, '');
+                      const value = cell.replace(/\*\*/g, '');
+                      // Convert string numbers to actual numbers
+                      row[header] = value.includes('%') 
+                        ? parseFloat(value.replace('%', ''))
+                        : value.includes('$') 
+                          ? parseFloat(value.replace('$', '').replace('M', '000000').replace('K', '000'))
+                          : isNaN(parseFloat(value)) ? value : parseFloat(value);
+                    });
+                    tableData.push(row);
+                  }
+                }
+              }
+
+              if (tableData.length > 0) {
+                visualizations.push({
+                  type: 'table',
+                  data: tableData,
+                  headers: headers.map(h => h.replace(/\*\*/g, '')),
+                });
+              }
+            }
           }
         }
-        responseText = responseText.trim();
       }
-
-      if (!responseText) {
-        throw new Error('No text content found in the message');
-      }
-
-      const benchmarkData = [
-        { category: 'Bottom Quartile (80-85%)', value: 82.5 },
-        { category: 'Median (91%)', value: 91 },
-        { category: 'Top Quartile (95%)', value: 95 },
-        { category: 'Top Decile (99-100%)', value: 99.5 },
-        { category: 'Your GRR (78%)', value: 78 }
-      ];
-
-      const visualization = {
-        type: 'chart',
-        data: benchmarkData,
-        chartType: 'bar',
-        xKey: 'value',
-        yKeys: ['category'],
-        height: 400
-      };
 
       return new Response(
         JSON.stringify({
           response: responseText,
           thread_id: thread.id,
           assistant_id: assistantId,
-          visualizations: [visualization]
+          visualizations: visualizations
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
