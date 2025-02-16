@@ -5,11 +5,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -17,9 +22,12 @@ serve(async (req) => {
     console.log('Received request:', { message, assistantType, attachments });
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not found');
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     const { data: assistantId, error: assistantError } = await supabase
@@ -58,23 +66,38 @@ serve(async (req) => {
         console.log('Processing attachment:', attachment);
         
         try {
-          const response = await fetch(attachment.url);
-          const blob = await response.blob();
+          // Fetch the file from the Supabase URL with appropriate headers
+          const response = await fetch(attachment.url, {
+            headers: {
+              'Accept': '*/*',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch file from URL: ${response.statusText}`);
+          }
+
+          // Convert the response to a blob
+          const fileBlob = await response.blob();
           
+          // Create form data
           const formData = new FormData();
-          formData.append('file', blob, attachment.name);
+          formData.append('file', fileBlob, attachment.name);
           formData.append('purpose', 'assistants');
           
+          // Upload to OpenAI
           const uploadResponse = await fetch('https://api.openai.com/v1/files', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${openAIApiKey}`,
+              // Note: Do not set Content-Type header for FormData
             },
             body: formData,
           });
           
           if (!uploadResponse.ok) {
-            throw new Error(`Failed to upload file: ${await uploadResponse.text()}`);
+            const errorText = await uploadResponse.text();
+            throw new Error(`Failed to upload file to OpenAI: ${errorText}`);
           }
           
           const fileData = await uploadResponse.json();
@@ -82,16 +105,12 @@ serve(async (req) => {
           console.log('File uploaded to OpenAI:', fileData);
         } catch (error) {
           console.error('Error uploading file to OpenAI:', error);
+          // Continue with other files if one fails
         }
       }
     }
 
     // Add message to the thread
-    const messageData = {
-      role: 'user',
-      content: message,
-    };
-
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -99,7 +118,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(messageData),
+      body: JSON.stringify({
+        role: 'user',
+        content: message,
+      }),
     });
 
     if (!messageResponse.ok) {
@@ -109,7 +131,7 @@ serve(async (req) => {
     }
 
     // Run the assistant with the uploaded files
-    const runData = {
+    const runData: any = {
       assistant_id: assistantId,
     };
 
@@ -189,8 +211,6 @@ serve(async (req) => {
       }
 
       const messagesData = await messagesResponse.json();
-      console.log('Messages data:', messagesData);
-
       const lastMessage = messagesData.data[0];
       console.log('Last message:', lastMessage);
 
@@ -200,11 +220,9 @@ serve(async (req) => {
       if (lastMessage.content && Array.isArray(lastMessage.content)) {
         for (const content of lastMessage.content) {
           if (content.type === 'text') {
-            // Parse the response text for any visualization data
             const text = content.text.value;
             responseText = text;
 
-            // Check if the response contains a table
             if (text.includes('|') && text.includes('-|-')) {
               const lines = text.split('\n');
               const tableData = [];
@@ -226,10 +244,8 @@ serve(async (req) => {
                   } else {
                     const row: Record<string, any> = {};
                     cells.forEach((cell, index) => {
-                      // Remove any ** markdown formatting
                       const header = headers[index].replace(/\*\*/g, '');
                       const value = cell.replace(/\*\*/g, '');
-                      // Convert string numbers to actual numbers
                       row[header] = value.includes('%') 
                         ? parseFloat(value.replace('%', ''))
                         : value.includes('$') 
@@ -260,7 +276,12 @@ serve(async (req) => {
           assistant_id: assistantId,
           visualizations: visualizations
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        }
       );
     } else {
       console.error('Run failed with status:', runStatus);
@@ -270,10 +291,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in chat-with-assistant:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack 
+      }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        }
       }
     );
   }
