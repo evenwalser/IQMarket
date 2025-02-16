@@ -91,7 +91,7 @@ serve(async (req) => {
           }
           
           const fileData = await uploadResponse.json();
-          uploadedFiles.push(fileData.id);
+          uploadedFiles.push({ file_id: fileData.id });  // Store as object with file_id property
           console.log('File uploaded successfully to OpenAI:', fileData);
         } catch (error) {
           console.error('Error processing attachment:', error);
@@ -118,15 +118,14 @@ serve(async (req) => {
     const thread = await threadResponse.json();
     console.log('Thread created:', thread);
 
-    // Add message to the thread using file attachments in the content
-    const messageContent = uploadedFiles.length > 0 
-      ? [
-          { type: "text", text: message },
-          ...uploadedFiles.map(fileId => ({ type: "file_path", file_path: fileId }))
-        ]
-      : message;
+    // Create message with attachments
+    const messagePayload = {
+      role: 'user',
+      content: message,
+      ...(uploadedFiles.length > 0 && { attachments: uploadedFiles })
+    };
 
-    console.log('Sending message with content:', messageContent);
+    console.log('Sending message with payload:', messagePayload);
 
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
@@ -135,10 +134,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify({
-        role: 'user',
-        content: messageContent
-      }),
+      body: JSON.stringify(messagePayload),
     });
 
     if (!messageResponse.ok) {
