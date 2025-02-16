@@ -19,25 +19,32 @@ export const ConversationList = ({ conversations }: ConversationListProps) => {
   const renderVisualization = (visualization: any) => {
     if (!visualization) return null;
 
+    console.log('Rendering visualization in conversation:', visualization);
+
     switch (visualization.type) {
       case 'table':
         return (
-          <DataTable 
-            data={visualization.data} 
-            headers={visualization.headers} 
-          />
+          <div className="mt-4 overflow-x-auto">
+            <DataTable 
+              data={visualization.data} 
+              headers={visualization.headers} 
+            />
+          </div>
         );
       case 'chart':
         return (
-          <DataChart 
-            data={visualization.data}
-            type={visualization.chartType}
-            xKey={visualization.xKey}
-            yKeys={visualization.yKeys}
-            height={visualization.height || 300}
-          />
+          <div className="mt-4">
+            <DataChart 
+              data={visualization.data}
+              type={visualization.chartType}
+              xKey={visualization.xKey}
+              yKeys={visualization.yKeys}
+              height={visualization.height || 300}
+            />
+          </div>
         );
       default:
+        console.log('Unknown visualization type:', visualization.type);
         return null;
     }
   };
@@ -96,7 +103,7 @@ export const ConversationList = ({ conversations }: ConversationListProps) => {
             
             {/* Render visualizations if they exist */}
             {conversation.visualizations?.map((viz, index) => (
-              <div key={index} className="mt-4">
+              <div key={index}>
                 {renderVisualization(viz)}
               </div>
             ))}

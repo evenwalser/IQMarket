@@ -11,25 +11,32 @@ export const MessageList = ({ messages }: MessageListProps) => {
   const renderVisualization = (visualization: any) => {
     if (!visualization) return null;
 
+    console.log('Rendering visualization:', visualization);
+
     switch (visualization.type) {
       case 'table':
         return (
-          <DataTable 
-            data={visualization.data} 
-            headers={visualization.headers} 
-          />
+          <div className="mt-4 overflow-x-auto">
+            <DataTable 
+              data={visualization.data} 
+              headers={visualization.headers} 
+            />
+          </div>
         );
       case 'chart':
         return (
-          <DataChart 
-            data={visualization.data}
-            type={visualization.chartType}
-            xKey={visualization.xKey}
-            yKeys={visualization.yKeys}
-            height={visualization.height}
-          />
+          <div className="mt-4">
+            <DataChart 
+              data={visualization.data}
+              type={visualization.chartType}
+              xKey={visualization.xKey}
+              yKeys={visualization.yKeys}
+              height={visualization.height || 300}
+            />
+          </div>
         );
       default:
+        console.log('Unknown visualization type:', visualization.type);
         return null;
     }
   };
@@ -58,7 +65,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
           >
             <div className="whitespace-pre-wrap">{msg.content}</div>
             {msg.visualizations?.map((viz, i) => (
-              <div key={i} className="mt-4">
+              <div key={i}>
                 {renderVisualization(viz)}
               </div>
             ))}
