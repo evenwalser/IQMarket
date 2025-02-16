@@ -7,86 +7,69 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Helper function to parse markdown-style tables
-function parseMarkdownTable(text: string) {
-  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-  let tableData = [];
-  let headers: string[] = [];
-  let isParsingTable = false;
-  let currentTable = { data: [], headers: [] as string[] };
+// Helper function to extract metrics from text
+function extractMetrics(text: string) {
+  const metrics: Record<string, any>[] = [];
+  const lines = text.split('\n');
+  let currentSection = '';
+  let currentMetrics: Record<string, string> = {};
 
-  for (let line of lines) {
-    // Check if line contains | to identify table content
-    if (line.includes('|')) {
-      // Clean up the line
-      line = line.replace(/^\||\|$/g, '').trim();
-      const cells = line.split('|').map(cell => cell.trim());
+  for (const line of lines) {
+    // Skip code blocks and empty lines
+    if (line.startsWith('```') || line.trim() === '' || line.startsWith('import ') || line.includes('plt.')) {
+      continue;
+    }
 
-      // Skip separator lines (containing ---)
-      if (line.includes('---')) {
-        continue;
+    // Check for metric sections
+    if (line.includes('Key Metrics:')) {
+      currentSection = 'company';
+      continue;
+    } else if (line.includes('Benchmark') || line.includes('Industry Standard')) {
+      currentSection = 'benchmark';
+      if (Object.keys(currentMetrics).length > 0) {
+        metrics.push(currentMetrics);
+        currentMetrics = {};
       }
+      continue;
+    }
 
-      if (!isParsingTable) {
-        // This is a header row
-        headers = cells;
-        isParsingTable = true;
-        currentTable.headers = headers;
-      } else {
-        // This is a data row
-        const row: Record<string, any> = {};
-        cells.forEach((cell, index) => {
-          if (index < headers.length) {
-            const header = headers[index];
-            // Clean up the cell value and convert to appropriate type
-            let value = cell.replace(/\*\*/g, '').trim();
-            
-            // Handle different value formats
-            if (value.includes('~')) {
-              value = value.replace('~', '');
-            }
-            if (value.includes('$')) {
-              value = value.replace('$', '').replace('K', '000').replace('M', '000000');
-            }
-            if (value.includes('%')) {
-              value = value.replace('%', '');
-            }
-            if (value === '-' || value === 'N/A' || value === '') {
-              value = null;
-            }
-            
-            // Convert to number if possible
-            const numValue = parseFloat(value);
-            row[header] = isNaN(numValue) ? value : numValue;
-          }
-        });
-        currentTable.data.push(row);
-      }
-    } else {
-      // If we were parsing a table and hit a non-table line, store the current table
-      if (isParsingTable && currentTable.data.length > 0) {
-        tableData.push({
-          type: 'table',
-          data: currentTable.data,
-          headers: currentTable.headers
-        });
-        // Reset for next table
-        currentTable = { data: [], headers: [] };
-        isParsingTable = false;
+    // Extract metric if line contains a colon
+    if (line.includes(':')) {
+      const [key, valueStr] = line.split(':').map(s => s.trim());
+      if (key && valueStr) {
+        // Clean up the value
+        let value = valueStr
+          .replace('$', '')
+          .replace('M', '000000')
+          .replace('K', '000')
+          .replace('%', '')
+          .replace('months', '')
+          .replace('x', '')
+          .replace('~', '')
+          .replace('(', '')
+          .replace(')', '')
+          .trim();
+
+        // Try to convert to number
+        const numValue = parseFloat(value);
+        const finalValue = isNaN(numValue) ? value : numValue;
+
+        // Store metric with its section
+        if (currentSection === 'company') {
+          currentMetrics[key] = finalValue;
+        } else if (currentSection === 'benchmark' && Object.keys(currentMetrics).length > 0) {
+          currentMetrics[`${key} (Benchmark)`] = finalValue;
+        }
       }
     }
   }
 
-  // Add the last table if we were still parsing one
-  if (isParsingTable && currentTable.data.length > 0) {
-    tableData.push({
-      type: 'table',
-      data: currentTable.data,
-      headers: currentTable.headers
-    });
+  // Add the last set of metrics if not empty
+  if (Object.keys(currentMetrics).length > 0) {
+    metrics.push(currentMetrics);
   }
 
-  return tableData;
+  return metrics;
 }
 
 serve(async (req) => {
@@ -331,89 +314,34 @@ serve(async (req) => {
             const text = content.text.value;
             responseText = text;
 
-            // Look for CloudSpark metrics in the text
-            if (text.includes('CloudSpark Key Metrics:')) {
-              const metricsMatch = text.match(/CloudSpark Key Metrics:([^]*?)(?=Benchmark|$)/s);
-              const benchmarkMatch = text.match(/Benchmark Comparison[^]*?:([^]*?)(?=\d\.|$)/s);
+            // Extract metrics and create visualizations
+            const metrics = extractMetrics(text);
+            console.log('Extracted metrics:', metrics);
 
-              if (metricsMatch) {
-                const metricsText = metricsMatch[1];
-                const metrics: Record<string, any> = {};
-                
-                // Extract metrics
-                const metricLines = metricsText.split('\n').filter(line => line.includes(':'));
-                metricLines.forEach(line => {
-                  const [key, value] = line.split(':').map(s => s.trim());
-                  if (key && value) {
-                    // Clean up the values
-                    let cleanValue = value
-                      .replace('$', '')
-                      .replace('M', '000000')
-                      .replace('K', '000')
-                      .replace('%', '')
-                      .replace('months', '')
-                      .replace('x', '');
-                    
-                    // Convert to number if possible
-                    const numValue = parseFloat(cleanValue);
-                    metrics[key] = isNaN(numValue) ? value : numValue;
-                  }
+            if (metrics.length > 0) {
+              // Create table visualization
+              const tableData = Object.entries(metrics[0]).map(([metric, value]) => ({
+                Metric: metric,
+                Value: value
+              }));
+
+              visualizations.push({
+                type: 'table',
+                data: tableData,
+                headers: ['Metric', 'Value']
+              });
+
+              // Create chart visualization for numerical metrics
+              const chartData = tableData.filter(row => typeof row.Value === 'number');
+              if (chartData.length > 0) {
+                visualizations.push({
+                  type: 'chart',
+                  chartType: 'bar',
+                  data: chartData,
+                  xKey: 'Metric',
+                  yKeys: ['Value'],
+                  height: 400
                 });
-
-                // Extract benchmark values
-                const benchmarks: Record<string, any> = {};
-                if (benchmarkMatch) {
-                  const benchmarkText = benchmarkMatch[1];
-                  const benchmarkLines = benchmarkText.split('\n').filter(line => line.includes(':'));
-                  benchmarkLines.forEach(line => {
-                    const [key, value] = line.split(':').map(s => s.trim());
-                    if (key && value) {
-                      let cleanValue = value
-                        .replace('$', '')
-                        .replace('M', '000000')
-                        .replace('K', '000')
-                        .replace('%', '')
-                        .replace('months', '')
-                        .replace('x', '')
-                        .replace('~', '');
-                      
-                      const numValue = parseFloat(cleanValue);
-                      benchmarks[key] = isNaN(numValue) ? value : numValue;
-                    }
-                  });
-                }
-
-                // Create table visualization
-                if (Object.keys(metrics).length > 0) {
-                  const tableData = Object.entries(metrics).map(([metric, value]) => ({
-                    Metric: metric,
-                    CloudSpark: value,
-                    Benchmark: benchmarks[metric] || 'N/A'
-                  }));
-
-                  visualizations.push({
-                    type: 'table',
-                    data: tableData,
-                    headers: ['Metric', 'CloudSpark', 'Benchmark']
-                  });
-
-                  // Create chart visualization for key metrics comparison
-                  const chartData = tableData.filter(row => 
-                    typeof row.CloudSpark === 'number' && 
-                    typeof row.Benchmark === 'number'
-                  );
-
-                  if (chartData.length > 0) {
-                    visualizations.push({
-                      type: 'chart',
-                      chartType: 'bar',
-                      data: chartData,
-                      xKey: 'Metric',
-                      yKeys: ['CloudSpark', 'Benchmark'],
-                      height: 400
-                    });
-                  }
-                }
               }
             }
           }
