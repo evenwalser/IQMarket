@@ -6,6 +6,15 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentList } from "@/components/chat/AttachmentList";
 
+interface UploadedAttachment {
+  id: string;
+  file_path: string;
+  file_name: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+}
+
 interface SearchInputProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -29,7 +38,7 @@ export const SearchInput = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadedAttachments, setUploadedAttachments] = useState<any[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
 
   const startRecording = async () => {
     try {
@@ -110,13 +119,13 @@ export const SearchInput = ({
       for (const file of files) {
         const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('chat-attachments')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: metaData, error: metaError } = await supabase
+        const { data, error: insertError } = await supabase
           .from('chat_attachments')
           .insert({
             file_path: filePath,
@@ -127,10 +136,12 @@ export const SearchInput = ({
           .select()
           .single();
 
-        if (metaError) throw metaError;
+        if (insertError) throw insertError;
 
-        setUploadedAttachments(prev => [...prev, metaData]);
-        toast.success(`File ${file.name} uploaded successfully`);
+        if (data) {
+          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
+          toast.success(`File ${file.name} uploaded successfully`);
+        }
       }
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -150,12 +161,12 @@ export const SearchInput = ({
 
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase
+      const { error: deleteError } = await supabase
         .from('chat_attachments')
         .delete()
         .eq('id', removedAttachment.id);
 
-      if (dbError) throw dbError;
+      if (deleteError) throw deleteError;
 
       setAttachments(prev => prev.filter((_, i) => i !== index));
       setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
