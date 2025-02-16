@@ -37,15 +37,19 @@ const Index = () => {
         // Convert the visualizations to the correct format for display
         const parsedVisualizations = (item.visualizations || []).map((viz: Json) => {
           if (typeof viz === 'object' && viz !== null) {
-            return {
+            const visualization: ChatVisualization = {
               type: (viz as any).type as 'table' | 'chart',
-              data: (viz as any).data || [],
-              headers: (viz as any).headers as string[] | undefined,
-              chartType: (viz as any).chartType as 'line' | 'bar' | undefined,
-              xKey: (viz as any).xKey as string | undefined,
-              yKeys: (viz as any).yKeys as string[] | undefined,
-              height: (viz as any).height as number | undefined
-            } satisfies ChatVisualization;
+              data: (viz as any).data || []
+            };
+
+            // Add optional properties only if they exist
+            if ((viz as any).headers) visualization.headers = (viz as any).headers as string[];
+            if ((viz as any).chartType) visualization.chartType = (viz as any).chartType as 'line' | 'bar';
+            if ((viz as any).xKey) visualization.xKey = (viz as any).xKey as string;
+            if ((viz as any).yKeys) visualization.yKeys = (viz as any).yKeys as string[];
+            if ((viz as any).height) visualization.height = (viz as any).height as number;
+
+            return visualization;
           }
           return null;
         }).filter((viz): viz is ChatVisualization => viz !== null);
