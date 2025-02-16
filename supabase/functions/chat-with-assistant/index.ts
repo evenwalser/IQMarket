@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       status: 204,
@@ -30,6 +29,7 @@ serve(async (req) => {
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    // Get the assistant ID
     const { data: assistantId, error: assistantError } = await supabase
       .rpc('get_assistant_id', { assistant_type: assistantType });
 
@@ -59,57 +59,6 @@ serve(async (req) => {
     const thread = await threadResponse.json();
     console.log('Thread created:', thread);
 
-    // Upload files to OpenAI first
-    const uploadedFiles = [];
-    if (attachments && attachments.length > 0) {
-      for (const attachment of attachments) {
-        console.log('Processing attachment:', attachment);
-        
-        try {
-          // Fetch the file from the Supabase URL with appropriate headers
-          const response = await fetch(attachment.url, {
-            headers: {
-              'Accept': '*/*',
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to fetch file from URL: ${response.statusText}`);
-          }
-
-          // Convert the response to a blob
-          const fileBlob = await response.blob();
-          
-          // Create form data
-          const formData = new FormData();
-          formData.append('file', fileBlob, attachment.name);
-          formData.append('purpose', 'assistants');
-          
-          // Upload to OpenAI
-          const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              // Note: Do not set Content-Type header for FormData
-            },
-            body: formData,
-          });
-          
-          if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text();
-            throw new Error(`Failed to upload file to OpenAI: ${errorText}`);
-          }
-          
-          const fileData = await uploadResponse.json();
-          uploadedFiles.push(fileData.id);
-          console.log('File uploaded to OpenAI:', fileData);
-        } catch (error) {
-          console.error('Error uploading file to OpenAI:', error);
-          // Continue with other files if one fails
-        }
-      }
-    }
-
     // Add message to the thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
@@ -120,7 +69,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         role: 'user',
-        content: message,
+        content: message
       }),
     });
 
@@ -130,15 +79,7 @@ serve(async (req) => {
       throw new Error(`Failed to create message: ${error}`);
     }
 
-    // Run the assistant with the uploaded files
-    const runData: any = {
-      assistant_id: assistantId,
-    };
-
-    if (uploadedFiles.length > 0) {
-      runData.file_ids = uploadedFiles;
-    }
-
+    // Start the run
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: {
@@ -146,7 +87,9 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(runData),
+      body: JSON.stringify({
+        assistant_id: assistantId
+      }),
     });
 
     if (!runResponse.ok) {
