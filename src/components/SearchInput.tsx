@@ -29,6 +29,7 @@ export const SearchInput = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<any[]>([]);
 
   const startRecording = async () => {
     try {
@@ -87,7 +88,6 @@ export const SearchInput = ({
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
       setIsRecording(false);
-      // Stop all audio tracks
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
       setMediaRecorder(null);
       toast.success('Recording stopped', { id: 'recording' });
@@ -102,14 +102,68 @@ export const SearchInput = ({
     }
   };
 
-  const handleAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
+    
+    try {
+      for (const file of files) {
+        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: metaData, error: metaError } = await supabase
+          .from('chat_attachments')
+          .insert({
+            file_path: filePath,
+            file_name: file.name,
+            content_type: file.type,
+            size: file.size
+          })
+          .select()
+          .single();
+
+        if (metaError) throw metaError;
+
+        setUploadedAttachments(prev => [...prev, metaData]);
+        toast.success(`File ${file.name} uploaded successfully`);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file: ' + (error as Error).message);
+    }
+
     handleFileUpload(e);
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+  const removeAttachment = async (index: number) => {
+    const removedAttachment = uploadedAttachments[index];
+    
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('chat-attachments')
+        .remove([removedAttachment.file_path]);
+
+      if (storageError) throw storageError;
+
+      const { error: dbError } = await supabase
+        .from('chat_attachments')
+        .delete()
+        .eq('id', removedAttachment.id);
+
+      if (dbError) throw dbError;
+
+      setAttachments(prev => prev.filter((_, i) => i !== index));
+      setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
+      toast.success('File removed successfully');
+    } catch (error) {
+      console.error('Error removing file:', error);
+      toast.error('Failed to remove file: ' + (error as Error).message);
+    }
   };
 
   return (

@@ -1,0 +1,14 @@
+
+project_id = "nmfhetqfewbjwqyoxqkd"
+
+[functions.chat-with-ai-advisor]
+verify_jwt = false
+
+[functions.chat-with-assistant]
+verify_jwt = false
+
+[functions.voice-to-text]
+verify_jwt = false
+
+[functions.search-with-attachments]
+verify_jwt = false
