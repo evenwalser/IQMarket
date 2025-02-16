@@ -44,7 +44,26 @@ serve(async (req) => {
 
     console.log('Using assistant ID:', assistantId);
 
-    // Upload files to OpenAI first
+    // Create a thread first
+    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+    });
+
+    if (!threadResponse.ok) {
+      const error = await threadResponse.text();
+      console.error('Thread creation error:', error);
+      throw new Error(`Failed to create thread: ${error}`);
+    }
+
+    const thread = await threadResponse.json();
+    console.log('Thread created:', thread);
+
+    // Upload files to OpenAI and add them to the thread
     const uploadedFiles = [];
     if (attachments && attachments.length > 0) {
       console.log(`Processing ${attachments.length} attachments...`);
@@ -91,42 +110,37 @@ serve(async (req) => {
           }
           
           const fileData = await uploadResponse.json();
-          uploadedFiles.push({ file_id: fileData.id });  // Store as object with file_id property
           console.log('File uploaded successfully to OpenAI:', fileData);
+          
+          // Add file to thread
+          const fileAttachmentResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+              'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({
+              role: 'user',
+              content: '',
+              file_ids: [fileData.id]
+            }),
+          });
+
+          if (!fileAttachmentResponse.ok) {
+            const errorText = await fileAttachmentResponse.text();
+            console.error('File attachment error:', errorText);
+            throw new Error(`Failed to attach file to thread: ${errorText}`);
+          }
+
+          uploadedFiles.push(fileData.id);
         } catch (error) {
           console.error('Error processing attachment:', error);
         }
       }
     }
 
-    // Create a thread
-    const threadResponse = await fetch('https://api.openai.com/v1/threads', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-    });
-
-    if (!threadResponse.ok) {
-      const error = await threadResponse.text();
-      console.error('Thread creation error:', error);
-      throw new Error(`Failed to create thread: ${error}`);
-    }
-
-    const thread = await threadResponse.json();
-    console.log('Thread created:', thread);
-
-    // Create message with attachments
-    const messagePayload = {
-      role: 'user',
-      content: message,
-      ...(uploadedFiles.length > 0 && { attachments: uploadedFiles })
-    };
-
-    console.log('Sending message with payload:', messagePayload);
-
+    // Send the user's message to the thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
       method: 'POST',
       headers: {
@@ -134,7 +148,10 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(messagePayload),
+      body: JSON.stringify({
+        role: 'user',
+        content: message
+      }),
     });
 
     if (!messageResponse.ok) {
