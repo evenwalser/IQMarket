@@ -15,6 +15,7 @@ interface SearchInputProps {
   showAttachMenu: boolean;
   setShowAttachMenu: (show: boolean) => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  attachments: File[];
 }
 
 export const SearchInput = ({
@@ -24,10 +25,11 @@ export const SearchInput = ({
   isLoading,
   showAttachMenu,
   setShowAttachMenu,
-  handleFileUpload
+  handleFileUpload,
+  attachments
 }: SearchInputProps) => {
   const { isRecording, isTranscribing, handleMicClick } = useVoiceRecording(setSearchQuery);
-  const { attachments, handleAttachmentUpload, removeAttachment } = useFileAttachments();
+  const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
   return (
     <div className="relative space-y-2">

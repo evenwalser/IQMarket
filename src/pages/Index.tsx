@@ -18,6 +18,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -70,9 +71,14 @@ const Index = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setAttachments(Array.from(files));
     for (const file of Array.from(files)) {
       console.log("Processing file:", file.name, file.type);
     }
+  };
+
+  const clearAttachments = () => {
+    setAttachments([]);
   };
 
   const handleSearch = async () => {
@@ -141,6 +147,7 @@ const Index = () => {
       } else {
         await loadConversations();
         setSearchQuery("");
+        clearAttachments(); // Clear attachments after successful search
         toast.success("Response received!");
       }
     } catch (error) {
@@ -188,6 +195,7 @@ const Index = () => {
                       showAttachMenu={showAttachMenu}
                       setShowAttachMenu={setShowAttachMenu}
                       handleFileUpload={handleFileUpload}
+                      attachments={attachments}
                     />
                     <SearchModes 
                       selectedMode={selectedMode}
