@@ -6,23 +6,15 @@ import { ChatHeader } from "./chat/ChatHeader";
 import { MessageList } from "./chat/MessageList";
 import { AttachmentList } from "./chat/AttachmentList";
 import { MessageInput } from "./chat/MessageInput";
-import { uploadFile, sendMessage } from "@/services/chatService";
+import { sendMessage } from "@/services/chatService";
+import { useFileAttachments } from "@/hooks/useFileAttachments";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
-  const [attachments, setAttachments] = useState<File[]>([]);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
+  const { attachments, handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
   const clearChat = () => {
     setMessages([]);
@@ -38,18 +30,13 @@ export const ChatInterface = () => {
       const userMessage = message;
       setMessage("");
 
-      // Upload attachments
-      const uploadedFiles = await Promise.all(attachments.map(uploadFile));
-      setAttachments([]);
-
       // Add user message to chat
       setMessages(prev => [...prev, { 
         role: 'user', 
         content: userMessage,
-        attachments: uploadedFiles
       }]);
 
-      const data = await sendMessage(userMessage, threadId, uploadedFiles);
+      const data = await sendMessage(userMessage, threadId, attachments);
 
       // Set thread ID for conversation continuity
       if (data.thread_id) {
@@ -84,7 +71,7 @@ export const ChatInterface = () => {
         message={message}
         onChange={setMessage}
         onSend={handleSendMessage}
-        onFileSelect={handleFileSelect}
+        onFileSelect={handleAttachmentUpload}
         isLoading={isLoading}
         hasAttachments={attachments.length > 0}
       />

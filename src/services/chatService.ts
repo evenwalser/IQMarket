@@ -1,36 +1,33 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { ChatAttachment } from "@/types/chat";
+import type { ChatAttachment } from "@/types/chat";
+import type { Database } from "@/integrations/supabase/types";
 
-export const uploadFile = async (file: File): Promise<ChatAttachment> => {
-  const fileExt = file.name.split('.').pop();
-  const filePath = `${crypto.randomUUID()}.${fileExt}`;
+type DbChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
 
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('chat-attachments')
-    .upload(filePath, file);
+export const sendMessage = async (message: string, threadId: string | null, attachments: File[]) => {
+  // Get the uploaded attachments from the database
+  const { data: uploadedAttachments, error: fetchError } = await supabase
+    .from('chat_attachments')
+    .select('*')
+    .in('file_path', attachments.map(file => `${file.name}`));
 
-  if (uploadError) {
-    throw uploadError;
+  if (fetchError) {
+    console.error('Error fetching attachments:', fetchError);
+    throw fetchError;
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('chat-attachments')
-    .getPublicUrl(filePath);
+  const formattedAttachments = uploadedAttachments?.map((att: DbChatAttachment) => ({
+    url: supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl,
+    name: att.file_name,
+    type: att.content_type.startsWith('image/') ? 'image' : 'file'
+  })) || [];
 
-  return {
-    url: publicUrl,
-    name: file.name,
-    type: file.type.startsWith('image/') ? 'image' : 'file'
-  };
-};
-
-export const sendMessage = async (message: string, threadId: string | null, attachments: ChatAttachment[]) => {
   const { data, error } = await supabase.functions.invoke('chat-with-ai-advisor', {
     body: {
       message,
       threadId,
-      attachments
+      attachments: formattedAttachments
     },
   });
 
