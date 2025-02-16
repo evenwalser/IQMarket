@@ -10,7 +10,8 @@ import {
   Tooltip, 
   Legend,
   ResponsiveContainer,
-  Label
+  Label,
+  ReferenceLine
 } from 'recharts';
 
 interface DataChartProps {
