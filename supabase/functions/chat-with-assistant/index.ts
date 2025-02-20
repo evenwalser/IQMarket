@@ -80,6 +80,7 @@ serve(async (req) => {
 
   try {
     const { message, assistantType, attachments } = await req.json();
+    console.log('Processing request:', { message, assistantType, attachments });
 
     // Prepare the messages array with the system message and user query
     const messages = [
@@ -113,6 +114,8 @@ Top Decile: value (if available)
         attachments.map(att => `- ${att.name}: ${att.url}`).join('\n');
     }
 
+    console.log('Sending request to OpenAI:', { messages });
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -121,17 +124,24 @@ Top Decile: value (if available)
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages,
+        messages: messages,
         temperature: 0.7,
       })
     });
 
+    console.log('OpenAI response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Failed to get response from OpenAI');
+      const errorData = await response.json();
+      console.error('OpenAI error:', errorData);
+      throw new Error(`Failed to get response from OpenAI: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
+    console.log('OpenAI response data:', data);
+
     const assistantResponse = data.choices[0].message.content;
+    console.log('Assistant response:', assistantResponse);
 
     // Parse metrics from the response
     const metrics = parseMetrics(assistantResponse);
