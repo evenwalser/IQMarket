@@ -8,6 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// IMPORTANT: DO NOT CHANGE THIS MODEL NAME - It is specifically configured for file handling
+const OPENAI_MODEL = "gpt-4o-mini" as const;
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -109,7 +112,7 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",  // Changed from gpt-4o to gpt-4o-mini
+        model: OPENAI_MODEL,  // Using constant to prevent accidental changes
         messages: [
           {
             role: "system",
