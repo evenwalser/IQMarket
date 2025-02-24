@@ -24,7 +24,7 @@ serve(async (req) => {
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
         "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v1"
+        "OpenAI-Beta": "assistants=v2"
       }
     });
 
@@ -41,7 +41,7 @@ serve(async (req) => {
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
         "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v1"
+        "OpenAI-Beta": "assistants=v2"
       },
       body: JSON.stringify({
         role: "user",
@@ -68,7 +68,7 @@ Please extract these metrics and list them as raw values without any additional 
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
         "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v1"
+        "OpenAI-Beta": "assistants=v2"
       },
       body: JSON.stringify({
         assistant_id: assistantId
@@ -100,7 +100,7 @@ Please extract these metrics and list them as raw values without any additional 
           headers: {
             "Authorization": `Bearer ${openAiApiKey}`,
             "Content-Type": "application/json",
-            "OpenAI-Beta": "assistants=v1"
+            "OpenAI-Beta": "assistants=v2"
           }
         }
       );
@@ -127,7 +127,7 @@ Please extract these metrics and list them as raw values without any additional 
         headers: {
           "Authorization": `Bearer ${openAiApiKey}`,
           "Content-Type": "application/json",
-          "OpenAI-Beta": "assistants=v1"
+          "OpenAI-Beta": "assistants=v2"
         }
       }
     );
