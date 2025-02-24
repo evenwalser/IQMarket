@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,13 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 function generateThreadId() {
   return 'thread_' + crypto.randomUUID();
+}
+
+async function fetchAndEncodeFile(url: string): Promise<string> {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  const base64String = base64Encode(new Uint8Array(arrayBuffer));
+  return base64String;
 }
 
 function parseMetrics(text: string) {
@@ -84,58 +92,67 @@ serve(async (req) => {
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
 
-    let systemMessage = `You are a data analyst specializing in SaaS benchmarks and metrics analysis. Your role is to:
-1. Extract and analyze metrics from both text and PDF documents
-2. Generate Python code for data analysis
-3. Present comparative analysis with industry benchmarks
-4. Generate clear, data-driven insights
+    let systemMessage = `You are a data analyst specializing in SaaS benchmarks and metrics analysis. 
+Your role is to analyze financial metrics and provide benchmark comparisons. Focus on:
+1. Extracting key metrics from documents
+2. Comparing with industry benchmarks
+3. Providing Python code for visualization
+4. Generating actionable insights
 
-When analyzing PDFs or documents:
-1. First extract and list all key metrics found
-2. Then generate Python code to analyze those metrics
-3. Finally provide benchmark comparisons
-
-Format metrics like this:
+Format all metrics consistently:
 Metrics:
 ARR: $1.5M
 Growth Rate: 150%
 NRR: 120%
 
-For each metric, provide benchmark comparisons:
-Metric: Current Value
-Bottom Quartile: value
-Median: value
-Top Quartile: value
+Include benchmark comparisons:
+Metric | Current | Bottom Quartile | Median | Top Quartile
+------|---------|----------------|--------|-------------
+ARR   | $1.5M   | $1.0M          | $2.0M  | $5.0M
 
-Always include Python code for analysis:
+Always provide Python visualization code:
 \`\`\`python
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-metrics = {
-    'Metric': ['ARR', 'Growth Rate', 'NRR'],
-    'Value': [1.5, 150, 120],
-    'Bottom_Quartile': [1.0, 80, 100],
-    'Median': [2.0, 120, 110],
-    'Top_Quartile': [5.0, 200, 130]
-}
-df = pd.DataFrame(metrics)
-
-# Visualization code...
+metrics_df = pd.DataFrame({
+    'Metric': ['ARR', 'Growth'],
+    'Value': [1.5, 150],
+    'Benchmark': [2.0, 120]
+})
 \`\`\``;
 
     let userContent = message;
-    if (attachments && attachments.length > 0) {
-      const attachmentDescriptions = attachments.map(att => {
-        if (att.type === 'image') {
-          return `Image: ${att.name}\nURL: ${att.url}\n`;
-        } else {
-          return `PDF Document: ${att.name}\nURL: ${att.url}\nPlease analyze this PDF document thoroughly and extract all relevant metrics and data points.\n`;
-        }
-      }).join('\n');
 
-      userContent += `\n\nPlease analyze the following documents and provide a comprehensive analysis:\n${attachmentDescriptions}\n\nFor PDFs, please extract and analyze all relevant metrics, then provide Python code for visualization and analysis.`;
+    // Process attachments if present
+    const contentParts: any[] = [{ type: "text", text: userContent }];
+
+    if (attachments && attachments.length > 0) {
+      console.log('Processing attachments:', attachments);
+
+      for (const attachment of attachments) {
+        if (attachment.type === 'image') {
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: attachment.url }
+          });
+        } else {
+          // For PDFs, fetch and encode the content
+          try {
+            console.log('Fetching PDF:', attachment.url);
+            const base64Content = await fetchAndEncodeFile(attachment.url);
+            contentParts.push({
+              type: "text",
+              text: `PDF Content (${attachment.name}):\n[base64 encoded PDF content]`
+            });
+            
+            // Add the actual PDF content as base64
+            userContent += `\n\nPDF Content (${attachment.name}):\n${base64Content}`;
+          } catch (error) {
+            console.error('Error fetching PDF:', error);
+            throw new Error(`Failed to fetch PDF content: ${error.message}`);
+          }
+        }
+      }
     }
 
     console.log('Preparing messages for OpenAI');
@@ -147,21 +164,11 @@ df = pd.DataFrame(metrics)
       },
       {
         role: "user",
-        content: attachments?.some(att => att.type === "image")
-          ? [
-              { type: "text", text: userContent },
-              ...attachments
-                .filter(att => att.type === "image")
-                .map(att => ({
-                  type: "image_url",
-                  image_url: { url: att.url }
-                }))
-            ]
-          : userContent
+        content: contentParts.length > 1 ? contentParts : userContent
       }
     ];
 
-    console.log('Sending request to OpenAI:', { messages: apiMessages });
+    console.log('Sending request to OpenAI');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -184,12 +191,11 @@ df = pd.DataFrame(metrics)
     }
 
     const data = await response.json();
-    console.log('OpenAI response data:', data);
+    console.log('OpenAI response received');
 
     const assistantResponse = data.choices[0].message.content;
-    console.log('Assistant response:', assistantResponse);
+    console.log('Parsing metrics from response');
 
-    // Parse metrics from the response
     const metrics = parseMetrics(assistantResponse);
     console.log('Parsed metrics:', metrics);
 
