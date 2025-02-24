@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    const assistantId = Deno.env.get('BENCHMARKS_ASSISTANT_ID'); // Using benchmarks assistant for testing
+    const assistantId = Deno.env.get('BENCHMARKS_ASSISTANT_ID');
 
     console.log('Starting API test...');
 
@@ -76,12 +76,70 @@ serve(async (req) => {
       throw new Error(`Failed to run assistant: ${JSON.stringify(runData)}`);
     }
 
+    // Poll for completion
+    let runStatus = runData.status;
+    let attempts = 0;
+    const maxAttempts = 60;
+    
+    while (runStatus === 'queued' || runStatus === 'in_progress') {
+      if (attempts >= maxAttempts) {
+        throw new Error('Assistant run timed out');
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+      
+      const statusResponse = await fetch(
+        `https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${openAiApiKey}`,
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v2"
+          }
+        }
+      );
+
+      const statusData = await statusResponse.json();
+      console.log(`Status check attempt ${attempts + 1}:`, statusData);
+
+      if (!statusResponse.ok) {
+        throw new Error(`Failed to check run status: ${JSON.stringify(statusData)}`);
+      }
+
+      runStatus = statusData.status;
+      attempts++;
+    }
+
+    if (runStatus !== 'completed') {
+      throw new Error(`Assistant run failed with status: ${runStatus}`);
+    }
+
+    // Get the final message
+    const messagesResponse = await fetch(
+      `https://api.openai.com/v1/threads/${threadData.id}/messages`,
+      {
+        headers: {
+          "Authorization": `Bearer ${openAiApiKey}`,
+          "Content-Type": "application/json",
+          "OpenAI-Beta": "assistants=v2"
+        }
+      }
+    );
+
+    const messagesData = await messagesResponse.json();
+    console.log('Final messages:', messagesData);
+
+    if (!messagesResponse.ok) {
+      throw new Error(`Failed to retrieve messages: ${JSON.stringify(messagesData)}`);
+    }
+
     return new Response(
       JSON.stringify({ 
         threadId: threadData.id,
         messageId: messageData.id,
         runId: runData.id,
-        status: 'Test completed successfully'
+        status: 'Test completed successfully',
+        finalMessage: messagesData.data[0]?.content[0]?.text?.value || 'No response received'
       }),
       { 
         headers: { 
