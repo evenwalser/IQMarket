@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,15 +9,27 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 function generateThreadId() {
   return 'thread_' + crypto.randomUUID();
 }
 
-async function fetchPdfContent(url: string): Promise<string> {
-  const response = await fetch(url);
-  const text = await response.text();
-  return text;
+async function getFileFromStorage(filePath: string) {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  const { data, error } = await supabase
+    .storage
+    .from('chat-attachments')
+    .download(filePath);
+
+  if (error) {
+    console.error('Error downloading file:', error);
+    throw new Error(`Failed to download file: ${error.message}`);
+  }
+
+  return data;
 }
 
 serve(async (req) => {
@@ -38,28 +51,45 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
 3. Providing Python code for visualization
 4. Generating actionable insights`;
 
-    let userContent = message;
-
-    // Process attachments if present
     const contentParts: any[] = [];
     
     if (attachments && attachments.length > 0) {
       console.log('Processing attachments:', attachments);
 
       for (const attachment of attachments) {
-        if (attachment.type === 'image') {
-          contentParts.push({
-            type: "image_url",
-            image_url: { url: attachment.url }
-          });
-        } else {
-          // For PDFs, just add the URL for OpenAI to fetch
-          userContent += `\nPlease analyze the PDF document at: ${attachment.url}`;
+        try {
+          console.log(`Fetching file content for: ${attachment.file_path}`);
+          const fileData = await getFileFromStorage(attachment.file_path);
+          
+          if (attachment.content_type.startsWith('image/')) {
+            // For images, convert to base64 and use the image_url format
+            const base64Data = await fileData.arrayBuffer().then(buffer => 
+              btoa(String.fromCharCode(...new Uint8Array(buffer)))
+            );
+            
+            contentParts.push({
+              type: "image_url",
+              image_url: {
+                url: `data:${attachment.content_type};base64,${base64Data}`
+              }
+            });
+          } else {
+            // For PDFs and other files, convert to text and include in the message
+            const textData = await fileData.text();
+            contentParts.push({
+              type: "text",
+              text: `Content of ${attachment.file_name}:\n${textData}`
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing attachment ${attachment.file_name}:`, error);
+          throw new Error(`Failed to process attachment ${attachment.file_name}: ${error.message}`);
         }
       }
     }
 
-    contentParts.unshift({ type: "text", text: userContent });
+    // Add the user's message as the first content part
+    contentParts.unshift({ type: "text", text: message });
 
     console.log('Sending request to OpenAI');
 
@@ -93,11 +123,11 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
     }
 
     const data = await response.json();
-    const assistantResponse = data.choices[0].message.content;
+    console.log('OpenAI response received');
 
     return new Response(
       JSON.stringify({
-        response: assistantResponse,
+        response: data.choices[0].message.content,
         thread_id: threadId,
         assistant_id: assistantId
       }),
