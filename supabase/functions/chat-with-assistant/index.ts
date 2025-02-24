@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -89,11 +90,13 @@ serve(async (req) => {
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
 
-    // Prepare the messages array with the system message and user query
-    const messages = [
-      {
-        role: "system",
-        content: `You are an AI advisor specializing in ${assistantType}. When discussing metrics or comparisons, always present them in a clear format like:
+    // Prepare system message based on assistant type
+    let systemMessage = `You are an AI advisor specializing in ${assistantType}. Your role is to:
+1. Analyze both text input and any provided attachments
+2. Extract and present key metrics in a structured format
+3. Provide insights and recommendations
+
+When discussing metrics or comparisons, always present them in a clear format like:
 
 Metrics:
 ARR: $1.5M
@@ -107,19 +110,40 @@ Bottom Quartile: value
 Median: value
 Top Quartile: value
 Top Decile: value (if available)
-`
+
+If files are provided, analyze their content and include relevant insights in your response.`;
+
+    // Prepare the messages array with user content
+    let userContent = message;
+
+    // Process attachments if present
+    if (attachments && attachments.length > 0) {
+      const attachmentDescriptions = attachments.map(att => {
+        const type = att.type === 'image' ? 'Image' : 'Document';
+        return `${type}: ${att.name}\nURL: ${att.url}\n`;
+      }).join('\n');
+
+      userContent += `\n\nPlease analyze the following attachments:\n${attachmentDescriptions}`;
+      
+      // Add image context if there are images
+      const images = attachments.filter(att => att.type === 'image');
+      if (images.length > 0) {
+        userContent += "\n\nThe images above show relevant information that should be included in the analysis.";
+      }
+    }
+
+    console.log('Preparing messages for OpenAI');
+
+    const messages = [
+      {
+        role: "system",
+        content: systemMessage
       },
       {
         role: "user",
-        content: message
+        content: userContent
       }
     ];
-
-    // Add attachments to the message if present
-    if (attachments && attachments.length > 0) {
-      messages[1].content += "\n\nAttachments:\n" + 
-        attachments.map(att => `- ${att.name}: ${att.url}`).join('\n');
-    }
 
     console.log('Sending request to OpenAI:', { messages });
 
@@ -130,9 +154,25 @@ Top Decile: value (if available)
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4",
-        messages: messages,
-        temperature: 0.7,
+        model: "gpt-4-vision-preview",
+        messages: messages.map(msg => {
+          if (msg.role === "user" && attachments?.some(att => att.type === "image")) {
+            return {
+              role: msg.role,
+              content: [
+                { type: "text", text: msg.content },
+                ...attachments
+                  .filter(att => att.type === "image")
+                  .map(att => ({
+                    type: "image_url",
+                    image_url: att.url
+                  }))
+              ]
+            };
+          }
+          return msg;
+        }),
+        max_tokens: 4096
       })
     });
 
@@ -165,7 +205,6 @@ Top Decile: value (if available)
       });
 
       // Create chart visualization for comparing metrics
-      // Filter metrics that have numerical values
       const chartData = metrics.map(metric => {
         const chartPoint: any = {
           category: metric.Metric,
