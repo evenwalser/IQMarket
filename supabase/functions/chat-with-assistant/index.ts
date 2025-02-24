@@ -2,7 +2,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { parse as parseCSV } from "https://deno.land/std@0.181.0/encoding/csv.ts";
-import * as XLSX from "https://deno.land/x/xlsx@v0.0.2/mod.ts";
 import { decode as base64Decode } from "https://deno.land/std@0.181.0/encoding/base64.ts";
 
 const corsHeaders = {
@@ -18,16 +17,15 @@ interface FileData {
 }
 
 async function processExcelOrCSV(fileContent: Uint8Array, fileName: string): Promise<FileData> {
-  console.log('Processing Excel/CSV file:', fileName);
+  console.log('Processing file:', fileName);
   
   let data: any[] = [];
-  if (fileName.endsWith('.csv')) {
+  if (fileName.toLowerCase().endsWith('.csv')) {
     const text = new TextDecoder().decode(fileContent);
     data = await parseCSV(text, { skipFirstRow: true });
-  } else if (fileName.endsWith('.xlsx')) {
-    const workbook = XLSX.read(fileContent, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    data = XLSX.utils.sheet_to_json(firstSheet);
+  } else if (fileName.toLowerCase().endsWith('.xlsx')) {
+    // For Excel files, we'll ask the user to convert to CSV for now
+    throw new Error('Excel files are currently not supported. Please convert to CSV format.');
   }
 
   console.log('Parsed data:', data);
@@ -133,7 +131,7 @@ serve(async (req) => {
     } else if (attachment.file_name.toLowerCase().match(/\.(xlsx|csv)$/)) {
       metrics = await processExcelOrCSV(fileContent, attachment.file_name);
     } else {
-      throw new Error('Unsupported file type. Please upload a PDF, XLSX, or CSV file.');
+      throw new Error('Unsupported file type. Please upload a PDF or CSV file.');
     }
 
     console.log('Final extracted metrics:', metrics);
@@ -157,7 +155,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4',
         messages: [
           {
             role: 'system',
