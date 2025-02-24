@@ -12,7 +12,6 @@ import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Sparkles } from "lucide-react";
 
-// Define type for uploaded attachment
 interface UploadedAttachment {
   id: string;
   file_path: string;
@@ -125,8 +124,8 @@ const Index = () => {
         console.log("File metadata saved to database:", data);
 
         if (data) {
-          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
           setAttachments(prev => [...prev, file]);
+          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
           toast.success(`File ${file.name} uploaded successfully`);
         }
       }
