@@ -13,40 +13,36 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetch response status:', req.status);
+    console.log('Starting function execution...');
     const requestText = await req.text();
     console.log('Raw request body:', requestText);
 
-    const requestData = JSON.parse(requestText);
-    console.log('Parsed request data:', requestData);
-
-    const { message, assistantType } = requestData;
-
-    if (!message || !assistantType) {
-      console.error('Missing required fields:', { message, assistantType });
-      throw new Error('Missing required fields: message and assistantType are required');
+    let requestData;
+    try {
+      requestData = JSON.parse(requestText);
+      console.log('Parsed request data:', requestData);
+    } catch (parseError) {
+      console.error('Error parsing request:', parseError);
+      throw new Error(`Failed to parse request: ${parseError.message}`);
     }
 
-    // Get the appropriate assistant ID based on type
+    const { message, assistantType } = requestData;
+    console.log('Extracted message and assistantType:', { message, assistantType });
+
+    // Get the appropriate assistant ID
     const assistantId = {
       knowledge: Deno.env.get('FOUNDER_WISDOM_ASSISTANT_ID'),
       frameworks: Deno.env.get('FRAMEWORKS_ASSISTANT_ID'),
       benchmarks: Deno.env.get('BENCHMARKS_ASSISTANT_ID')
     }[assistantType];
-
-    if (!assistantId) {
-      console.error('Invalid assistant type:', assistantType);
-      throw new Error(`Invalid assistant type: ${assistantType}`);
-    }
-
-    console.log('Using assistant:', { assistantType, assistantId });
+    
+    console.log('Retrieved assistant ID:', assistantId);
 
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
+    console.log('OpenAI API key retrieved:', !!openAiApiKey);
 
     // Create a thread
+    console.log('Creating thread...');
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
@@ -56,16 +52,18 @@ serve(async (req) => {
       }
     });
 
+    const threadResponseText = await threadResponse.text();
+    console.log('Thread response:', threadResponseText);
+
     if (!threadResponse.ok) {
-      const errorText = await threadResponse.text();
-      console.error('Thread creation failed:', errorText);
-      throw new Error(`Failed to create thread: ${errorText}`);
+      throw new Error(`Failed to create thread: ${threadResponseText}`);
     }
 
-    const threadData = await threadResponse.json();
+    const threadData = JSON.parse(threadResponseText);
     console.log('Thread created:', threadData);
 
     // Add message to thread
+    console.log('Adding message to thread...');
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: 'POST',
       headers: {
@@ -79,16 +77,18 @@ serve(async (req) => {
       })
     });
 
+    const messageResponseText = await messageResponse.text();
+    console.log('Message response:', messageResponseText);
+
     if (!messageResponse.ok) {
-      const errorText = await messageResponse.text();
-      console.error('Message creation failed:', errorText);
-      throw new Error(`Failed to add message: ${errorText}`);
+      throw new Error(`Failed to add message: ${messageResponseText}`);
     }
 
-    const messageData = await messageResponse.json();
+    const messageData = JSON.parse(messageResponseText);
     console.log('Message added:', messageData);
 
     // Run the assistant
+    console.log('Running assistant...');
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
       method: 'POST',
       headers: {
@@ -101,13 +101,14 @@ serve(async (req) => {
       })
     });
 
+    const runResponseText = await runResponse.text();
+    console.log('Run response:', runResponseText);
+
     if (!runResponse.ok) {
-      const errorText = await runResponse.text();
-      console.error('Run creation failed:', errorText);
-      throw new Error(`Failed to run assistant: ${errorText}`);
+      throw new Error(`Failed to run assistant: ${runResponseText}`);
     }
 
-    const runData = await runResponse.json();
+    const runData = JSON.parse(runResponseText);
     console.log('Run created:', runData);
 
     // Poll for completion
@@ -132,17 +133,16 @@ serve(async (req) => {
         }
       );
 
+      const statusResponseText = await statusResponse.text();
+      console.log(`Status check attempt ${attempts + 1}:`, statusResponseText);
+
       if (!statusResponse.ok) {
-        const errorText = await statusResponse.text();
-        console.error('Status check failed:', errorText);
-        throw new Error(`Failed to check run status: ${errorText}`);
+        throw new Error(`Failed to check run status: ${statusResponseText}`);
       }
 
-      const statusData = await statusResponse.json();
+      const statusData = JSON.parse(statusResponseText);
       runStatus = statusData.status;
       attempts++;
-
-      console.log('Run status:', runStatus);
     }
 
     if (runStatus !== 'completed') {
@@ -150,6 +150,7 @@ serve(async (req) => {
     }
 
     // Get messages
+    console.log('Retrieving messages...');
     const messagesResponse = await fetch(
       `https://api.openai.com/v1/threads/${threadData.id}/messages`,
       {
@@ -160,25 +161,18 @@ serve(async (req) => {
       }
     );
 
+    const messagesResponseText = await messagesResponse.text();
+    console.log('Messages response:', messagesResponseText);
+
     if (!messagesResponse.ok) {
-      const errorText = await messagesResponse.text();
-      console.error('Messages retrieval failed:', errorText);
-      throw new Error(`Failed to retrieve messages: ${errorText}`);
+      throw new Error(`Failed to retrieve messages: ${messagesResponseText}`);
     }
 
-    const messagesData = await messagesResponse.json();
+    const messagesData = JSON.parse(messagesResponseText);
     console.log('Messages received:', messagesData);
-
-    if (!messagesData.data || messagesData.data.length === 0) {
-      throw new Error('No messages received from assistant');
-    }
 
     const assistantMessage = messagesData.data[0];
     
-    if (!assistantMessage.content || assistantMessage.content.length === 0) {
-      throw new Error('Empty message content received from assistant');
-    }
-
     const responseData = {
       response: assistantMessage.content[0].text.value,
       thread_id: threadData.id,
@@ -186,7 +180,7 @@ serve(async (req) => {
       visualizations: []
     };
 
-    console.log('Sending response:', responseData);
+    console.log('Sending final response:', responseData);
 
     return new Response(
       JSON.stringify(responseData),
@@ -199,11 +193,17 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in chat-with-assistant function:', error);
+    console.error('Detailed error:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        details: error.stack 
+        details: error.stack,
+        cause: error.cause
       }),
       {
         status: 500,
