@@ -41,15 +41,17 @@ serve(async (req) => {
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
     console.log('OpenAI API key retrieved:', !!openAiApiKey);
 
+    const openAiHeaders = {
+      'Authorization': `Bearer ${openAiApiKey}`,
+      'Content-Type': 'application/json',
+      'OpenAI-Beta': 'assistants=v2'  // Updated to v2
+    };
+
     // Create a thread
     console.log('Creating thread...');
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
-      }
+      headers: openAiHeaders
     });
 
     const threadResponseText = await threadResponse.text();
@@ -66,11 +68,7 @@ serve(async (req) => {
     console.log('Adding message to thread...');
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
-      },
+      headers: openAiHeaders,
       body: JSON.stringify({
         role: 'user',
         content: message
@@ -91,11 +89,7 @@ serve(async (req) => {
     console.log('Running assistant...');
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
-      },
+      headers: openAiHeaders,
       body: JSON.stringify({
         assistant_id: assistantId
       })
@@ -126,10 +120,7 @@ serve(async (req) => {
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`,
         {
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'OpenAI-Beta': 'assistants=v1'
-          }
+          headers: openAiHeaders
         }
       );
 
@@ -154,10 +145,7 @@ serve(async (req) => {
     const messagesResponse = await fetch(
       `https://api.openai.com/v1/threads/${threadData.id}/messages`,
       {
-        headers: {
-          'Authorization': `Bearer ${openAiApiKey}`,
-          'OpenAI-Beta': 'assistants=v1'
-        }
+        headers: openAiHeaders
       }
     );
 
