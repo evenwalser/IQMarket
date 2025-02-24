@@ -21,22 +21,30 @@ async function processExcelOrCSV(fileContent: Uint8Array, fileName: string): Pro
   console.log('Processing file:', fileName);
   
   let data: any[] = [];
-  if (fileName.toLowerCase().endsWith('.csv')) {
-    const text = new TextDecoder().decode(fileContent);
-    data = await parseCSV(text, { skipFirstRow: true });
-  } else if (fileName.toLowerCase().endsWith('.xlsx')) {
-    const workbook = read(fileContent);
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    data = utils.sheet_to_json(firstSheet);
+  try {
+    if (fileName.toLowerCase().endsWith('.csv')) {
+      const text = new TextDecoder().decode(fileContent);
+      data = await parseCSV(text, { skipFirstRow: true });
+      console.log('Successfully parsed CSV data:', data);
+    } else if (fileName.toLowerCase().endsWith('.xlsx')) {
+      const workbook = read(fileContent);
+      console.log('Excel sheets available:', workbook.SheetNames);
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      data = utils.sheet_to_json(firstSheet);
+      console.log('Successfully parsed Excel data:', data);
+    }
+  } catch (error) {
+    console.error('Error processing file:', error);
+    throw new Error(`Failed to process ${fileName}: ${error.message}`);
   }
 
-  console.log('Parsed data:', data);
+  if (!data || data.length === 0) {
+    throw new Error('No data found in the file');
+  }
+
+  console.log('Processing data:', data);
 
   const metrics: FileData = {};
-  const requiredColumns = ['ARR', 'Growth', 'NRR', 'CAC Payback'];
-  const missingColumns: string[] = [];
-
-  // Check for columns with different possible names
   const columnMappings = {
     'ARR': ['ARR', 'Annual Recurring Revenue', 'Revenue'],
     'Growth': ['Growth', 'Growth Rate', 'YoY Growth'],
@@ -45,33 +53,36 @@ async function processExcelOrCSV(fileContent: Uint8Array, fileName: string): Pro
   };
 
   for (const [metric, possibleNames] of Object.entries(columnMappings)) {
-    let found = false;
     for (const name of possibleNames) {
       const value = data[0]?.[name];
       if (value !== undefined) {
-        metrics[metric.toLowerCase().replace(' ', 'Payback') as keyof FileData] = parseFloat(value);
-        found = true;
-        break;
+        const numValue = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+        if (!isNaN(numValue)) {
+          metrics[metric.toLowerCase().replace(' ', 'Payback') as keyof FileData] = numValue;
+          console.log(`Found ${metric}:`, numValue);
+          break;
+        }
       }
     }
-    if (!found) {
-      missingColumns.push(metric);
-    }
   }
 
-  if (missingColumns.length > 0) {
-    throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
+  const missingMetrics = Object.entries(columnMappings)
+    .filter(([metric]) => metrics[metric.toLowerCase().replace(' ', 'Payback') as keyof FileData] === undefined)
+    .map(([metric]) => metric);
+
+  if (missingMetrics.length > 0) {
+    throw new Error(`Missing required metrics: ${missingMetrics.join(', ')}`);
   }
 
-  console.log('Extracted metrics:', metrics);
+  console.log('Final extracted metrics:', metrics);
   return metrics;
 }
 
 async function processPDF(fileContent: Uint8Array): Promise<FileData> {
   console.log('Processing PDF file');
   
-  // For PDF processing, we'll use regex patterns to find metrics
   const text = new TextDecoder().decode(fileContent);
+  console.log('PDF content length:', text.length);
   
   const metrics: FileData = {};
   const patterns = {
@@ -85,11 +96,11 @@ async function processPDF(fileContent: Uint8Array): Promise<FileData> {
     const match = text.match(pattern);
     if (match) {
       let value = parseFloat(match[1]);
-      // Convert millions to actual value if 'M' or 'Million' is present
       if (match[0].includes('M') || match[0].toLowerCase().includes('million')) {
         value *= 1000000;
       }
       metrics[metric as keyof FileData] = value;
+      console.log(`Found ${metric}:`, value);
     }
   }
 
@@ -98,10 +109,10 @@ async function processPDF(fileContent: Uint8Array): Promise<FileData> {
     .map(([metric]) => metric.toUpperCase());
 
   if (missingMetrics.length > 0) {
-    throw new Error(`Data not found in file for: ${missingMetrics.join(', ')}`);
+    throw new Error(`Data not found in PDF for: ${missingMetrics.join(', ')}`);
   }
 
-  console.log('Extracted metrics from PDF:', metrics);
+  console.log('Final extracted metrics from PDF:', metrics);
   return metrics;
 }
 
@@ -112,21 +123,31 @@ serve(async (req) => {
 
   try {
     const { message, assistantType, attachments } = await req.json();
-    console.log('Received request:', { message, assistantType, attachments });
+    console.log('Received request:', {
+      messageLength: message?.length,
+      assistantType,
+      attachmentsCount: attachments?.length
+    });
 
     if (!attachments || attachments.length === 0) {
       throw new Error('No attachments provided');
     }
 
-    // Process the first attachment
     const attachment = attachments[0];
-    console.log('Processing attachment:', attachment);
+    console.log('Processing attachment:', {
+      fileName: attachment.file_name,
+      fileType: attachment.content_type,
+      url: attachment.url
+    });
 
-    // Download the file from storage
     const response = await fetch(attachment.url);
-    const fileContent = new Uint8Array(await response.arrayBuffer());
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.statusText}`);
+    }
 
-    // Extract metrics based on file type
+    const fileContent = new Uint8Array(await response.arrayBuffer());
+    console.log('File content length:', fileContent.length);
+
     let metrics: FileData;
     if (attachment.file_name.toLowerCase().endsWith('.pdf')) {
       metrics = await processPDF(fileContent);
@@ -136,9 +157,6 @@ serve(async (req) => {
       throw new Error('Unsupported file type. Please upload a PDF, XLSX, or CSV file.');
     }
 
-    console.log('Final extracted metrics:', metrics);
-
-    // Get the appropriate assistant ID based on type
     const assistantId = {
       knowledge: Deno.env.get('FOUNDER_WISDOM_ASSISTANT_ID'),
       frameworks: Deno.env.get('FRAMEWORKS_ASSISTANT_ID'),
@@ -146,10 +164,11 @@ serve(async (req) => {
     }[assistantType];
 
     if (!assistantId) {
-      throw new Error('Invalid assistant type');
+      throw new Error(`Invalid assistant type: ${assistantType}`);
     }
 
-    // Create OpenAI client
+    console.log('Using assistant:', assistantId);
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -157,7 +176,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -178,9 +197,20 @@ serve(async (req) => {
       })
     });
 
+    if (!openAIResponse.ok) {
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API error: ${openAIResponse.status} ${openAIResponse.statusText}`);
+    }
+
     const aiData = await openAIResponse.json();
+    console.log('OpenAI response received:', {
+      hasChoices: !!aiData.choices,
+      choicesLength: aiData.choices?.length
+    });
     
     if (!aiData.choices?.[0]?.message?.content) {
+      console.error('Invalid OpenAI response:', aiData);
       throw new Error('Invalid response from OpenAI');
     }
 
@@ -195,7 +225,6 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error processing request:', error);
-    
     return new Response(
       JSON.stringify({
         error: error.message,
