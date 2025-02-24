@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -11,6 +12,16 @@ import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Sparkles } from "lucide-react";
 
+// Define type for uploaded attachment
+interface UploadedAttachment {
+  id: string;
+  file_path: string;
+  file_name: string;
+  content_type: string;
+  size: number;
+  created_at: string;
+}
+
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
@@ -18,7 +29,7 @@ const Index = () => {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadedAttachments, setUploadedAttachments] = useState<File[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -114,16 +125,8 @@ const Index = () => {
         console.log("File metadata saved to database:", data);
 
         if (data) {
-          setUploadedAttachments(prev => {
-            const newAttachments = [...prev, data];
-            console.log("Updated uploadedAttachments state:", newAttachments);
-            return newAttachments;
-          });
-          setAttachments(prev => {
-            const newFiles = [...prev, file];
-            console.log("Updated attachments state:", newFiles.map(f => f.name));
-            return newFiles;
-          });
+          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
+          setAttachments(prev => [...prev, file]);
           toast.success(`File ${file.name} uploaded successfully`);
         }
       }
@@ -135,6 +138,7 @@ const Index = () => {
 
   const clearAttachments = () => {
     setAttachments([]);
+    setUploadedAttachments([]);
   };
 
   const handleSearch = async () => {
