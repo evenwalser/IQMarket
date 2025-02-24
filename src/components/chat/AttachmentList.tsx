@@ -9,7 +9,7 @@ interface AttachmentListProps {
 }
 
 export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) => {
-  const [previews, setPreviews] = useState<(string | null)[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     // Create preview URLs for images
@@ -17,7 +17,8 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
       if (file.type.startsWith('image/')) {
         return URL.createObjectURL(file);
       }
-      return null;
+      // For non-image files, return empty string
+      return '';
     });
 
     setPreviews(newPreviews);
@@ -36,23 +37,24 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
     <div className="mt-2 mb-4">
       <div className="flex flex-wrap gap-2">
         {attachments.map((file, index) => (
-          <div key={index} className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg group relative">
+          <div 
+            key={index} 
+            className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg group relative hover:shadow-sm transition-shadow"
+          >
             {/* Preview or Icon */}
-            <div className="w-8 h-8 flex items-center justify-center">
-              {previews[index] ? (
+            <div className="w-8 h-8 flex items-center justify-center bg-gray-50 rounded">
+              {file.type.startsWith('image/') && previews[index] ? (
                 <img 
-                  src={previews[index]!} 
+                  src={previews[index]} 
                   alt={file.name}
                   className="w-8 h-8 object-cover rounded"
                 />
               ) : (
-                <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                  {file.type.startsWith('image/') ? (
-                    <ImageIcon className="h-4 w-4 text-gray-500" />
-                  ) : (
-                    <FileText className="h-4 w-4 text-gray-500" />
-                  )}
-                </div>
+                file.type.startsWith('image/') ? (
+                  <ImageIcon className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <FileText className="h-4 w-4 text-gray-500" />
+                )
               )}
             </div>
 
@@ -65,7 +67,7 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 -right-2 bg-white shadow-sm border"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-2 -right-2 bg-white shadow-sm border rounded-full hover:bg-gray-100"
               onClick={() => onRemove(index)}
             >
               <X className="h-3 w-3" />
