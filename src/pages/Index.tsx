@@ -173,11 +173,11 @@ const Index = () => {
       });
 
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: JSON.stringify({
+        body: {  // Remove JSON.stringify here
           message: searchQuery,
           assistantType: selectedMode,
           attachments: formattedAttachments
-        })
+        }
       });
       
       if (error) {
