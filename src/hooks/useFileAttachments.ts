@@ -76,7 +76,6 @@ export const useFileAttachments = () => {
 
   return {
     attachments,
-    uploadedAttachments,
     handleAttachmentUpload,
     removeAttachment
   };
