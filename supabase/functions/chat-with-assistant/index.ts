@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { parse as parseCSV } from "https://deno.land/std@0.181.0/encoding/csv.ts";
+import { read, utils } from 'https://esm.sh/xlsx-js-style@1.2.0';
 import { decode as base64Decode } from "https://deno.land/std@0.181.0/encoding/base64.ts";
 
 const corsHeaders = {
@@ -24,8 +25,9 @@ async function processExcelOrCSV(fileContent: Uint8Array, fileName: string): Pro
     const text = new TextDecoder().decode(fileContent);
     data = await parseCSV(text, { skipFirstRow: true });
   } else if (fileName.toLowerCase().endsWith('.xlsx')) {
-    // For Excel files, we'll ask the user to convert to CSV for now
-    throw new Error('Excel files are currently not supported. Please convert to CSV format.');
+    const workbook = read(fileContent);
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    data = utils.sheet_to_json(firstSheet);
   }
 
   console.log('Parsed data:', data);
@@ -131,7 +133,7 @@ serve(async (req) => {
     } else if (attachment.file_name.toLowerCase().match(/\.(xlsx|csv)$/)) {
       metrics = await processExcelOrCSV(fileContent, attachment.file_name);
     } else {
-      throw new Error('Unsupported file type. Please upload a PDF or CSV file.');
+      throw new Error('Unsupported file type. Please upload a PDF, XLSX, or CSV file.');
     }
 
     console.log('Final extracted metrics:', metrics);
