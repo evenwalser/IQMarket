@@ -16,14 +16,15 @@ serve(async (req) => {
     const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
     const assistantId = Deno.env.get('BENCHMARKS_ASSISTANT_ID');
 
-    console.log('Starting API test...');
+    console.log('Starting API test with assistant ID:', assistantId);
 
     // Create a thread
     const threadResponse = await fetch("https://api.openai.com/v1/threads", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "assistants=v1"
       }
     });
 
@@ -39,11 +40,12 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "assistants=v1"
       },
       body: JSON.stringify({
         role: "user",
-        content: `Here is our financial data:
+        content: `Here is our financial data for analysis:
 Annual Recurring Revenue (ARR): $5M
 Year-over-Year Growth Rate: 120%
 Net Revenue Retention (NRR): 115%
@@ -65,7 +67,8 @@ Please extract these metrics and list them as raw values without any additional 
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "OpenAI-Beta": "assistants=v1"
       },
       body: JSON.stringify({
         assistant_id: assistantId
@@ -96,7 +99,8 @@ Please extract these metrics and list them as raw values without any additional 
         {
           headers: {
             "Authorization": `Bearer ${openAiApiKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v1"
           }
         }
       );
@@ -122,7 +126,8 @@ Please extract these metrics and list them as raw values without any additional 
       {
         headers: {
           "Authorization": `Bearer ${openAiApiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "OpenAI-Beta": "assistants=v1"
         }
       }
     );
