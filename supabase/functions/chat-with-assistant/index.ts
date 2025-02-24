@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -20,12 +19,10 @@ function parseMetrics(text: string) {
   let currentMetric: any = {};
 
   for (const line of lines) {
-    // Skip empty lines and code blocks
     if (!line.trim() || line.includes('```') || line.includes('import') || line.includes('plt.')) {
       continue;
     }
 
-    // Check for metrics section headers
     if (line.toLowerCase().includes('metrics:') || line.toLowerCase().includes('comparison:')) {
       isInMetricsSection = true;
       continue;
@@ -34,7 +31,6 @@ function parseMetrics(text: string) {
     if (isInMetricsSection && line.includes(':')) {
       const [key, valueStr] = line.split(':').map(s => s.trim());
       if (key && valueStr) {
-        // Clean the value string
         const cleanValue = valueStr
           .replace('$', '')
           .replace('M', '000000')
@@ -45,13 +41,11 @@ function parseMetrics(text: string) {
           .replace('x', '')
           .trim();
 
-        // Try to parse as number if possible
         const value = !isNaN(parseFloat(cleanValue)) ? parseFloat(cleanValue) : cleanValue;
 
         if (value !== '') {
           currentMetric = { Metric: key };
           
-          // Determine the type of value and assign to appropriate column
           if (valueStr.toLowerCase().includes('quartile')) {
             if (valueStr.toLowerCase().includes('top')) {
               currentMetric['Top Quartile'] = value;
@@ -86,11 +80,9 @@ serve(async (req) => {
     const { message, assistantType, attachments } = await req.json();
     console.log('Processing request:', { message, assistantType, attachments });
 
-    // Generate a thread ID for this conversation
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
 
-    // Prepare system message based on assistant type
     let systemMessage = `You are an AI advisor specializing in ${assistantType}. Your role is to:
 1. Analyze both text input and any provided attachments
 2. Extract and present key metrics in a structured format
@@ -113,10 +105,8 @@ Top Decile: value (if available)
 
 If files are provided, analyze their content and include relevant insights in your response.`;
 
-    // Prepare the messages array with user content
     let userContent = message;
 
-    // Process attachments if present
     if (attachments && attachments.length > 0) {
       const attachmentDescriptions = attachments.map(att => {
         const type = att.type === 'image' ? 'Image' : 'Document';
@@ -125,7 +115,6 @@ If files are provided, analyze their content and include relevant insights in yo
 
       userContent += `\n\nPlease analyze the following attachments:\n${attachmentDescriptions}`;
       
-      // Add image context if there are images
       const images = attachments.filter(att => att.type === 'image');
       if (images.length > 0) {
         userContent += "\n\nThe images above show relevant information that should be included in the analysis.";
@@ -145,7 +134,25 @@ If files are provided, analyze their content and include relevant insights in yo
       }
     ];
 
-    console.log('Sending request to OpenAI:', { messages });
+    const apiMessages = messages.map(msg => {
+      if (msg.role === "user" && attachments?.some(att => att.type === "image")) {
+        return {
+          role: msg.role,
+          content: [
+            { type: "text", text: msg.content },
+            ...attachments
+              .filter(att => att.type === "image")
+              .map(att => ({
+                type: "image_url",
+                image_url: { url: att.url }
+              }))
+          ]
+        };
+      }
+      return msg;
+    });
+
+    console.log('Sending request to OpenAI:', { messages: apiMessages });
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -154,24 +161,8 @@ If files are provided, analyze their content and include relevant insights in yo
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4-vision-preview",
-        messages: messages.map(msg => {
-          if (msg.role === "user" && attachments?.some(att => att.type === "image")) {
-            return {
-              role: msg.role,
-              content: [
-                { type: "text", text: msg.content },
-                ...attachments
-                  .filter(att => att.type === "image")
-                  .map(att => ({
-                    type: "image_url",
-                    image_url: att.url
-                  }))
-              ]
-            };
-          }
-          return msg;
-        }),
+        model: "gpt-4o",
+        messages: apiMessages,
         max_tokens: 4096
       })
     });
@@ -190,21 +181,18 @@ If files are provided, analyze their content and include relevant insights in yo
     const assistantResponse = data.choices[0].message.content;
     console.log('Assistant response:', assistantResponse);
 
-    // Parse metrics from the response
     const metrics = parseMetrics(assistantResponse);
     console.log('Parsed metrics:', metrics);
 
     let visualizations = [];
     
     if (metrics.length > 0) {
-      // Create table visualization
       visualizations.push({
         type: 'table',
         data: metrics,
         headers: Object.keys(metrics[0])
       });
 
-      // Create chart visualization for comparing metrics
       const chartData = metrics.map(metric => {
         const chartPoint: any = {
           category: metric.Metric,
