@@ -19,6 +19,7 @@ const Index = () => {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<any[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -71,14 +72,44 @@ const Index = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setAttachments(Array.from(files));
-    for (const file of Array.from(files)) {
-      console.log("Processing file:", file.name, file.type);
+    try {
+      for (const file of Array.from(files)) {
+        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data, error: insertError } = await supabase
+          .from('chat_attachments')
+          .insert({
+            file_path: filePath,
+            file_name: file.name,
+            content_type: file.type,
+            size: file.size
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        if (data) {
+          setUploadedAttachments(prev => [...prev, data]);
+          setAttachments(prev => [...prev, file]);
+          toast.success(`File ${file.name} uploaded successfully`);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file: ' + (error as Error).message);
     }
   };
 
   const clearAttachments = () => {
     setAttachments([]);
+    setUploadedAttachments([]);
   };
 
   const handleSearch = async () => {
@@ -88,21 +119,15 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
-      // Get the uploaded attachments from the database
-      const { data: chatAttachments, error: fetchError } = await supabase
-        .from('chat_attachments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (fetchError) throw fetchError;
-
-      // Format attachments for the API call
-      const formattedAttachments = chatAttachments?.map(att => ({
+      // Use the uploaded attachments directly
+      const formattedAttachments = uploadedAttachments.map(att => ({
         url: supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl,
-        name: att.file_name,
-        type: att.content_type.startsWith('image/') ? 'image' : 'file'
-      })) || [];
+        file_path: att.file_path,
+        file_name: att.file_name,
+        content_type: att.content_type
+      }));
+
+      console.log('Sending request with attachments:', formattedAttachments);
 
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
@@ -117,7 +142,6 @@ const Index = () => {
         throw new Error('No response received from assistant');
       }
 
-      // Convert the visualization data to match the database schema
       const visualizations = (data.visualizations || []).map((viz: any) => ({
         type: viz.type,
         data: viz.data,
@@ -147,7 +171,7 @@ const Index = () => {
       } else {
         await loadConversations();
         setSearchQuery("");
-        clearAttachments(); // Clear attachments after successful search
+        clearAttachments();
         toast.success("Response received!");
       }
     } catch (error) {
