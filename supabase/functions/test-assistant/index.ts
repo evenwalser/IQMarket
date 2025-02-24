@@ -58,6 +58,26 @@ This is a test file for metrics extraction.
       throw new Error(`Failed to upload file: ${JSON.stringify(fileData)}`);
     }
 
+    // First attach the file to the assistant
+    const assistantUpdateResponse = await fetch(`https://api.openai.com/v1/assistants/${assistantId}/files`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAiApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify({
+        file_id: fileData.id
+      })
+    });
+
+    const assistantUpdateData = await assistantUpdateResponse.json();
+    console.log('Assistant file attachment response:', assistantUpdateData);
+
+    if (!assistantUpdateResponse.ok) {
+      throw new Error(`Failed to attach file to assistant: ${JSON.stringify(assistantUpdateData)}`);
+    }
+
     // Create a thread
     const threadResponse = await fetch("https://api.openai.com/v1/threads", {
       method: "POST",
@@ -75,7 +95,7 @@ This is a test file for metrics extraction.
       throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
     }
 
-    // Add a message to the thread with the file
+    // Add a message to the thread
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: "POST",
       headers: {
@@ -85,8 +105,7 @@ This is a test file for metrics extraction.
       },
       body: JSON.stringify({
         role: "user",
-        content: "Extract all financial metrics from the attached file and return them as raw values. Please list them without any additional commentary.",
-        file_ids: [fileData.id]
+        content: "Extract all financial metrics from the provided file and return them as raw values. Please list them without any additional commentary."
       })
     });
 
@@ -117,7 +136,7 @@ This is a test file for metrics extraction.
       throw new Error(`Failed to run assistant: ${JSON.stringify(runData)}`);
     }
 
-    // Poll for completion with more verbose logging
+    // Poll for completion
     let runStatus = runData.status;
     let attempts = 0;
     const maxAttempts = 60;
@@ -184,7 +203,17 @@ This is a test file for metrics extraction.
       containsCACPayback: extractedResponse.includes('18') && extractedResponse.includes('month'),
     };
 
-    // Clean up - delete the test file
+    // Clean up - first remove file from assistant
+    const removeFileResponse = await fetch(`https://api.openai.com/v1/assistants/${assistantId}/files/${fileData.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${openAiApiKey}`,
+      }
+    });
+
+    console.log('File removal from assistant response:', await removeFileResponse.json());
+
+    // Then delete the file
     const deleteResponse = await fetch(`https://api.openai.com/v1/files/${fileData.id}`, {
       method: 'DELETE',
       headers: {
