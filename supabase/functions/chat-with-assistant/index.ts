@@ -44,7 +44,7 @@ serve(async (req) => {
     const openAiHeaders = {
       'Authorization': `Bearer ${openAiApiKey}`,
       'Content-Type': 'application/json',
-      'OpenAI-Beta': 'assistants=v2'  // Updated to v2
+      'OpenAI-Beta': 'assistants=v2'
     };
 
     // Create a thread
@@ -105,17 +105,19 @@ serve(async (req) => {
     const runData = JSON.parse(runResponseText);
     console.log('Run created:', runData);
 
-    // Poll for completion
+    // Poll for completion with increased timeout and delay
     let runStatus = runData.status;
     let attempts = 0;
-    const maxAttempts = 60;
+    const maxAttempts = 120; // Doubled from 60 to 120 attempts
+    const pollingDelay = 2000; // Increased delay to 2 seconds between attempts
     
     while (runStatus === 'queued' || runStatus === 'in_progress') {
       if (attempts >= maxAttempts) {
         throw new Error('Assistant run timed out');
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`Waiting ${pollingDelay}ms before next status check...`);
+      await new Promise(resolve => setTimeout(resolve, pollingDelay));
       
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`,
@@ -133,6 +135,7 @@ serve(async (req) => {
 
       const statusData = JSON.parse(statusResponseText);
       runStatus = statusData.status;
+      console.log(`Current status: ${runStatus}`);
       attempts++;
     }
 
