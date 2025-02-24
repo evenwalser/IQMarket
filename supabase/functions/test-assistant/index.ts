@@ -18,73 +18,12 @@ serve(async (req) => {
 
     console.log('Starting API test...');
 
-    // First, create and upload a test file
-    const testFileContent = `
-Financial Metrics Report
-Date: 2024-02-20
-
-Key Metrics:
-- Annual Recurring Revenue (ARR): $5M
-- Year-over-Year Growth Rate: 120%
-- Net Revenue Retention (NRR): 115%
-- Customer Acquisition Cost (CAC) Payback: 18 months
-
-Additional Notes:
-This is a test file for metrics extraction.
-    `.trim();
-
-    // Convert the string to a blob
-    const fileBlob = new Blob([testFileContent], { type: 'text/plain' });
-    
-    // Upload file to OpenAI
-    const formData = new FormData();
-    formData.append('file', fileBlob, 'metrics.txt');
-    formData.append('purpose', 'assistants');
-
-    console.log('Uploading test file to OpenAI...');
-    
-    const fileUploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-      },
-      body: formData
-    });
-
-    const fileData = await fileUploadResponse.json();
-    console.log('File upload response:', fileData);
-
-    if (!fileUploadResponse.ok) {
-      throw new Error(`Failed to upload file: ${JSON.stringify(fileData)}`);
-    }
-
-    // First attach the file to the assistant
-    const assistantUpdateResponse = await fetch(`https://api.openai.com/v1/assistants/${assistantId}/files`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      body: JSON.stringify({
-        file_id: fileData.id
-      })
-    });
-
-    const assistantUpdateData = await assistantUpdateResponse.json();
-    console.log('Assistant file attachment response:', assistantUpdateData);
-
-    if (!assistantUpdateResponse.ok) {
-      throw new Error(`Failed to attach file to assistant: ${JSON.stringify(assistantUpdateData)}`);
-    }
-
     // Create a thread
     const threadResponse = await fetch("https://api.openai.com/v1/threads", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v2"
+        "Content-Type": "application/json"
       }
     });
 
@@ -95,17 +34,22 @@ This is a test file for metrics extraction.
       throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
     }
 
-    // Add a message to the thread
+    // Add a test message with financial data
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v2"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         role: "user",
-        content: "Extract all financial metrics from the provided file and return them as raw values. Please list them without any additional commentary."
+        content: `Here is our financial data:
+Annual Recurring Revenue (ARR): $5M
+Year-over-Year Growth Rate: 120%
+Net Revenue Retention (NRR): 115%
+Customer Acquisition Cost (CAC) Payback: 18 months
+
+Please extract these metrics and list them as raw values without any additional commentary.`
       })
     });
 
@@ -121,8 +65,7 @@ This is a test file for metrics extraction.
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v2"
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         assistant_id: assistantId
@@ -153,8 +96,7 @@ This is a test file for metrics extraction.
         {
           headers: {
             "Authorization": `Bearer ${openAiApiKey}`,
-            "Content-Type": "application/json",
-            "OpenAI-Beta": "assistants=v2"
+            "Content-Type": "application/json"
           }
         }
       );
@@ -180,8 +122,7 @@ This is a test file for metrics extraction.
       {
         headers: {
           "Authorization": `Bearer ${openAiApiKey}`,
-          "Content-Type": "application/json",
-          "OpenAI-Beta": "assistants=v2"
+          "Content-Type": "application/json"
         }
       }
     );
@@ -203,32 +144,11 @@ This is a test file for metrics extraction.
       containsCACPayback: extractedResponse.includes('18') && extractedResponse.includes('month'),
     };
 
-    // Clean up - first remove file from assistant
-    const removeFileResponse = await fetch(`https://api.openai.com/v1/assistants/${assistantId}/files/${fileData.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-      }
-    });
-
-    console.log('File removal from assistant response:', await removeFileResponse.json());
-
-    // Then delete the file
-    const deleteResponse = await fetch(`https://api.openai.com/v1/files/${fileData.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-      }
-    });
-
-    console.log('File deletion response:', await deleteResponse.json());
-
     return new Response(
       JSON.stringify({ 
         threadId: threadData.id,
         messageId: messageData.id,
         runId: runData.id,
-        fileId: fileData.id,
         status: 'Test completed successfully',
         extractedResponse,
         validationResults,
