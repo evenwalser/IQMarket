@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -80,10 +81,51 @@ serve(async (req) => {
     const { message, assistantType, attachments } = await req.json();
     console.log('Processing request:', { message, assistantType, attachments });
 
+    // Generate a thread ID for this conversation
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
 
-    let systemMessage = `You are an AI advisor specializing in ${assistantType}. Your role is to:
+    // Different system messages based on assistant type
+    let systemMessage = '';
+    if (assistantType === 'benchmarks') {
+      systemMessage = `You are a data analyst specializing in SaaS benchmarks and metrics analysis. Your role is to:
+1. Use Python code to analyze metrics and generate visualizations
+2. Extract numerical data from files and messages
+3. Present comparative analysis with industry benchmarks
+4. Generate clear, data-driven insights
+
+Always include Python code blocks in your response when analyzing data. Use pandas for data manipulation and matplotlib/seaborn for visualizations. Format your response like this:
+
+First, analyze the metrics:
+\`\`\`python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Create DataFrame with metrics
+metrics = {
+    'Metric': ['ARR', 'Growth Rate', 'NRR'],
+    'Value': [1.5, 150, 120],
+    'Bottom_Quartile': [1.0, 80, 100],
+    'Median': [2.0, 120, 110],
+    'Top_Quartile': [5.0, 200, 130]
+}
+df = pd.DataFrame(metrics)
+
+# Generate visualization
+plt.figure(figsize=(10, 6))
+sns.barplot(data=df, x='Metric', y='Value')
+plt.title('Key Metrics Analysis')
+\`\`\`
+
+Then provide your analysis in this format:
+Metrics Analysis:
+- ARR: Current value vs benchmarks
+- Growth Rate: Performance relative to peers
+- Key insights and recommendations`;
+    } else {
+      // Default system message for other assistant types
+      systemMessage = `You are an AI advisor specializing in ${assistantType}. Your role is to:
 1. Analyze both text input and any provided attachments
 2. Extract and present key metrics in a structured format
 3. Provide insights and recommendations
@@ -94,19 +136,16 @@ Metrics:
 ARR: $1.5M
 Growth Rate: 150%
 NRR: 120%
-CAC Payback: 18 months
+CAC Payback: 18 months`;
+    }
 
-For benchmarks, use this format:
-Metric: Value
-Bottom Quartile: value
-Median: value
-Top Quartile: value
-Top Decile: value (if available)
+    // Add file analysis instructions to system message if attachments present
+    if (attachments && attachments.length > 0) {
+      systemMessage += `\n\nAnalyze all provided files and include their content in your analysis. For images, describe the metrics or data you observe.`;
+    }
 
-If files are provided, analyze their content and include relevant insights in your response.`;
-
+    // Prepare user content
     let userContent = message;
-
     if (attachments && attachments.length > 0) {
       const attachmentDescriptions = attachments.map(att => {
         const type = att.type === 'image' ? 'Image' : 'Document';
@@ -115,42 +154,32 @@ If files are provided, analyze their content and include relevant insights in yo
 
       userContent += `\n\nPlease analyze the following attachments:\n${attachmentDescriptions}`;
       
-      const images = attachments.filter(att => att.type === 'image');
-      if (images.length > 0) {
+      if (attachments.some(att => att.type === 'image')) {
         userContent += "\n\nThe images above show relevant information that should be included in the analysis.";
       }
     }
 
-    console.log('Preparing messages for OpenAI');
-
-    const messages = [
+    // Format messages for the API request
+    const apiMessages = [
       {
         role: "system",
         content: systemMessage
       },
       {
         role: "user",
-        content: userContent
+        content: attachments?.some(att => att.type === "image")
+          ? [
+              { type: "text", text: userContent },
+              ...attachments
+                .filter(att => att.type === "image")
+                .map(att => ({
+                  type: "image_url",
+                  image_url: { url: att.url }
+                }))
+            ]
+          : userContent
       }
     ];
-
-    const apiMessages = messages.map(msg => {
-      if (msg.role === "user" && attachments?.some(att => att.type === "image")) {
-        return {
-          role: msg.role,
-          content: [
-            { type: "text", text: msg.content },
-            ...attachments
-              .filter(att => att.type === "image")
-              .map(att => ({
-                type: "image_url",
-                image_url: { url: att.url }
-              }))
-          ]
-        };
-      }
-      return msg;
-    });
 
     console.log('Sending request to OpenAI:', { messages: apiMessages });
 
@@ -181,6 +210,7 @@ If files are provided, analyze their content and include relevant insights in yo
     const assistantResponse = data.choices[0].message.content;
     console.log('Assistant response:', assistantResponse);
 
+    // Parse metrics from the response
     const metrics = parseMetrics(assistantResponse);
     console.log('Parsed metrics:', metrics);
 
