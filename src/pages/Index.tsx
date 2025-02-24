@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -19,6 +18,7 @@ const Index = () => {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<File[]>([]);
 
   useEffect(() => {
     loadConversations();
@@ -71,9 +71,65 @@ const Index = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setAttachments(Array.from(files));
-    for (const file of Array.from(files)) {
-      console.log("Processing file:", file.name, file.type);
+    try {
+      console.log("Starting file upload process...");
+      for (const file of Array.from(files)) {
+        console.log("Processing file:", {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: new Date(file.lastModified).toISOString()
+        });
+
+        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
+        console.log("Generated file path:", filePath);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Storage upload error:", uploadError);
+          throw uploadError;
+        }
+
+        console.log("File uploaded to storage successfully:", uploadData);
+
+        const { data, error: insertError } = await supabase
+          .from('chat_attachments')
+          .insert({
+            file_path: filePath,
+            file_name: file.name,
+            content_type: file.type,
+            size: file.size
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Database insert error:", insertError);
+          throw insertError;
+        }
+
+        console.log("File metadata saved to database:", data);
+
+        if (data) {
+          setUploadedAttachments(prev => {
+            const newAttachments = [...prev, data];
+            console.log("Updated uploadedAttachments state:", newAttachments);
+            return newAttachments;
+          });
+          setAttachments(prev => {
+            const newFiles = [...prev, file];
+            console.log("Updated attachments state:", newFiles.map(f => f.name));
+            return newFiles;
+          });
+          toast.success(`File ${file.name} uploaded successfully`);
+        }
+      }
+    } catch (error) {
+      console.error('Error in file upload process:', error);
+      toast.error('Failed to upload file: ' + (error as Error).message);
     }
   };
 
@@ -88,21 +144,30 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
-      // Get the uploaded attachments from the database
-      const { data: chatAttachments, error: fetchError } = await supabase
-        .from('chat_attachments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
+      console.log("Starting search with uploadedAttachments:", uploadedAttachments);
 
-      if (fetchError) throw fetchError;
+      const formattedAttachments = uploadedAttachments.map(att => {
+        const publicUrl = supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(att.file_path)
+          .data.publicUrl;
 
-      // Format attachments for the API call
-      const formattedAttachments = chatAttachments?.map(att => ({
-        url: supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl,
-        name: att.file_name,
-        type: att.content_type.startsWith('image/') ? 'image' : 'file'
-      })) || [];
+        const formatted = {
+          url: publicUrl,
+          file_path: att.file_path,
+          file_name: att.file_name,
+          content_type: att.content_type
+        };
+
+        console.log("Formatted attachment:", formatted);
+        return formatted;
+      });
+
+      console.log("Sending request to chat-with-assistant function:", {
+        message: searchQuery,
+        assistantType: selectedMode,
+        attachments: formattedAttachments
+      });
 
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
@@ -112,23 +177,32 @@ const Index = () => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+
+      console.log("Received response from edge function:", data);
+
       if (!data || !data.response) {
+        console.error("No response data received");
         throw new Error('No response received from assistant');
       }
 
-      // Convert the visualization data to match the database schema
-      const visualizations = (data.visualizations || []).map((viz: any) => ({
-        type: viz.type,
-        data: viz.data,
-        headers: viz.headers,
-        chartType: viz.chartType,
-        xKey: viz.xKey,
-        yKeys: viz.yKeys,
-        height: viz.height
-      })) as Json[];
+      const visualizations = (data.visualizations || []).map((viz: any) => {
+        console.log("Processing visualization:", viz);
+        return {
+          type: viz.type,
+          data: viz.data,
+          headers: viz.headers,
+          chartType: viz.chartType,
+          xKey: viz.xKey,
+          yKeys: viz.yKeys,
+          height: viz.height
+        };
+      }) as Json[];
 
-      console.log('Received visualizations:', visualizations);
+      console.log('Final processed visualizations:', visualizations);
 
       const { error: dbError } = await supabase
         .from('conversations')
@@ -147,11 +221,11 @@ const Index = () => {
       } else {
         await loadConversations();
         setSearchQuery("");
-        clearAttachments(); // Clear attachments after successful search
+        clearAttachments();
         toast.success("Response received!");
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Full error details:", error);
       toast.error("Failed to get response. Please try again.");
     } finally {
       setIsLoading(false);
