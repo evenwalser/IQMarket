@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -8,6 +7,10 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+function generateThreadId() {
+  return 'thread_' + crypto.randomUUID();
+}
 
 function parseMetrics(text: string) {
   const metrics: any[] = [];
@@ -82,6 +85,10 @@ serve(async (req) => {
     const { message, assistantType, attachments } = await req.json();
     console.log('Processing request:', { message, assistantType, attachments });
 
+    // Generate a thread ID for this conversation
+    const threadId = generateThreadId();
+    const assistantId = `${assistantType}_assistant`;
+
     // Prepare the messages array with the system message and user query
     const messages = [
       {
@@ -123,7 +130,7 @@ Top Decile: value (if available)
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4",
         messages: messages,
         temperature: 0.7,
       })
@@ -200,6 +207,8 @@ Top Decile: value (if available)
     return new Response(
       JSON.stringify({
         response: assistantResponse,
+        thread_id: threadId,
+        assistant_id: assistantId,
         visualizations: visualizations
       }),
       { 
