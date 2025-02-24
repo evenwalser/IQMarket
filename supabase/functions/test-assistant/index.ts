@@ -35,7 +35,7 @@ serve(async (req) => {
       throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
     }
 
-    // Add a message to the thread
+    // Add a message to the thread with specific data extraction request
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: "POST",
       headers: {
@@ -45,7 +45,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         role: "user",
-        content: "What is the average series A valuation for SaaS companies?"
+        content: "Extract all financial metrics from this test data and return them as raw values. Here's some sample data:\n\nARR: $5M\nGrowth Rate: 120%\nNRR: 115%\nCAC Payback: 18 months\n\nPlease extract and list these metrics without any additional commentary."
       })
     });
 
@@ -76,7 +76,7 @@ serve(async (req) => {
       throw new Error(`Failed to run assistant: ${JSON.stringify(runData)}`);
     }
 
-    // Poll for completion
+    // Poll for completion with more verbose logging
     let runStatus = runData.status;
     let attempts = 0;
     const maxAttempts = 60;
@@ -86,7 +86,7 @@ serve(async (req) => {
         throw new Error('Assistant run timed out');
       }
 
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const statusResponse = await fetch(
         `https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`,
@@ -114,7 +114,7 @@ serve(async (req) => {
       throw new Error(`Assistant run failed with status: ${runStatus}`);
     }
 
-    // Get the final message
+    // Get the final message and validate extraction
     const messagesResponse = await fetch(
       `https://api.openai.com/v1/threads/${threadData.id}/messages`,
       {
@@ -133,13 +133,27 @@ serve(async (req) => {
       throw new Error(`Failed to retrieve messages: ${JSON.stringify(messagesData)}`);
     }
 
+    const extractedResponse = messagesData.data[0]?.content[0]?.text?.value;
+
+    // Validate that the response contains key metrics
+    const validationResults = {
+      containsARR: extractedResponse.includes('5M') || extractedResponse.includes('5 million'),
+      containsGrowthRate: extractedResponse.includes('120%'),
+      containsNRR: extractedResponse.includes('115%'),
+      containsCACPayback: extractedResponse.includes('18') && extractedResponse.includes('month'),
+    };
+
     return new Response(
       JSON.stringify({ 
         threadId: threadData.id,
         messageId: messageData.id,
         runId: runData.id,
         status: 'Test completed successfully',
-        finalMessage: messagesData.data[0]?.content[0]?.text?.value || 'No response received'
+        extractedResponse,
+        validationResults,
+        metricsFound: Object.values(validationResults).filter(v => v).length,
+        totalMetrics: Object.keys(validationResults).length,
+        testPassed: Object.values(validationResults).every(v => v)
       }),
       { 
         headers: { 
