@@ -1,6 +1,6 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,58 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    const { message, assistantType, attachments } = await req.json();
-    console.log('Received request:', {
-      messageLength: message?.length,
-      assistantType,
-      attachmentsCount: attachments?.length
-    });
+    console.log('Received request');
+    const requestData = await req.json();
+    console.log('Request data:', requestData);
 
-    if (!attachments || attachments.length === 0) {
-      throw new Error('No attachments provided');
+    const { message, assistantType, attachments = [] } = requestData;
+
+    if (!message || !assistantType) {
+      throw new Error('Missing required fields: message and assistantType are required');
     }
-
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Download file from Supabase Storage
-    const attachment = attachments[0];
-    console.log('Processing attachment:', {
-      fileName: attachment.file_name,
-      fileType: attachment.content_type,
-      url: attachment.url
-    });
-
-    const fileResponse = await fetch(attachment.url);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
-    }
-
-    // Upload file to OpenAI
-    const formData = new FormData();
-    const blob = await fileResponse.blob();
-    formData.append('purpose', 'assistants');
-    formData.append('file', blob, attachment.file_name);
-
-    console.log('Uploading file to OpenAI...');
-    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error('OpenAI file upload error:', errorText);
-      throw new Error(`Failed to upload file to OpenAI: ${uploadResponse.statusText}`);
-    }
-
-    const uploadData = await uploadResponse.json();
-    console.log('File uploaded to OpenAI:', uploadData);
 
     // Get the appropriate assistant ID based on type
     const assistantId = {
@@ -77,15 +34,22 @@ serve(async (req) => {
       throw new Error(`Invalid assistant type: ${assistantType}`);
     }
 
+    console.log('Using assistant:', { assistantType, assistantId });
+
+    const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAiApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
+
     // Create a thread
     console.log('Creating thread...');
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v1'
-      },
+      }
     });
 
     if (!threadResponse.ok) {
@@ -100,14 +64,14 @@ serve(async (req) => {
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v1'
       },
       body: JSON.stringify({
         role: 'user',
         content: message,
-        file_ids: [uploadData.id]
+        file_ids: []
       })
     });
 
@@ -115,14 +79,12 @@ serve(async (req) => {
       throw new Error('Failed to add message to thread');
     }
 
-    console.log('Message added to thread');
-
     // Run the assistant
     console.log('Running assistant...');
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v1'
       },
@@ -141,7 +103,7 @@ serve(async (req) => {
     // Poll for completion
     let runStatus = runData.status;
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds timeout
+    const maxAttempts = 60; // 60 seconds timeout
     
     while (runStatus === 'queued' || runStatus === 'in_progress') {
       if (attempts >= maxAttempts) {
@@ -154,7 +116,7 @@ serve(async (req) => {
         `https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`,
         {
           headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
+            'Authorization': `Bearer ${openAiApiKey}`,
             'OpenAI-Beta': 'assistants=v1'
           }
         }
@@ -167,6 +129,8 @@ serve(async (req) => {
       const statusData = await statusResponse.json();
       runStatus = statusData.status;
       attempts++;
+
+      console.log('Run status:', runStatus);
     }
 
     if (runStatus !== 'completed') {
@@ -174,11 +138,12 @@ serve(async (req) => {
     }
 
     // Get messages
+    console.log('Retrieving messages...');
     const messagesResponse = await fetch(
       `https://api.openai.com/v1/threads/${threadData.id}/messages`,
       {
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${openAiApiKey}`,
           'OpenAI-Beta': 'assistants=v1'
         }
       }
@@ -190,14 +155,8 @@ serve(async (req) => {
 
     const messagesData = await messagesResponse.json();
     const assistantMessage = messagesData.data[0];
-
-    // Clean up - delete the uploaded file
-    await fetch(`https://api.openai.com/v1/files/${uploadData.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-      }
-    });
+    
+    console.log('Response received:', assistantMessage);
 
     return new Response(
       JSON.stringify({
@@ -205,18 +164,23 @@ serve(async (req) => {
         thread_id: threadData.id,
         assistant_id: assistantId
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
 
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error in chat-with-assistant function:', error);
     return new Response(
-      JSON.stringify({
+      JSON.stringify({ 
         error: error.message,
-        details: error.stack
+        details: error.stack 
       }),
       {
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );

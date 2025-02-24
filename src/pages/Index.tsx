@@ -147,24 +147,24 @@ const Index = () => {
     }
     setIsLoading(true);
     try {
-      console.log("Starting search with uploadedAttachments:", uploadedAttachments);
+      let formattedAttachments = [];
+      
+      if (uploadedAttachments.length > 0) {
+        console.log("Processing attachments for search:", uploadedAttachments);
+        formattedAttachments = uploadedAttachments.map(att => {
+          const publicUrl = supabase.storage
+            .from('chat-attachments')
+            .getPublicUrl(att.file_path)
+            .data.publicUrl;
 
-      const formattedAttachments = uploadedAttachments.map(att => {
-        const publicUrl = supabase.storage
-          .from('chat-attachments')
-          .getPublicUrl(att.file_path)
-          .data.publicUrl;
-
-        const formatted = {
-          url: publicUrl,
-          file_path: att.file_path,
-          file_name: att.file_name,
-          content_type: att.content_type
-        };
-
-        console.log("Formatted attachment:", formatted);
-        return formatted;
-      });
+          return {
+            url: publicUrl,
+            file_path: att.file_path,
+            file_name: att.file_name,
+            content_type: att.content_type
+          };
+        });
+      }
 
       console.log("Sending request to chat-with-assistant function:", {
         message: searchQuery,
@@ -173,11 +173,11 @@ const Index = () => {
       });
 
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {
+        body: JSON.stringify({
           message: searchQuery,
           assistantType: selectedMode,
           attachments: formattedAttachments
-        }
+        })
       });
       
       if (error) {
