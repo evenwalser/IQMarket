@@ -20,7 +20,13 @@ function generateThreadId() {
 }
 
 async function getFileFromStorage(filePath: string) {
+  if (!filePath) {
+    throw new Error('File path is required');
+  }
+
+  console.log(`Attempting to download file: ${filePath}`);
   const supabase = createClient(supabaseUrl, supabaseKey);
+  
   const { data, error } = await supabase
     .storage
     .from('chat-attachments')
@@ -31,10 +37,20 @@ async function getFileFromStorage(filePath: string) {
     throw new Error(`Failed to download file: ${error.message}`);
   }
 
+  if (!data) {
+    throw new Error('No file data received from storage');
+  }
+
+  console.log(`Successfully downloaded file: ${filePath}`);
   return data;
 }
 
 async function uploadFileToOpenAI(file: Blob, filename: string) {
+  if (!file || !filename) {
+    throw new Error('File and filename are required');
+  }
+
+  console.log(`Preparing to upload file to OpenAI: ${filename}`);
   const formData = new FormData();
   formData.append('file', file, filename);
   formData.append('purpose', 'assistants');
@@ -49,10 +65,13 @@ async function uploadFileToOpenAI(file: Blob, filename: string) {
 
   if (!response.ok) {
     const error = await response.json();
+    console.error('OpenAI file upload error:', error);
     throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(error)}`);
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log(`Successfully uploaded file to OpenAI: ${filename}`, result);
+  return result;
 }
 
 serve(async (req) => {
@@ -62,7 +81,15 @@ serve(async (req) => {
 
   try {
     const { message, assistantType, attachments } = await req.json();
-    console.log('Processing request:', { message, assistantType, attachments });
+    console.log('Processing request:', { 
+      message, 
+      assistantType, 
+      attachmentCount: attachments?.length || 0 
+    });
+
+    if (!message) {
+      throw new Error('Message is required');
+    }
 
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
@@ -74,34 +101,29 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
 3. Providing Python code for visualization
 4. Generating actionable insights`;
 
-    const contentParts: any[] = [];
     const fileIds: string[] = [];
     
     if (attachments && attachments.length > 0) {
-      console.log('Processing attachments:', attachments);
+      console.log(`Processing ${attachments.length} attachments`);
 
       for (const attachment of attachments) {
+        if (!attachment?.file_path) {
+          console.error('Invalid attachment:', attachment);
+          continue;
+        }
+
         try {
-          console.log(`Fetching file content for: ${attachment.file_path}`);
           const fileData = await getFileFromStorage(attachment.file_path);
-          
-          // Create a blob from the file data
-          const blob = new Blob([fileData], { type: attachment.content_type });
-          
-          // Upload file to OpenAI
+          const blob = new Blob([fileData], { type: attachment.content_type || 'application/octet-stream' });
           const uploadResponse = await uploadFileToOpenAI(blob, attachment.file_name);
-          console.log('File uploaded to OpenAI:', uploadResponse);
-          
           fileIds.push(uploadResponse.id);
+          console.log(`Successfully processed attachment: ${attachment.file_name}`);
         } catch (error) {
           console.error(`Error processing attachment ${attachment.file_name}:`, error);
           throw new Error(`Failed to process attachment ${attachment.file_name}: ${error.message}`);
         }
       }
     }
-
-    // Add the user's message as content
-    contentParts.push({ type: "text", text: message });
 
     console.log('Sending request to OpenAI with file IDs:', fileIds);
 
@@ -120,7 +142,7 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
           },
           {
             role: "user",
-            content: contentParts
+            content: message
           }
         ],
         file_ids: fileIds,
