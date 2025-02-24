@@ -18,7 +18,6 @@ function generateThreadId() {
 
 async function getFileFromStorage(filePath: string) {
   const supabase = createClient(supabaseUrl, supabaseKey);
-  
   const { data, error } = await supabase
     .storage
     .from('chat-attachments')
@@ -30,6 +29,27 @@ async function getFileFromStorage(filePath: string) {
   }
 
   return data;
+}
+
+async function uploadFileToOpenAI(file: Blob, filename: string) {
+  const formData = new FormData();
+  formData.append('file', file, filename);
+  formData.append('purpose', 'assistants');
+
+  const response = await fetch('https://api.openai.com/v1/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(error)}`);
+  }
+
+  return await response.json();
 }
 
 serve(async (req) => {
@@ -52,6 +72,7 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
 4. Generating actionable insights`;
 
     const contentParts: any[] = [];
+    const fileIds: string[] = [];
     
     if (attachments && attachments.length > 0) {
       console.log('Processing attachments:', attachments);
@@ -61,26 +82,14 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
           console.log(`Fetching file content for: ${attachment.file_path}`);
           const fileData = await getFileFromStorage(attachment.file_path);
           
-          if (attachment.content_type.startsWith('image/')) {
-            // For images, convert to base64 and use the image_url format
-            const base64Data = await fileData.arrayBuffer().then(buffer => 
-              btoa(String.fromCharCode(...new Uint8Array(buffer)))
-            );
-            
-            contentParts.push({
-              type: "image_url",
-              image_url: {
-                url: `data:${attachment.content_type};base64,${base64Data}`
-              }
-            });
-          } else {
-            // For PDFs and other files, convert to text and include in the message
-            const textData = await fileData.text();
-            contentParts.push({
-              type: "text",
-              text: `Content of ${attachment.file_name}:\n${textData}`
-            });
-          }
+          // Create a blob from the file data
+          const blob = new Blob([fileData], { type: attachment.content_type });
+          
+          // Upload file to OpenAI
+          const uploadResponse = await uploadFileToOpenAI(blob, attachment.file_name);
+          console.log('File uploaded to OpenAI:', uploadResponse);
+          
+          fileIds.push(uploadResponse.id);
         } catch (error) {
           console.error(`Error processing attachment ${attachment.file_name}:`, error);
           throw new Error(`Failed to process attachment ${attachment.file_name}: ${error.message}`);
@@ -88,10 +97,10 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
       }
     }
 
-    // Add the user's message as the first content part
-    contentParts.unshift({ type: "text", text: message });
+    // Add the user's message as content
+    contentParts.push({ type: "text", text: message });
 
-    console.log('Sending request to OpenAI');
+    console.log('Sending request to OpenAI with file IDs:', fileIds);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -111,6 +120,7 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
             content: contentParts
           }
         ],
+        file_ids: fileIds,
         max_tokens: 4096,
         temperature: 0.7
       })
@@ -124,6 +134,21 @@ Your role is to analyze financial metrics and provide benchmark comparisons. Foc
 
     const data = await response.json();
     console.log('OpenAI response received');
+
+    // Clean up uploaded files
+    for (const fileId of fileIds) {
+      try {
+        await fetch(`https://api.openai.com/v1/files/${fileId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`
+          }
+        });
+        console.log(`Cleaned up file: ${fileId}`);
+      } catch (error) {
+        console.error(`Error cleaning up file ${fileId}:`, error);
+      }
+    }
 
     return new Response(
       JSON.stringify({
