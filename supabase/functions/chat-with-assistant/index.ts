@@ -20,11 +20,11 @@ function parseMetrics(text: string) {
   let currentMetric: any = {};
 
   for (const line of lines) {
-    if (!line.trim() || line.includes('```') || line.includes('import') || line.includes('plt.')) {
+    if (!line.trim() || line.includes('```')) {
       continue;
     }
 
-    if (line.toLowerCase().includes('metrics:') || line.toLowerCase().includes('comparison:')) {
+    if (line.toLowerCase().includes('metrics:')) {
       isInMetricsSection = true;
       continue;
     }
@@ -81,28 +81,38 @@ serve(async (req) => {
     const { message, assistantType, attachments } = await req.json();
     console.log('Processing request:', { message, assistantType, attachments });
 
-    // Generate a thread ID for this conversation
     const threadId = generateThreadId();
     const assistantId = `${assistantType}_assistant`;
 
-    // Different system messages based on assistant type
-    let systemMessage = '';
-    if (assistantType === 'benchmarks') {
-      systemMessage = `You are a data analyst specializing in SaaS benchmarks and metrics analysis. Your role is to:
-1. Use Python code to analyze metrics and generate visualizations
-2. Extract numerical data from files and messages
+    let systemMessage = `You are a data analyst specializing in SaaS benchmarks and metrics analysis. Your role is to:
+1. Extract and analyze metrics from both text and PDF documents
+2. Generate Python code for data analysis
 3. Present comparative analysis with industry benchmarks
 4. Generate clear, data-driven insights
 
-Always include Python code blocks in your response when analyzing data. Use pandas for data manipulation and matplotlib/seaborn for visualizations. Format your response like this:
+When analyzing PDFs or documents:
+1. First extract and list all key metrics found
+2. Then generate Python code to analyze those metrics
+3. Finally provide benchmark comparisons
 
-First, analyze the metrics:
+Format metrics like this:
+Metrics:
+ARR: $1.5M
+Growth Rate: 150%
+NRR: 120%
+
+For each metric, provide benchmark comparisons:
+Metric: Current Value
+Bottom Quartile: value
+Median: value
+Top Quartile: value
+
+Always include Python code for analysis:
 \`\`\`python
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Create DataFrame with metrics
 metrics = {
     'Metric': ['ARR', 'Growth Rate', 'NRR'],
     'Value': [1.5, 150, 120],
@@ -112,54 +122,24 @@ metrics = {
 }
 df = pd.DataFrame(metrics)
 
-# Generate visualization
-plt.figure(figsize=(10, 6))
-sns.barplot(data=df, x='Metric', y='Value')
-plt.title('Key Metrics Analysis')
-\`\`\`
+# Visualization code...
+\`\`\``;
 
-Then provide your analysis in this format:
-Metrics Analysis:
-- ARR: Current value vs benchmarks
-- Growth Rate: Performance relative to peers
-- Key insights and recommendations`;
-    } else {
-      // Default system message for other assistant types
-      systemMessage = `You are an AI advisor specializing in ${assistantType}. Your role is to:
-1. Analyze both text input and any provided attachments
-2. Extract and present key metrics in a structured format
-3. Provide insights and recommendations
-
-When discussing metrics or comparisons, always present them in a clear format like:
-
-Metrics:
-ARR: $1.5M
-Growth Rate: 150%
-NRR: 120%
-CAC Payback: 18 months`;
-    }
-
-    // Add file analysis instructions to system message if attachments present
-    if (attachments && attachments.length > 0) {
-      systemMessage += `\n\nAnalyze all provided files and include their content in your analysis. For images, describe the metrics or data you observe.`;
-    }
-
-    // Prepare user content
     let userContent = message;
     if (attachments && attachments.length > 0) {
       const attachmentDescriptions = attachments.map(att => {
-        const type = att.type === 'image' ? 'Image' : 'Document';
-        return `${type}: ${att.name}\nURL: ${att.url}\n`;
+        if (att.type === 'image') {
+          return `Image: ${att.name}\nURL: ${att.url}\n`;
+        } else {
+          return `PDF Document: ${att.name}\nURL: ${att.url}\nPlease analyze this PDF document thoroughly and extract all relevant metrics and data points.\n`;
+        }
       }).join('\n');
 
-      userContent += `\n\nPlease analyze the following attachments:\n${attachmentDescriptions}`;
-      
-      if (attachments.some(att => att.type === 'image')) {
-        userContent += "\n\nThe images above show relevant information that should be included in the analysis.";
-      }
+      userContent += `\n\nPlease analyze the following documents and provide a comprehensive analysis:\n${attachmentDescriptions}\n\nFor PDFs, please extract and analyze all relevant metrics, then provide Python code for visualization and analysis.`;
     }
 
-    // Format messages for the API request
+    console.log('Preparing messages for OpenAI');
+
     const apiMessages = [
       {
         role: "system",
@@ -192,11 +172,10 @@ CAC Payback: 18 months`;
       body: JSON.stringify({
         model: "gpt-4o",
         messages: apiMessages,
-        max_tokens: 4096
+        max_tokens: 4096,
+        temperature: 0.7
       })
     });
-
-    console.log('OpenAI response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -226,24 +205,11 @@ CAC Payback: 18 months`;
       const chartData = metrics.map(metric => {
         const chartPoint: any = {
           category: metric.Metric,
+          value: metric.Value,
+          bottomQuartile: metric['Bottom Quartile'],
+          median: metric.Median,
+          topQuartile: metric['Top Quartile']
         };
-        
-        if (typeof metric.Value === 'number') {
-          chartPoint.value = metric.Value;
-        }
-        if (typeof metric['Bottom Quartile'] === 'number') {
-          chartPoint.value = metric['Bottom Quartile'];
-        }
-        if (typeof metric.Median === 'number') {
-          chartPoint.value = metric.Median;
-        }
-        if (typeof metric['Top Quartile'] === 'number') {
-          chartPoint.value = metric['Top Quartile'];
-        }
-        if (typeof metric['Top Decile'] === 'number') {
-          chartPoint.value = metric['Top Decile'];
-        }
-        
         return chartPoint;
       }).filter(point => typeof point.value === 'number');
 
@@ -253,7 +219,7 @@ CAC Payback: 18 months`;
           chartType: 'bar',
           data: chartData,
           xKey: 'category',
-          yKeys: ['value'],
+          yKeys: ['value', 'bottomQuartile', 'median', 'topQuartile'],
           height: 400
         });
       }
