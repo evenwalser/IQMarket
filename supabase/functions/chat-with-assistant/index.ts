@@ -1,9 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from '@supabase/supabase-js';
-import { parse as parseCSV } from 'https://deno.land/std@0.181.0/encoding/csv.ts';
-import * as XLSX from 'https://deno.land/x/xlsx@v0.0.2/mod.ts';
-import { decode as base64Decode } from 'https://deno.land/std@0.181.0/encoding/base64.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { parse as parseCSV } from "https://deno.land/std@0.181.0/encoding/csv.ts";
+import * as XLSX from "https://deno.land/x/xlsx@v0.0.2/mod.ts";
+import { decode as base64Decode } from "https://deno.land/std@0.181.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
