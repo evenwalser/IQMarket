@@ -12,41 +12,17 @@ export const useFileAttachments = () => {
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    console.log('Files selected for upload:', files.map(f => ({
-      name: f.name,
-      type: f.type,
-      size: f.size
-    })));
+    setAttachments(prev => [...prev, ...files]);
     
     try {
       for (const file of files) {
         const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
-        console.log('Generated file path:', filePath);
-        
-        const { data: existingFile } = await supabase
-          .from('chat_attachments')
-          .select('*')
-          .eq('file_name', file.name)
-          .eq('size', file.size)
-          .single();
-
-        if (existingFile) {
-          console.log('File already exists:', existingFile);
-          setAttachments(prev => [...prev, file]);
-          setUploadedAttachments(prev => [...prev, existingFile]);
-          continue;
-        }
         
         const { error: uploadError } = await supabase.storage
           .from('chat-attachments')
           .upload(filePath, file);
 
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          throw uploadError;
-        }
-
-        console.log('File uploaded to storage successfully');
+        if (uploadError) throw uploadError;
 
         const { data, error: insertError } = await supabase
           .from('chat_attachments')
@@ -59,20 +35,15 @@ export const useFileAttachments = () => {
           .select()
           .single();
 
-        if (insertError) {
-          console.error('Database insert error:', insertError);
-          throw insertError;
-        }
+        if (insertError) throw insertError;
 
         if (data) {
-          console.log('File metadata saved to database:', data);
-          setAttachments(prev => [...prev, file]);
           setUploadedAttachments(prev => [...prev, data]);
           toast.success(`File ${file.name} uploaded successfully`);
         }
       }
     } catch (error) {
-      console.error('Error in file upload process:', error);
+      console.error('Error uploading file:', error);
       toast.error('Failed to upload file: ' + (error as Error).message);
     }
   };

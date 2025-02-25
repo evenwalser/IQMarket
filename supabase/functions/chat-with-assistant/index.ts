@@ -1,12 +1,77 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+function parseMetrics(text: string) {
+  const metrics: any[] = [];
+  const lines = text.split('\n');
+  let isInMetricsSection = false;
+  let currentMetric: any = {};
+
+  for (const line of lines) {
+    // Skip empty lines and code blocks
+    if (!line.trim() || line.includes('```') || line.includes('import') || line.includes('plt.')) {
+      continue;
+    }
+
+    // Check for metrics section headers
+    if (line.toLowerCase().includes('metrics:') || line.toLowerCase().includes('comparison:')) {
+      isInMetricsSection = true;
+      continue;
+    }
+
+    if (isInMetricsSection && line.includes(':')) {
+      const [key, valueStr] = line.split(':').map(s => s.trim());
+      if (key && valueStr) {
+        // Clean the value string
+        const cleanValue = valueStr
+          .replace('$', '')
+          .replace('M', '000000')
+          .replace('K', '000')
+          .replace('%', '')
+          .replace('months', '')
+          .replace('~', '')
+          .replace('x', '')
+          .trim();
+
+        // Try to parse as number if possible
+        const value = !isNaN(parseFloat(cleanValue)) ? parseFloat(cleanValue) : cleanValue;
+
+        if (value !== '') {
+          currentMetric = { Metric: key };
+          
+          // Determine the type of value and assign to appropriate column
+          if (valueStr.toLowerCase().includes('quartile')) {
+            if (valueStr.toLowerCase().includes('top')) {
+              currentMetric['Top Quartile'] = value;
+            } else if (valueStr.toLowerCase().includes('bottom')) {
+              currentMetric['Bottom Quartile'] = value;
+            }
+          } else if (valueStr.toLowerCase().includes('median')) {
+            currentMetric['Median'] = value;
+          } else if (valueStr.toLowerCase().includes('decile')) {
+            if (valueStr.toLowerCase().includes('top')) {
+              currentMetric['Top Decile'] = value;
+            }
+          } else {
+            currentMetric['Value'] = value;
+          }
+
+          metrics.push(currentMetric);
+        }
+      }
+    }
+  }
+
+  return metrics;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -14,234 +79,132 @@ serve(async (req) => {
   }
 
   try {
-    const { message, assistantType, attachments, threadId } = await req.json();
-    console.log('Received request:', { message, assistantType, attachmentCount: attachments?.length, threadId });
+    const { message, assistantType, attachments } = await req.json();
 
-    const openAiApiKey = Deno.env.get('OPENAI_API_KEY');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Prepare the messages array with the system message and user query
+    const messages = [
+      {
+        role: "system",
+        content: `You are an AI advisor specializing in ${assistantType}. When discussing metrics or comparisons, always present them in a clear format like:
 
-    // Step 1: Upload files to OpenAI
-    let openAiFileIds: string[] = [];
+Metrics:
+ARR: $1.5M
+Growth Rate: 150%
+NRR: 120%
+CAC Payback: 18 months
+
+For benchmarks, use this format:
+Metric: Value
+Bottom Quartile: value
+Median: value
+Top Quartile: value
+Top Decile: value (if available)
+`
+      },
+      {
+        role: "user",
+        content: message
+      }
+    ];
+
+    // Add attachments to the message if present
     if (attachments && attachments.length > 0) {
-      console.log('Processing attachments:', attachments);
-
-      for (const attachment of attachments) {
-        // Download file from Supabase
-        const { data: fileBuffer, error: downloadError } = await supabase.storage
-          .from('chat-attachments')
-          .download(attachment.file_path);
-
-        if (downloadError) {
-          throw new Error(`Failed to download file from Supabase: ${downloadError.message}`);
-        }
-
-        // Create form data with the actual file
-        const formData = new FormData();
-        formData.append('file', new Blob([fileBuffer], { type: attachment.content_type }), attachment.file_name);
-        formData.append('purpose', 'assistants');
-
-        console.log('Uploading file to OpenAI:', {
-          name: attachment.file_name,
-          type: attachment.content_type,
-          size: fileBuffer.size
-        });
-
-        const openAiUploadResponse = await fetch('https://api.openai.com/v1/files', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'OpenAI-Beta': 'assistants=v2'
-          },
-          body: formData
-        });
-
-        const uploadResult = await openAiUploadResponse.json();
-        console.log('OpenAI file upload response:', uploadResult);
-
-        if (!openAiUploadResponse.ok) {
-          throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(uploadResult)}`);
-        }
-
-        openAiFileIds.push(uploadResult.id);
-      }
+      messages[1].content += "\n\nAttachments:\n" + 
+        attachments.map(att => `- ${att.name}: ${att.url}`).join('\n');
     }
 
-    // Step 2: Create or use existing thread
-    let currentThreadId = threadId;
-    
-    if (!currentThreadId) {
-      // Create the thread with just the message
-      const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAiApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2'
-        },
-        body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: message
-          }]
-        })
-      });
-
-      const threadData = await createThreadResponse.json();
-      console.log('Thread creation response:', threadData);
-
-      if (!createThreadResponse.ok) {
-        throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
-      }
-
-      currentThreadId = threadData.id;
-    } else {
-      // For existing threads, add new message
-      const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAiApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2'
-        },
-        body: JSON.stringify({
-          role: 'user',
-          content: message
-        })
-      });
-
-      const messageData = await addMessageResponse.json();
-      console.log('Message addition response:', messageData);
-
-      if (!addMessageResponse.ok) {
-        throw new Error(`Failed to add message: ${JSON.stringify(messageData)}`);
-      }
-    }
-
-    // Step 3: Create a run with the correct model and attach files
-    const assistantId = Deno.env.get(`${assistantType.toUpperCase()}_ASSISTANT_ID`);
-    const createRunResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        assistant_id: assistantId,
-        model: 'gpt-4o-mini-2024-07-18',
-        file_ids: openAiFileIds // Attach files during run creation
+        model: "gpt-4o-mini",
+        messages,
+        temperature: 0.7,
       })
     });
 
-    const runData = await createRunResponse.json();
-    console.log('Run creation response:', runData);
-
-    if (!createRunResponse.ok) {
-      throw new Error(`Failed to create run: ${JSON.stringify(runData)}`);
+    if (!response.ok) {
+      throw new Error('Failed to get response from OpenAI');
     }
 
-    // Step 4: Poll for completion
-    let runStatus = runData.status;
-    let attempts = 0;
-    const maxAttempts = 60;
+    const data = await response.json();
+    const assistantResponse = data.choices[0].message.content;
 
-    while (runStatus === 'queued' || runStatus === 'in_progress') {
-      if (attempts >= maxAttempts) {
-        throw new Error('Run timed out');
-      }
+    // Parse metrics from the response
+    const metrics = parseMetrics(assistantResponse);
+    console.log('Parsed metrics:', metrics);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    let visualizations = [];
+    
+    if (metrics.length > 0) {
+      // Create table visualization
+      visualizations.push({
+        type: 'table',
+        data: metrics,
+        headers: Object.keys(metrics[0])
+      });
 
-      const checkStatusResponse = await fetch(
-        `https://api.openai.com/v1/threads/${currentThreadId}/runs/${runData.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v2'
-          }
-        }
-      );
-
-      const statusData = await checkStatusResponse.json();
-      console.log(`Run status check attempt ${attempts + 1}:`, statusData);
-
-      if (!checkStatusResponse.ok) {
-        throw new Error(`Failed to check run status: ${JSON.stringify(statusData)}`);
-      }
-
-      runStatus = statusData.status;
-      attempts++;
-    }
-
-    if (runStatus !== 'completed') {
-      throw new Error(`Run failed with status: ${runStatus}`);
-    }
-
-    // Step 5: Retrieve messages
-    const messagesResponse = await fetch(
-      `https://api.openai.com/v1/threads/${currentThreadId}/messages`,
-      {
-        headers: {
-          'Authorization': `Bearer ${openAiApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2'
-        }
-      }
-    );
-
-    const messagesData = await messagesResponse.json();
-    console.log('Messages retrieval response:', messagesData);
-
-    if (!messagesResponse.ok) {
-      throw new Error(`Failed to retrieve messages: ${JSON.stringify(messagesData)}`);
-    }
-
-    // Get the latest assistant message
-    const assistantMessages = messagesData.data.filter((msg: any) => msg.role === 'assistant');
-    const latestMessage = assistantMessages[0];
-
-    if (!latestMessage) {
-      throw new Error('No assistant response found');
-    }
-
-    // Clean up OpenAI files after use
-    for (const fileId of openAiFileIds) {
-      try {
-        const deleteResponse = await fetch(`https://api.openai.com/v1/files/${fileId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'OpenAI-Beta': 'assistants=v2'
-          }
-        });
+      // Create chart visualization for comparing metrics
+      // Filter metrics that have numerical values
+      const chartData = metrics.map(metric => {
+        const chartPoint: any = {
+          category: metric.Metric,
+        };
         
-        console.log(`File cleanup response for ${fileId}:`, await deleteResponse.json());
-      } catch (error) {
-        console.error(`Failed to delete file ${fileId}:`, error);
+        if (typeof metric.Value === 'number') {
+          chartPoint.value = metric.Value;
+        }
+        if (typeof metric['Bottom Quartile'] === 'number') {
+          chartPoint.value = metric['Bottom Quartile'];
+        }
+        if (typeof metric.Median === 'number') {
+          chartPoint.value = metric.Median;
+        }
+        if (typeof metric['Top Quartile'] === 'number') {
+          chartPoint.value = metric['Top Quartile'];
+        }
+        if (typeof metric['Top Decile'] === 'number') {
+          chartPoint.value = metric['Top Decile'];
+        }
+        
+        return chartPoint;
+      }).filter(point => typeof point.value === 'number');
+
+      if (chartData.length > 0) {
+        visualizations.push({
+          type: 'chart',
+          chartType: 'bar',
+          data: chartData,
+          xKey: 'category',
+          yKeys: ['value'],
+          height: 400
+        });
       }
     }
+
+    console.log('Created visualizations:', visualizations);
 
     return new Response(
       JSON.stringify({
-        response: latestMessage.content[0].text.value,
-        thread_id: currentThreadId,
-        assistant_id: assistantId,
-        run_id: runData.id
+        response: assistantResponse,
+        visualizations: visualizations
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
     );
 
   } catch (error) {
-    console.error('Error in chat-with-assistant:', error);
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
+      { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
