@@ -10,7 +10,6 @@ import { SearchModes } from "@/components/SearchModes";
 import { ConversationList } from "@/components/ConversationList";
 import { ChatInterface } from "@/components/ChatInterface";
 import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface UploadedAttachment {
   id: string;
@@ -235,21 +234,6 @@ const Index = () => {
     }
   };
 
-  const testAssistantAPI = async () => {
-    try {
-      toast.loading('Testing Assistant API...', { id: 'test' });
-      const { data, error } = await supabase.functions.invoke('test-assistant');
-      
-      if (error) throw error;
-      
-      console.log('Test results:', data);
-      toast.success('API Test completed! Check console for results', { id: 'test' });
-    } catch (error) {
-      console.error('Test error:', error);
-      toast.error('API Test failed! Check console for details', { id: 'test' });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <Header />
@@ -273,13 +257,6 @@ const Index = () => {
                 </div>
                 <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
               </div>
-              <Button 
-                variant="outline"
-                className="mt-4"
-                onClick={testAssistantAPI}
-              >
-                Test Assistant API
-              </Button>
             </div>
 
             <div className="flex gap-6">
