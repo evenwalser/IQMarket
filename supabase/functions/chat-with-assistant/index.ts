@@ -73,7 +73,7 @@ serve(async (req) => {
     let currentThreadId = threadId;
     
     if (!currentThreadId) {
-      // First create the thread with just the message
+      // Create the thread with just the message
       const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
         headers: {
@@ -97,30 +97,6 @@ serve(async (req) => {
       }
 
       currentThreadId = threadData.id;
-
-      // Then attach files to the thread using PATCH if we have any
-      if (openAiFileIds.length > 0) {
-        console.log('Attaching files to thread:', { thread_id: currentThreadId, file_ids: openAiFileIds });
-        
-        const attachFilesResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v2'
-          },
-          body: JSON.stringify({
-            file_ids: openAiFileIds
-          })
-        });
-
-        const attachFilesData = await attachFilesResponse.json();
-        console.log('File attachment response:', attachFilesData);
-
-        if (!attachFilesResponse.ok) {
-          throw new Error(`Failed to attach files to thread: ${JSON.stringify(attachFilesData)}`);
-        }
-      }
     } else {
       // For existing threads, add new message
       const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
@@ -142,33 +118,9 @@ serve(async (req) => {
       if (!addMessageResponse.ok) {
         throw new Error(`Failed to add message: ${JSON.stringify(messageData)}`);
       }
-
-      // Then attach any new files to the existing thread
-      if (openAiFileIds.length > 0) {
-        console.log('Attaching new files to existing thread:', { thread_id: currentThreadId, file_ids: openAiFileIds });
-        
-        const attachFilesResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${openAiApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v2'
-          },
-          body: JSON.stringify({
-            file_ids: openAiFileIds
-          })
-        });
-
-        const attachFilesData = await attachFilesResponse.json();
-        console.log('File attachment response:', attachFilesData);
-
-        if (!attachFilesResponse.ok) {
-          throw new Error(`Failed to attach files to thread: ${JSON.stringify(attachFilesData)}`);
-        }
-      }
     }
 
-    // Step 3: Create a run with the correct model
+    // Step 3: Create a run with the correct model and attach files
     const assistantId = Deno.env.get(`${assistantType.toUpperCase()}_ASSISTANT_ID`);
     const createRunResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
       method: 'POST',
@@ -179,7 +131,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         assistant_id: assistantId,
-        model: 'gpt-4o-mini-2024-07-18'
+        model: 'gpt-4o-mini-2024-07-18',
+        file_ids: openAiFileIds // Attach files during run creation
       })
     });
 
