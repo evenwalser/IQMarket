@@ -18,25 +18,8 @@ serve(async (req) => {
 
     console.log('Starting API test with assistant ID:', assistantId);
 
-    // Create a thread
-    const threadResponse = await fetch("https://api.openai.com/v1/threads", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openAiApiKey}`,
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "assistants=v2"
-      }
-    });
-
-    const threadData = await threadResponse.json();
-    console.log('Thread created:', threadData);
-
-    if (!threadResponse.ok) {
-      throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
-    }
-
-    // Add a test message with financial data
-    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
+    // Step 1: Create a thread with the initial message
+    const createThreadResponse = await fetch("https://api.openai.com/v1/threads", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openAiApiKey}`,
@@ -44,25 +27,27 @@ serve(async (req) => {
         "OpenAI-Beta": "assistants=v2"
       },
       body: JSON.stringify({
-        role: "user",
-        content: `Here is our financial data for analysis:
+        messages: [{
+          role: "user",
+          content: `Here is our financial data for analysis:
 Annual Recurring Revenue (ARR): $5M
 Year-over-Year Growth Rate: 120%
 Net Revenue Retention (NRR): 115%
 Customer Acquisition Cost (CAC) Payback: 18 months
 
 Please extract these metrics and list them as raw values without any additional commentary.`
+        }]
       })
     });
 
-    const messageData = await messageResponse.json();
-    console.log('Message added:', messageData);
+    const threadData = await createThreadResponse.json();
+    console.log('Thread created with message:', threadData);
 
-    if (!messageResponse.ok) {
-      throw new Error(`Failed to add message: ${JSON.stringify(messageData)}`);
+    if (!createThreadResponse.ok) {
+      throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
     }
 
-    // Run the assistant
+    // Step 2: Create a run to process the message
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
       method: "POST",
       headers: {
@@ -71,7 +56,8 @@ Please extract these metrics and list them as raw values without any additional 
         "OpenAI-Beta": "assistants=v2"
       },
       body: JSON.stringify({
-        assistant_id: assistantId
+        assistant_id: assistantId,
+        model: "gpt-4o-mini"  // Explicitly specify the model
       })
     });
 
@@ -79,10 +65,10 @@ Please extract these metrics and list them as raw values without any additional 
     console.log('Run created:', runData);
 
     if (!runResponse.ok) {
-      throw new Error(`Failed to run assistant: ${JSON.stringify(runData)}`);
+      throw new Error(`Failed to create run: ${JSON.stringify(runData)}`);
     }
 
-    // Poll for completion
+    // Step 3: Poll for run completion
     let runStatus = runData.status;
     let attempts = 0;
     const maxAttempts = 60;
@@ -120,7 +106,7 @@ Please extract these metrics and list them as raw values without any additional 
       throw new Error(`Assistant run failed with status: ${runStatus}`);
     }
 
-    // Get the final message and validate extraction
+    // Step 4: Retrieve the assistant's response
     const messagesResponse = await fetch(
       `https://api.openai.com/v1/threads/${threadData.id}/messages`,
       {
@@ -152,7 +138,6 @@ Please extract these metrics and list them as raw values without any additional 
     return new Response(
       JSON.stringify({ 
         threadId: threadData.id,
-        messageId: messageData.id,
         runId: runData.id,
         status: 'Test completed successfully',
         extractedResponse,
