@@ -73,17 +73,7 @@ serve(async (req) => {
     let currentThreadId = threadId;
     
     if (!currentThreadId) {
-      // Correctly structure the thread creation payload
-      const threadPayload = {
-        messages: [{
-          role: 'user',
-          content: message
-        }],
-        file_ids: openAiFileIds // Files attached at thread level
-      };
-
-      console.log('Creating thread with payload:', threadPayload);
-
+      // First create the thread with just the message
       const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
         headers: {
@@ -91,7 +81,12 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'OpenAI-Beta': 'assistants=v2'
         },
-        body: JSON.stringify(threadPayload)
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: message
+          }]
+        })
       });
 
       const threadData = await createThreadResponse.json();
@@ -102,8 +97,32 @@ serve(async (req) => {
       }
 
       currentThreadId = threadData.id;
+
+      // Then attach files to the thread using PATCH if we have any
+      if (openAiFileIds.length > 0) {
+        console.log('Attaching files to thread:', { thread_id: currentThreadId, file_ids: openAiFileIds });
+        
+        const attachFilesResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${openAiApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2'
+          },
+          body: JSON.stringify({
+            file_ids: openAiFileIds
+          })
+        });
+
+        const attachFilesData = await attachFilesResponse.json();
+        console.log('File attachment response:', attachFilesData);
+
+        if (!attachFilesResponse.ok) {
+          throw new Error(`Failed to attach files to thread: ${JSON.stringify(attachFilesData)}`);
+        }
+      }
     } else {
-      // For existing threads, add message normally
+      // For existing threads, add new message
       const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
         method: 'POST',
         headers: {
@@ -113,8 +132,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           role: 'user',
-          content: message,
-          file_ids: openAiFileIds
+          content: message
         })
       });
 
@@ -123,6 +141,30 @@ serve(async (req) => {
 
       if (!addMessageResponse.ok) {
         throw new Error(`Failed to add message: ${JSON.stringify(messageData)}`);
+      }
+
+      // Then attach any new files to the existing thread
+      if (openAiFileIds.length > 0) {
+        console.log('Attaching new files to existing thread:', { thread_id: currentThreadId, file_ids: openAiFileIds });
+        
+        const attachFilesResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${openAiApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2'
+          },
+          body: JSON.stringify({
+            file_ids: openAiFileIds
+          })
+        });
+
+        const attachFilesData = await attachFilesResponse.json();
+        console.log('File attachment response:', attachFilesData);
+
+        if (!attachFilesResponse.ok) {
+          throw new Error(`Failed to attach files to thread: ${JSON.stringify(attachFilesData)}`);
+        }
       }
     }
 
