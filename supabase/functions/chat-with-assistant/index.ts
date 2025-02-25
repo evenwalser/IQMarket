@@ -71,17 +71,19 @@ serve(async (req) => {
 
     // Step 2: Create or use existing thread
     let currentThreadId = threadId;
-    const threadBody = {
-      messages: [{
-        role: 'user',
-        content: message,
-        file_ids: openAiFileIds
-      }]
-    };
-
-    console.log('Creating thread with payload:', threadBody);
-
+    
     if (!currentThreadId) {
+      // Correctly structure the thread creation payload
+      const threadPayload = {
+        messages: [{
+          role: 'user',
+          content: message
+        }],
+        file_ids: openAiFileIds // Files attached at thread level
+      };
+
+      console.log('Creating thread with payload:', threadPayload);
+
       const createThreadResponse = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
         headers: {
@@ -89,7 +91,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'OpenAI-Beta': 'assistants=v2'
         },
-        body: JSON.stringify(threadBody)
+        body: JSON.stringify(threadPayload)
       });
 
       const threadData = await createThreadResponse.json();
@@ -101,6 +103,7 @@ serve(async (req) => {
 
       currentThreadId = threadData.id;
     } else {
+      // For existing threads, add message normally
       const addMessageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
         method: 'POST',
         headers: {
