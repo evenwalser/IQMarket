@@ -121,32 +121,34 @@ export const UnifiedSearch = ({
         />
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-start gap-4">
         <div className="flex-1">
-          <div className="flex gap-3">
+          <div className="flex gap-3 relative">
             {['knowledge', 'benchmarks', 'frameworks'].map((mode) => (
-              <Button
-                key={mode}
-                variant="outline"
-                className={`flex-1 py-4 px-4 flex items-center justify-between border-2 ${
-                  selectedMode === mode ? 'border-gray-900 bg-gray-50' : ''
-                }`}
-                onClick={() => setSelectedMode(mode as AssistantType)}
-                onMouseEnter={() => setShowModeExplainer(mode as AssistantType)}
-                onMouseLeave={() => setShowModeExplainer(null)}
-              >
-                <span className="text-sm font-medium capitalize">{mode}</span>
+              <div key={mode} className="flex-1 relative">
+                <Button
+                  variant="outline"
+                  className={`w-full py-4 px-4 flex items-center justify-between border-2 ${
+                    selectedMode === mode ? 'border-gray-900 bg-gray-50' : ''
+                  }`}
+                  onClick={() => setSelectedMode(mode as AssistantType)}
+                  onMouseEnter={() => setShowModeExplainer(mode as AssistantType)}
+                  onMouseLeave={() => setShowModeExplainer(null)}
+                >
+                  <span className="text-sm font-medium capitalize">{mode}</span>
+                </Button>
+                
                 {showModeExplainer === mode && (
-                  <div className="absolute z-10 bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs mt-2 top-full">
+                  <div className="absolute z-10 bg-white p-4 rounded-lg shadow-lg border border-gray-200 w-72 mt-2 left-0 right-0">
                     <ModeExplainer mode={mode as AssistantType} />
                   </div>
                 )}
-              </Button>
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 shrink-0">
           <Switch
             id="structured-output"
             checked={structuredOutput}
@@ -154,7 +156,7 @@ export const UnifiedSearch = ({
           />
           <div className="flex items-center gap-1.5">
             <LayoutTemplate className="h-4 w-4 text-gray-600" />
-            <label htmlFor="structured-output" className="text-sm text-gray-700">
+            <label htmlFor="structured-output" className="text-sm text-gray-700 whitespace-nowrap">
               Structured Output
             </label>
           </div>
