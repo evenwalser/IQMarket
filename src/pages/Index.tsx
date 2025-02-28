@@ -138,6 +138,29 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
+  const processAssistantResponse = (data: any) => {
+    // Set thread ID for conversation continuity
+    if (data.thread_id) {
+      setThreadId(data.thread_id);
+    }
+
+    const visualizations = (data.visualizations || []).map((viz: any) => {
+      console.log("Processing visualization:", viz);
+      return {
+        type: viz.type,
+        data: viz.data,
+        headers: viz.headers,
+        chartType: viz.chartType,
+        xKey: viz.xKey,
+        yKeys: viz.yKeys,
+        height: viz.height
+      };
+    }) as Json[];
+
+    console.log('Final processed visualizations:', visualizations);
+    return visualizations;
+  };
+
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a question");
@@ -193,25 +216,7 @@ const Index = () => {
         throw new Error('No response received from assistant');
       }
       
-      // Set thread ID for conversation continuity
-      if (data.thread_id) {
-        setThreadId(data.thread_id);
-      }
-
-      const visualizations = (data.visualizations || []).map((viz: any) => {
-        console.log("Processing visualization:", viz);
-        return {
-          type: viz.type,
-          data: viz.data,
-          headers: viz.headers,
-          chartType: viz.chartType,
-          xKey: viz.xKey,
-          yKeys: viz.yKeys,
-          height: viz.height
-        };
-      }) as Json[];
-
-      console.log('Final processed visualizations:', visualizations);
+      const visualizations = processAssistantResponse(data);
 
       const { error: dbError } = await supabase
         .from('conversations')
@@ -237,6 +242,64 @@ const Index = () => {
       toast.error("Failed to get response. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReply = async (threadId: string, message: string, assistantType: string) => {
+    if (!message.trim()) return;
+    
+    try {
+      console.log(`Sending reply to thread ${threadId}:`, {
+        message,
+        assistantType,
+        structuredOutput
+      });
+      
+      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
+        body: {
+          message,
+          assistantType,
+          threadId,
+          structuredOutput
+        }
+      });
+      
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+      
+      if (!data || !data.response) {
+        console.error("No response data received");
+        throw new Error('No response received from assistant');
+      }
+      
+      const visualizations = processAssistantResponse(data);
+      
+      // Insert the new conversation in the database
+      const { error: dbError } = await supabase
+        .from('conversations')
+        .insert({
+          query: message,
+          response: data.response,
+          assistant_type: assistantType,
+          thread_id: data.thread_id,
+          assistant_id: data.assistant_id,
+          visualizations: visualizations
+        });
+      
+      if (dbError) {
+        console.error('Error storing conversation:', dbError);
+        throw dbError;
+      }
+      
+      // Reload conversations to show the new reply
+      await loadConversations();
+      toast.success("Reply sent!");
+    } catch (error) {
+      console.error("Error sending reply:", error);
+      toast.error("Failed to send reply. Please try again.");
+      throw error;
     }
   };
 
@@ -277,7 +340,10 @@ const Index = () => {
                 setStructuredOutput={setStructuredOutput}
               />
 
-              <ConversationList conversations={conversations} />
+              <ConversationList 
+                conversations={conversations} 
+                onReply={handleReply}
+              />
             </div>
           </div>
         </div>
