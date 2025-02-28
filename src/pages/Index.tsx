@@ -93,7 +93,7 @@ const Index = () => {
         .select('*')
         .eq('session_id', sessId)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50); // Increased limit to get more messages for the thread
       
       if (error) throw error;
       

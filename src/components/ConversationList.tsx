@@ -48,10 +48,15 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
     );
   }
 
+  // Sort conversations chronologically - oldest first
+  const sortedConversations = [...conversations].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
   return (
     <div className="space-y-8">
       <div className="space-y-6">
-        {conversations.map((conversation) => {
+        {sortedConversations.map((conversation) => {
           const isReplyActive = activeReply === conversation.id;
           const isBenchmarks = conversation.assistant_type === 'benchmarks';
           
@@ -70,18 +75,6 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                         {conversation.assistant_type}
                       </span>
                     </div>
-                    
-                    {!isReplyActive && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-gray-500 flex items-center gap-1"
-                        onClick={() => setActiveReply(conversation.id)}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>Reply</span>
-                      </Button>
-                    )}
                   </div>
                   
                   <div className="space-y-4">
@@ -118,6 +111,20 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                           )}
                         </div>
                       ))}
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      {!isReplyActive && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-gray-500 flex items-center gap-1"
+                          onClick={() => setActiveReply(conversation.id)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          <span>Reply</span>
+                        </Button>
+                      )}
                     </div>
                     
                     {isReplyActive && (
