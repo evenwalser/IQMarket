@@ -1,6 +1,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import OpenAI from 'https://esm.sh/openai@4.0.0';
+import OpenAI from 'https://esm.sh/openai@3.3.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Get OpenAI client - Fix: properly initialize OpenAI
+    // Get OpenAI client - switching to version 3.3.0 which has a stable API structure
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY')
     });
