@@ -12,9 +12,3 @@ verify_jwt = false
 
 [functions.search-with-attachments]
 verify_jwt = false
-
-[functions.check-openai-key]
-verify_jwt = false
-
-[functions.set-openai-key]
-verify_jwt = false
