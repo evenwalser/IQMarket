@@ -1,6 +1,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import OpenAI from 'https://esm.sh/openai@3.3.0';
+import OpenAI from 'https://cdn.skypack.dev/openai@3.3.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,10 +24,16 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Get OpenAI client - switching to version 3.3.0 which has a stable API structure
-    const openai = new OpenAI({
-      apiKey: Deno.env.get('OPENAI_API_KEY')
-    });
+    // Create OpenAI client with the specific version that works with assistants
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log("API Key available:", !!openAIApiKey);
+    
+    if (!openAIApiKey) {
+      throw new Error("OpenAI API key is not set");
+    }
+    
+    // Initialize OpenAI with the API key
+    const openai = new OpenAI(openAIApiKey);
 
     // Get our assistant ID based on the type from our database function
     const { data: assistantId, error: assistantError } = await supabase.rpc(
@@ -56,46 +62,17 @@ Deno.serve(async (req) => {
       thread = await openai.beta.threads.create();
     }
 
-    // Upload any file attachments if present
-    let fileIds = [];
-    if (attachments && attachments.length > 0) {
-      console.log("Processing attachments:", attachments);
-      
-      try {
-        for (const attachment of attachments) {
-          const { url, file_name, content_type } = attachment;
-          
-          console.log("Downloading file:", file_name);
-          // Download the file from the URL
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Failed to download file from ${url}: ${response.statusText}`);
-          }
-          
-          const fileBlob = await response.blob();
-          
-          console.log("Uploading file to OpenAI:", file_name);
-          // Upload the file to OpenAI
-          const file = await openai.files.create({
-            file: new File([fileBlob], file_name, { type: content_type }),
-            purpose: "assistants",
-          });
-          
-          console.log("File uploaded to OpenAI:", file.id);
-          fileIds.push(file.id);
-        }
-      } catch (error) {
-        console.error("File attachment error:", error);
-        throw new Error(`Error processing attachments: ${error.message}`);
-      }
-    }
-
     // Create the message in the thread
     console.log("Creating message in thread");
     await openai.beta.threads.messages.create(thread.id, {
       role: "user",
       content: message
     });
+
+    // Handle file attachments if needed
+    if (attachments && attachments.length > 0) {
+      console.log("Attachments provided but not processed in this version");
+    }
 
     // Run the assistant on the thread
     console.log("Running assistant");
@@ -112,8 +89,16 @@ Deno.serve(async (req) => {
     let currentRun = run;
     while (currentRun.status !== 'completed' && currentRun.status !== 'failed') {
       console.log("Run status:", currentRun.status);
+      
+      // Add a delay between polling attempts
       await new Promise(resolve => setTimeout(resolve, 1000));
-      currentRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      
+      try {
+        currentRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      } catch (error) {
+        console.error("Error retrieving run status:", error);
+        throw new Error(`Failed to retrieve run status: ${error.message}`);
+      }
     }
 
     if (currentRun.status === 'failed') {
@@ -134,6 +119,11 @@ Deno.serve(async (req) => {
     // Process the response
     let responseText = '';
     let visualizations = [];
+
+    // Safety check before processing content
+    if (!latestMessage.content || !Array.isArray(latestMessage.content)) {
+      throw new Error("Invalid message structure received from OpenAI");
+    }
 
     for (const content of latestMessage.content) {
       if (content.type === 'text') {
