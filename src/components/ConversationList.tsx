@@ -50,8 +50,6 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-semibold text-gray-800">Recent Conversations</h2>
-      
       <div className="space-y-6">
         {conversations.map((conversation) => {
           const isReplyActive = activeReply === conversation.id;

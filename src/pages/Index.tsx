@@ -27,16 +27,36 @@ const Index = () => {
   const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
+  const [sessionId, setSessionId] = useState<string>("");
 
   useEffect(() => {
-    loadConversations();
+    // Initialize or retrieve session ID
+    initializeSession();
   }, []);
 
-  const loadConversations = async () => {
+  const initializeSession = () => {
+    // Check if session ID exists in local storage
+    let existingSessionId = localStorage.getItem("conversation_session_id");
+    
+    // If no session ID exists, create a new one
+    if (!existingSessionId) {
+      existingSessionId = crypto.randomUUID();
+      localStorage.setItem("conversation_session_id", existingSessionId);
+    }
+    
+    setSessionId(existingSessionId);
+    
+    // Load conversations for this session
+    loadConversations(existingSessionId);
+  };
+
+  const loadConversations = async (sessId: string) => {
     try {
+      // Filter conversations by current session ID
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
+        .eq('session_id', sessId)
         .order('created_at', { ascending: false })
         .limit(10);
       
@@ -226,14 +246,15 @@ const Index = () => {
           assistant_type: selectedMode,
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
-          visualizations: visualizations
+          visualizations: visualizations,
+          session_id: sessionId // Add session ID to conversation
         });
 
       if (dbError) {
         console.error('Error storing conversation:', dbError);
         toast.error('Failed to save conversation');
       } else {
-        await loadConversations();
+        await loadConversations(sessionId);
         clearAttachments();
         toast.success("Response received!");
       }
@@ -285,7 +306,8 @@ const Index = () => {
           assistant_type: assistantType,
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
-          visualizations: visualizations
+          visualizations: visualizations,
+          session_id: sessionId // Add session ID to conversation
         });
       
       if (dbError) {
@@ -294,13 +316,30 @@ const Index = () => {
       }
       
       // Reload conversations to show the new reply
-      await loadConversations();
+      await loadConversations(sessionId);
       toast.success("Reply sent!");
     } catch (error) {
       console.error("Error sending reply:", error);
       toast.error("Failed to send reply. Please try again.");
       throw error;
     }
+  };
+
+  const startNewSession = () => {
+    // Generate new session ID
+    const newSessionId = crypto.randomUUID();
+    
+    // Update localStorage and state
+    localStorage.setItem("conversation_session_id", newSessionId);
+    setSessionId(newSessionId);
+    
+    // Clear thread ID to start a new conversation thread
+    setThreadId(null);
+    
+    // Clear conversations list
+    setConversations([]);
+    
+    toast.success("Started a new conversation session");
   };
 
   return (
@@ -339,6 +378,17 @@ const Index = () => {
                 structuredOutput={structuredOutput}
                 setStructuredOutput={setStructuredOutput}
               />
+
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-800">Your Conversation</h2>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={startNewSession}
+                >
+                  Start New Conversation
+                </Button>
+              </div>
 
               <ConversationList 
                 conversations={conversations} 
