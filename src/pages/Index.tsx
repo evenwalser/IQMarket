@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { UnifiedSearch } from "@/components/UnifiedSearch";
 import { ConversationList } from "@/components/ConversationList";
 import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface UploadedAttachment {
   id: string;
