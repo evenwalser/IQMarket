@@ -133,8 +133,8 @@ export const UnifiedSearch = ({
           <Input 
             ref={inputRef}
             type="text" 
-            placeholder={voiceMode ? "Voice mode active. Start speaking..." : "Ask a question or search for information..."} 
-            className={`w-full h-14 pl-24 pr-32 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 ${voiceMode ? 'bg-gray-50' : ''}`}
+            placeholder={voiceMode ? "Voice mode active. Start speaking..." : "Ask our Intelligence anything about your business and journey"} 
+            className={`w-full h-14 pl-24 pr-32 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
             value={searchQuery} 
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => {
