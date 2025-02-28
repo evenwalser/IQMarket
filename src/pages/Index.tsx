@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -5,10 +6,8 @@ import type { ChatVisualization } from "@/types/chat";
 import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
-import { SearchInput } from "@/components/SearchInput";
-import { SearchModes } from "@/components/SearchModes";
+import { UnifiedSearch } from "@/components/UnifiedSearch";
 import { ConversationList } from "@/components/ConversationList";
-import { ChatInterface } from "@/components/ChatInterface";
 import { Sparkles } from "lucide-react";
 
 interface UploadedAttachment {
@@ -21,13 +20,13 @@ interface UploadedAttachment {
 }
 
 const Index = () => {
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
   const [isLoading, setIsLoading] = useState(false);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
 
   useEffect(() => {
     loadConversations();
@@ -139,7 +138,7 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
-  const handleSearch = async () => {
+  const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a question");
       return;
@@ -168,14 +167,17 @@ const Index = () => {
       console.log("Sending request to chat-with-assistant function:", {
         message: searchQuery,
         assistantType: selectedMode,
-        attachments: formattedAttachments
+        attachments: formattedAttachments,
+        structuredOutput: structuredOutput
       });
 
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {  // Remove JSON.stringify here
+        body: {
           message: searchQuery,
           assistantType: selectedMode,
-          attachments: formattedAttachments
+          attachments: formattedAttachments,
+          structuredOutput: structuredOutput,
+          threadId: threadId
         }
       });
       
@@ -189,6 +191,11 @@ const Index = () => {
       if (!data || !data.response) {
         console.error("No response data received");
         throw new Error('No response received from assistant');
+      }
+      
+      // Set thread ID for conversation continuity
+      if (data.thread_id) {
+        setThreadId(data.thread_id);
       }
 
       const visualizations = (data.visualizations || []).map((viz: any) => {
@@ -222,7 +229,6 @@ const Index = () => {
         toast.error('Failed to save conversation');
       } else {
         await loadConversations();
-        setSearchQuery("");
         clearAttachments();
         toast.success("Response received!");
       }
@@ -259,33 +265,19 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="flex gap-6">
-              <div className="w-[65%] space-y-12">
-                <section className="space-y-6">
-                  <div className="space-y-4">
-                    <SearchInput 
-                      searchQuery={searchQuery}
-                      setSearchQuery={setSearchQuery}
-                      handleSearch={handleSearch}
-                      isLoading={isLoading}
-                      showAttachMenu={showAttachMenu}
-                      setShowAttachMenu={setShowAttachMenu}
-                      handleFileUpload={handleFileUpload}
-                      attachments={attachments}
-                    />
-                    <SearchModes 
-                      selectedMode={selectedMode}
-                      setSelectedMode={setSelectedMode}
-                    />
-                  </div>
-                </section>
+            <div className="space-y-8">
+              <UnifiedSearch 
+                handleSearch={handleSearch}
+                isLoading={isLoading}
+                selectedMode={selectedMode}
+                setSelectedMode={setSelectedMode}
+                handleFileUpload={handleFileUpload}
+                attachments={attachments}
+                structuredOutput={structuredOutput}
+                setStructuredOutput={setStructuredOutput}
+              />
 
-                <ConversationList conversations={conversations} />
-              </div>
-
-              <div className="w-[35%] bg-white rounded-lg border border-gray-200 p-6 h-fit">
-                <ChatInterface />
-              </div>
+              <ConversationList conversations={conversations} />
             </div>
           </div>
         </div>
