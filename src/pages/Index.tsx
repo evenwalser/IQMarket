@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
 import type { ChatVisualization } from "@/types/chat";
-import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { UnifiedSearch } from "@/components/UnifiedSearch";
@@ -93,8 +92,14 @@ const Index = () => {
           
           // Add to typed data
           typedData.push({
-            ...item,
+            id: item.id,
+            created_at: item.created_at,
+            query: item.query,
+            response: item.response,
             assistant_type: item.assistant_type as AssistantType,
+            thread_id: item.thread_id,
+            session_id: item.session_id,
+            assistant_id: item.assistant_id,
             visualizations: parsedVisualizations
           });
         }
@@ -176,20 +181,25 @@ const Index = () => {
       setThreadId(data.thread_id);
     }
 
-    const visualizations = (data.visualizations || []).map((viz: any) => {
-      console.log("Processing visualization:", viz);
-      return {
-        type: viz.type,
-        data: viz.data,
-        headers: viz.headers,
-        chartType: viz.chartType,
-        xKey: viz.xKey,
-        yKeys: viz.yKeys,
-        height: viz.height
-      };
-    }) as Json[];
+    // Process visualization data safely
+    const visualizations: Array<any> = [];
+    
+    if (data.visualizations && Array.isArray(data.visualizations)) {
+      for (const viz of data.visualizations) {
+        if (typeof viz === 'object' && viz !== null) {
+          visualizations.push({
+            type: viz.type,
+            data: viz.data,
+            headers: viz.headers,
+            chartType: viz.chartType,
+            xKey: viz.xKey,
+            yKeys: viz.yKeys,
+            height: viz.height
+          });
+        }
+      }
+    }
 
-    console.log('Final processed visualizations:', visualizations);
     return visualizations;
   };
 

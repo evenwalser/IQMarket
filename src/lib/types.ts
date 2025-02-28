@@ -15,6 +15,8 @@ export interface Conversation {
   response: string;
   assistant_type: AssistantType;
   thread_id: string;
+  session_id: string;
+  assistant_id?: string;
   visualizations?: ChatVisualization[];
 }
 
