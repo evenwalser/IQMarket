@@ -8,7 +8,7 @@ export interface AssistantMessage {
   content: string;
 }
 
-// Avoid recursive type definitions by using a simple interface
+// Simplified Conversation type without nested references
 export interface Conversation {
   id: string;
   created_at: string;

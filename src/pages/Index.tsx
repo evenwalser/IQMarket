@@ -19,7 +19,17 @@ interface UploadedAttachment {
   created_at: string;
 }
 
-// Define a simpler intermediate type for database records
+// Define raw database record type
+interface DbVisualization {
+  type?: string;
+  data?: any[];
+  headers?: string[];
+  chartType?: string;
+  xKey?: string;
+  yKeys?: string[];
+  height?: number;
+}
+
 interface DbConversation {
   id: string;
   created_at: string;
@@ -29,15 +39,7 @@ interface DbConversation {
   thread_id: string;
   session_id: string;
   assistant_id: string | null;
-  visualizations: Array<{
-    type?: string;
-    data?: any[];
-    headers?: string[];
-    chartType?: string;
-    xKey?: string;
-    yKeys?: string[];
-    height?: number;
-  }> | null;
+  visualizations: DbVisualization[] | null;
 }
 
 const Index = () => {
@@ -71,44 +73,36 @@ const Index = () => {
     loadConversations(existingSessionId);
   };
 
-  // Convert database record to app Conversation type
-  const convertToConversation = (record: DbConversation): Conversation => {
-    // Create visualizations array without deep nesting
-    const visualizations: ChatVisualization[] = [];
+  // Create safe visualizations array from raw DB data
+  const createVisualizations = (rawVisualizations: DbVisualization[] | null): ChatVisualization[] => {
+    const result: ChatVisualization[] = [];
     
-    if (record.visualizations) {
-      for (const viz of record.visualizations) {
-        // Only process valid visualization objects
-        if (viz && typeof viz === 'object') {
-          const vizData: ChatVisualization = {
-            type: (viz.type as 'table' | 'chart') || 'table',
-            data: viz.data || []
-          };
-          
-          // Add optional properties if they exist
-          if (viz.headers) vizData.headers = viz.headers;
-          if (viz.chartType) vizData.chartType = (viz.chartType as 'line' | 'bar');
-          if (viz.xKey) vizData.xKey = viz.xKey;
-          if (viz.yKeys) vizData.yKeys = viz.yKeys;
-          if (viz.height) vizData.height = viz.height;
-          
-          visualizations.push(vizData);
-        }
-      }
+    if (!rawVisualizations) {
+      return result;
     }
     
-    // Create the conversation object manually to avoid deep type issues
-    return {
-      id: record.id,
-      created_at: record.created_at,
-      query: record.query,
-      response: record.response,
-      assistant_type: record.assistant_type as AssistantType,
-      thread_id: record.thread_id,
-      session_id: record.session_id,
-      assistant_id: record.assistant_id,
-      visualizations: visualizations.length > 0 ? visualizations : undefined
-    };
+    for (const rawViz of rawVisualizations) {
+      if (!rawViz || typeof rawViz !== 'object') {
+        continue;
+      }
+      
+      // Create a base visualization with required fields
+      const visualization: ChatVisualization = {
+        type: (rawViz.type as 'table' | 'chart') || 'table',
+        data: Array.isArray(rawViz.data) ? rawViz.data : []
+      };
+      
+      // Add optional fields if they exist
+      if (rawViz.headers) visualization.headers = rawViz.headers;
+      if (rawViz.chartType) visualization.chartType = (rawViz.chartType as 'line' | 'bar');
+      if (rawViz.xKey) visualization.xKey = rawViz.xKey;
+      if (rawViz.yKeys) visualization.yKeys = rawViz.yKeys;
+      if (rawViz.height) visualization.height = rawViz.height;
+      
+      result.push(visualization);
+    }
+    
+    return result;
   };
 
   const loadConversations = async (sessId: string) => {
@@ -128,11 +122,37 @@ const Index = () => {
         return;
       }
       
-      // Cast data to our intermediate type and convert to domain objects
-      const dbConversations = data as unknown as DbConversation[];
-      const typedConversations = dbConversations.map(convertToConversation);
+      // Convert raw data to app domain model
+      const convertedConversations: Conversation[] = [];
       
-      setConversations(typedConversations);
+      for (const item of data) {
+        // Safe type cast
+        const dbConversation = item as unknown as DbConversation;
+        
+        // Process visualizations
+        const visualizations = createVisualizations(dbConversation.visualizations);
+        
+        // Create conversation object
+        const conversation: Conversation = {
+          id: dbConversation.id,
+          created_at: dbConversation.created_at,
+          query: dbConversation.query,
+          response: dbConversation.response,
+          assistant_type: dbConversation.assistant_type as AssistantType,
+          thread_id: dbConversation.thread_id,
+          session_id: dbConversation.session_id,
+          assistant_id: dbConversation.assistant_id
+        };
+        
+        // Only add visualizations if there are any
+        if (visualizations.length > 0) {
+          conversation.visualizations = visualizations;
+        }
+        
+        convertedConversations.push(conversation);
+      }
+      
+      setConversations(convertedConversations);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('Failed to load conversation history');
@@ -202,8 +222,8 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
-  // Simple function to process visualizations without deep type inference
-  const processAssistantResponse = (data: any): any[] => {
+  // Process assistant response with explicit typing
+  const processAssistantResponse = (data: any): DbVisualization[] => {
     // Set thread ID for conversation continuity
     if (data.thread_id) {
       setThreadId(data.thread_id);
@@ -214,16 +234,22 @@ const Index = () => {
       return [];
     }
     
-    // Map to a new array to avoid reference issues
-    return data.visualizations.map((viz: any) => ({
-      type: viz?.type || 'table',
-      data: Array.isArray(viz?.data) ? viz.data : [],
-      headers: viz?.headers,
-      chartType: viz?.chartType,
-      xKey: viz?.xKey,
-      yKeys: viz?.yKeys,
-      height: viz?.height
-    }));
+    return data.visualizations.map((viz: any): DbVisualization => {
+      // Create a new object with only the properties we need
+      const result: DbVisualization = {
+        type: viz?.type || 'table'
+      };
+      
+      // Only add properties that exist
+      if (viz?.data) result.data = viz.data;
+      if (viz?.headers) result.headers = viz.headers;
+      if (viz?.chartType) result.chartType = viz.chartType;
+      if (viz?.xKey) result.xKey = viz.xKey;
+      if (viz?.yKeys) result.yKeys = viz.yKeys;
+      if (viz?.height) result.height = viz.height;
+      
+      return result;
+    });
   };
 
   const handleSearch = async (searchQuery: string) => {
