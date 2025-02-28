@@ -7,6 +7,7 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
 
   const startRecording = async () => {
     try {
@@ -38,13 +39,23 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
             if (!data?.text) throw new Error('No transcription received');
 
             setSearchQuery(data.text);
-            toast.success('Successfully transcribed via OpenAI Whisper!', { id: 'transcription' });
+            
+            // Calculate duration
+            const recordingDuration = recordingStartTime 
+              ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
+              : 'unknown';
+            
+            toast.success(`Transcribed ${recordingDuration}s audio: "${data.text}"`, { 
+              id: 'transcription',
+              duration: 4000 
+            });
             console.log('Transcription received:', data.text);
           } catch (error) {
             console.error('Transcription error:', error);
             toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
           } finally {
             setIsTranscribing(false);
+            setRecordingStartTime(null);
           }
         };
 
@@ -54,7 +65,8 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
       setMediaRecorder(recorder);
       recorder.start();
       setIsRecording(true);
-      toast.success('Recording started...', { id: 'recording' });
+      setRecordingStartTime(Date.now());
+      toast.success('Listening... Speak now', { id: 'recording' });
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
@@ -67,7 +79,7 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
       setIsRecording(false);
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
       setMediaRecorder(null);
-      toast.success('Recording stopped', { id: 'recording' });
+      toast.success('Processing your speech...', { id: 'recording' });
     }
   };
 
@@ -82,6 +94,7 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
   return {
     isRecording,
     isTranscribing,
-    handleMicClick
+    handleMicClick,
+    recordingStartTime
   };
 };
