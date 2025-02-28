@@ -1,20 +1,30 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
 import { ChatHeader } from "./chat/ChatHeader";
 import { MessageList } from "./chat/MessageList";
 import { AttachmentList } from "./chat/AttachmentList";
 import { MessageInput } from "./chat/MessageInput";
-import { sendMessage } from "@/services/chatService";
+import { sendMessage, checkOpenAIKey } from "@/services/chatService";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
+import { APIKeyForm } from "./APIKeyForm";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [hasValidApiKey, setHasValidApiKey] = useState<boolean | null>(null);
   const { attachments, handleAttachmentUpload, removeAttachment } = useFileAttachments();
+
+  useEffect(() => {
+    const validateApiKey = async () => {
+      const isValid = await checkOpenAIKey();
+      setHasValidApiKey(isValid);
+    };
+    validateApiKey();
+  }, []);
 
   const clearChat = () => {
     setMessages([]);
@@ -53,6 +63,34 @@ export const ChatInterface = () => {
       setIsLoading(false);
     }
   };
+
+  const handleApiKeySaved = () => {
+    setHasValidApiKey(true);
+    toast.success("API key saved successfully. You can now use the chat!");
+  };
+
+  if (hasValidApiKey === false) {
+    return (
+      <div className="flex flex-col h-[500px] justify-center items-center">
+        <div className="w-full max-w-md">
+          <APIKeyForm onSuccess={handleApiKeySaved} />
+        </div>
+      </div>
+    );
+  }
+
+  if (hasValidApiKey === null) {
+    return (
+      <div className="flex flex-col h-[500px] justify-center items-center">
+        <div className="animate-pulse flex space-x-2">
+          <div className="h-3 w-3 bg-gray-400 rounded-full"></div>
+          <div className="h-3 w-3 bg-gray-400 rounded-full"></div>
+          <div className="h-3 w-3 bg-gray-400 rounded-full"></div>
+        </div>
+        <p className="text-gray-500 mt-4">Checking API key status...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[500px]">
