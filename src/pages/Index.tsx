@@ -135,6 +135,11 @@ const Index = () => {
         result.push(conversation);
       }
       
+      // Set thread ID to the most recent thread if available
+      if (result.length > 0) {
+        setThreadId(result[0].thread_id);
+      }
+      
       setConversations(result);
     } catch (error) {
       console.error('Error loading conversations:', error);
