@@ -63,31 +63,42 @@ const Index = () => {
       
       if (error) throw error;
       
-      const typedData = data?.map(item => {
-        const parsedVisualizations = (item.visualizations || []).map((viz: Json) => {
-          if (typeof viz === 'object' && viz !== null) {
-            const visualization: ChatVisualization = {
-              type: (viz as any).type as 'table' | 'chart',
-              data: (viz as any).data || []
-            };
-
-            if ((viz as any).headers) visualization.headers = (viz as any).headers as string[];
-            if ((viz as any).chartType) visualization.chartType = (viz as any).chartType as 'line' | 'bar';
-            if ((viz as any).xKey) visualization.xKey = (viz as any).xKey as string;
-            if ((viz as any).yKeys) visualization.yKeys = (viz as any).yKeys as string[];
-            if ((viz as any).height) visualization.height = (viz as any).height as number;
-
-            return visualization;
+      // Create a new array for the typed data
+      const typedData: Conversation[] = [];
+      
+      // Process each item safely
+      if (data) {
+        for (const item of data) {
+          // Process visualizations
+          const parsedVisualizations: ChatVisualization[] = [];
+          
+          if (item.visualizations && Array.isArray(item.visualizations)) {
+            for (const viz of item.visualizations) {
+              if (typeof viz === 'object' && viz !== null) {
+                const visualization: ChatVisualization = {
+                  type: (viz as any).type as 'table' | 'chart',
+                  data: (viz as any).data || []
+                };
+  
+                if ((viz as any).headers) visualization.headers = (viz as any).headers as string[];
+                if ((viz as any).chartType) visualization.chartType = (viz as any).chartType as 'line' | 'bar';
+                if ((viz as any).xKey) visualization.xKey = (viz as any).xKey as string;
+                if ((viz as any).yKeys) visualization.yKeys = (viz as any).yKeys as string[];
+                if ((viz as any).height) visualization.height = (viz as any).height as number;
+                
+                parsedVisualizations.push(visualization);
+              }
+            }
           }
-          return null;
-        }).filter((viz): viz is ChatVisualization => viz !== null);
-
-        return {
-          ...item,
-          assistant_type: item.assistant_type as AssistantType,
-          visualizations: parsedVisualizations
-        };
-      }) || [];
+          
+          // Add to typed data
+          typedData.push({
+            ...item,
+            assistant_type: item.assistant_type as AssistantType,
+            visualizations: parsedVisualizations
+          });
+        }
+      }
       
       setConversations(typedData);
     } catch (error) {
