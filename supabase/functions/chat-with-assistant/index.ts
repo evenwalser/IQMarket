@@ -47,8 +47,7 @@ Deno.serve(async (req) => {
       throw new Error("OpenAI API key is not set");
     }
     
-    // Instead of using the OpenAI SDK, we'll use direct API calls
-    // Create or retrieve thread
+    // Create or retrieve thread using v2 API
     let threadId2 = threadId;
     if (!threadId2) {
       console.log("Creating new thread via direct API call");
@@ -57,7 +56,7 @@ Deno.serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1'
+          'OpenAI-Beta': 'assistants=v2'  // Update to v2
         },
         body: JSON.stringify({})
       });
@@ -73,14 +72,14 @@ Deno.serve(async (req) => {
     
     console.log("Using thread ID:", threadId2);
     
-    // Add message to thread
+    // Add message to thread with v2 API
     console.log("Adding message to thread");
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId2}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
+        'OpenAI-Beta': 'assistants=v2'  // Update to v2
       },
       body: JSON.stringify({
         role: 'user',
@@ -93,14 +92,14 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
     }
     
-    // Run the assistant
+    // Run the assistant with v2 API
     console.log("Running assistant");
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId2}/runs`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
+        'OpenAI-Beta': 'assistants=v2'  // Update to v2
       },
       body: JSON.stringify({
         assistant_id: assistantId,
@@ -119,7 +118,7 @@ Deno.serve(async (req) => {
     const runId = runData.id;
     console.log("Started run:", runId);
     
-    // Poll for run completion
+    // Poll for run completion with v2 API
     let currentRun;
     let runStatus = 'in_progress';
     
@@ -132,7 +131,7 @@ Deno.serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1'
+          'OpenAI-Beta': 'assistants=v2'  // Update to v2
         }
       });
       
@@ -150,14 +149,14 @@ Deno.serve(async (req) => {
       throw new Error(`Run failed with reason: ${currentRun?.last_error?.message || 'Unknown error'}`);
     }
     
-    // Get messages
+    // Get messages with v2 API
     console.log("Run completed, retrieving messages");
     const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${threadId2}/messages`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
+        'OpenAI-Beta': 'assistants=v2'  // Update to v2
       }
     });
     
