@@ -8,7 +8,7 @@ export interface AssistantMessage {
   content: string;
 }
 
-// Define visualization type without recursive references
+// Avoid recursive type definitions by using a simple interface
 export interface Conversation {
   id: string;
   created_at: string;
@@ -18,7 +18,7 @@ export interface Conversation {
   thread_id: string;
   session_id: string;
   assistant_id?: string | null;
-  visualizations?: readonly ChatVisualization[];
+  visualizations?: ReadonlyArray<ChatVisualization>; // Use ReadonlyArray to help TypeScript
 }
 
 export interface ChatMessage {

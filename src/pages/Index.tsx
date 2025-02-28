@@ -10,19 +10,6 @@ import { ConversationList } from "@/components/ConversationList";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Define a more specific type for the data from Supabase
-interface ConversationRecord {
-  id: string;
-  created_at: string;
-  query: string;
-  response: string;
-  assistant_type: string;
-  thread_id: string;
-  assistant_id: string | null;
-  visualizations: any[] | null;
-  session_id: string;
-}
-
 interface UploadedAttachment {
   id: string;
   file_path: string;
@@ -30,6 +17,27 @@ interface UploadedAttachment {
   content_type: string;
   size: number;
   created_at: string;
+}
+
+// Define a simpler intermediate type for database records
+interface DbConversation {
+  id: string;
+  created_at: string;
+  query: string;
+  response: string;
+  assistant_type: string;
+  thread_id: string;
+  session_id: string;
+  assistant_id: string | null;
+  visualizations: Array<{
+    type?: string;
+    data?: any[];
+    headers?: string[];
+    chartType?: string;
+    xKey?: string;
+    yKeys?: string[];
+    height?: number;
+  }> | null;
 }
 
 const Index = () => {
@@ -63,6 +71,46 @@ const Index = () => {
     loadConversations(existingSessionId);
   };
 
+  // Convert database record to app Conversation type
+  const convertToConversation = (record: DbConversation): Conversation => {
+    // Create visualizations array without deep nesting
+    const visualizations: ChatVisualization[] = [];
+    
+    if (record.visualizations) {
+      for (const viz of record.visualizations) {
+        // Only process valid visualization objects
+        if (viz && typeof viz === 'object') {
+          const vizData: ChatVisualization = {
+            type: (viz.type as 'table' | 'chart') || 'table',
+            data: viz.data || []
+          };
+          
+          // Add optional properties if they exist
+          if (viz.headers) vizData.headers = viz.headers;
+          if (viz.chartType) vizData.chartType = (viz.chartType as 'line' | 'bar');
+          if (viz.xKey) vizData.xKey = viz.xKey;
+          if (viz.yKeys) vizData.yKeys = viz.yKeys;
+          if (viz.height) vizData.height = viz.height;
+          
+          visualizations.push(vizData);
+        }
+      }
+    }
+    
+    // Create the conversation object manually to avoid deep type issues
+    return {
+      id: record.id,
+      created_at: record.created_at,
+      query: record.query,
+      response: record.response,
+      assistant_type: record.assistant_type as AssistantType,
+      thread_id: record.thread_id,
+      session_id: record.session_id,
+      assistant_id: record.assistant_id,
+      visualizations: visualizations.length > 0 ? visualizations : undefined
+    };
+  };
+
   const loadConversations = async (sessId: string) => {
     try {
       // Filter conversations by current session ID
@@ -75,50 +123,16 @@ const Index = () => {
       
       if (error) throw error;
       
-      if (!data) {
+      if (!data || !Array.isArray(data)) {
         setConversations([]);
         return;
       }
       
-      // Process with explicit type annotations to avoid deep recursion
-      const typedData: Array<Conversation> = data.map((item: any) => {
-        // Process visualizations with explicit typing
-        const parsedVisualizations: Array<ChatVisualization> = [];
-        
-        if (Array.isArray(item.visualizations)) {
-          for (const viz of item.visualizations) {
-            if (viz && typeof viz === 'object') {
-              const visualization: ChatVisualization = {
-                type: viz.type || 'table',
-                data: viz.data || []
-              };
-              
-              if (viz.headers) visualization.headers = viz.headers;
-              if (viz.chartType) visualization.chartType = viz.chartType;
-              if (viz.xKey) visualization.xKey = viz.xKey;
-              if (viz.yKeys) visualization.yKeys = viz.yKeys;
-              if (viz.height) visualization.height = viz.height;
-              
-              parsedVisualizations.push(visualization);
-            }
-          }
-        }
-        
-        // Create conversation object with explicit property assignments
-        return {
-          id: item.id,
-          created_at: item.created_at,
-          query: item.query,
-          response: item.response,
-          assistant_type: item.assistant_type as AssistantType,
-          thread_id: item.thread_id,
-          session_id: item.session_id,
-          assistant_id: item.assistant_id,
-          visualizations: parsedVisualizations
-        };
-      });
+      // Cast data to our intermediate type and convert to domain objects
+      const dbConversations = data as unknown as DbConversation[];
+      const typedConversations = dbConversations.map(convertToConversation);
       
-      setConversations(typedData);
+      setConversations(typedConversations);
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('Failed to load conversation history');
@@ -188,20 +202,22 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
-  const processAssistantResponse = (data: any): Array<any> => {
+  // Simple function to process visualizations without deep type inference
+  const processAssistantResponse = (data: any): any[] => {
     // Set thread ID for conversation continuity
     if (data.thread_id) {
       setThreadId(data.thread_id);
     }
 
-    // Process visualization data safely without recursion
+    // Early return for invalid data
     if (!data.visualizations || !Array.isArray(data.visualizations)) {
       return [];
     }
     
+    // Map to a new array to avoid reference issues
     return data.visualizations.map((viz: any) => ({
-      type: viz?.type,
-      data: viz?.data || [],
+      type: viz?.type || 'table',
+      data: Array.isArray(viz?.data) ? viz.data : [],
       headers: viz?.headers,
       chartType: viz?.chartType,
       xKey: viz?.xKey,
