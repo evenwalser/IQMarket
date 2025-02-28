@@ -10,6 +10,19 @@ import { ConversationList } from "@/components/ConversationList";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Define a more specific type for the data from Supabase
+interface ConversationRecord {
+  id: string;
+  created_at: string;
+  query: string;
+  response: string;
+  assistant_type: string;
+  thread_id: string;
+  assistant_id: string | null;
+  visualizations: any[] | null;
+  session_id: string;
+}
+
 interface UploadedAttachment {
   id: string;
   file_path: string;
@@ -65,9 +78,12 @@ const Index = () => {
       // Create a new array for the typed data
       const typedData: Conversation[] = [];
       
-      // Process each item safely
+      // Process each item safely using our explicit ConversationRecord type
       if (data) {
-        for (const item of data) {
+        // Cast data to our specific type to avoid type errors
+        const conversations = data as ConversationRecord[];
+        
+        for (const item of conversations) {
           // Process visualizations
           const parsedVisualizations: ChatVisualization[] = [];
           
@@ -99,7 +115,7 @@ const Index = () => {
             assistant_type: item.assistant_type as AssistantType,
             thread_id: item.thread_id,
             session_id: item.session_id,
-            assistant_id: item.assistant_id,
+            assistant_id: item.assistant_id ?? undefined,
             visualizations: parsedVisualizations
           });
         }
