@@ -53,6 +53,7 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
       <div className="space-y-6">
         {conversations.map((conversation) => {
           const isReplyActive = activeReply === conversation.id;
+          const isBenchmarks = conversation.assistant_type === 'benchmarks';
           
           return (
             <div key={conversation.id} className="border rounded-lg bg-white p-6 shadow-sm">
@@ -96,7 +97,10 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                           {visualization.type === 'table' && (
                             <DataTable 
                               data={visualization.data} 
-                              headers={visualization.headers} 
+                              headers={visualization.headers}
+                              allowCustomization={isBenchmarks}
+                              visualizationId={visualization.id || `viz-${index}`}
+                              conversationId={conversation.id}
                             />
                           )}
                           
@@ -107,6 +111,9 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                               xKey={visualization.xKey || 'x'}
                               yKeys={visualization.yKeys || ['y']}
                               height={visualization.height || 300}
+                              allowCustomization={isBenchmarks}
+                              visualizationId={visualization.id || `viz-${index}`}
+                              conversationId={conversation.id}
                             />
                           )}
                         </div>
