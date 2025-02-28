@@ -1,6 +1,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { OpenAI } from 'https://esm.sh/openai@4.0.0';
+import OpenAI from 'https://esm.sh/openai@4.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Get OpenAI client
+    // Get OpenAI client - Fix: properly initialize OpenAI
     const openai = new OpenAI({
       apiKey: Deno.env.get('OPENAI_API_KEY')
     });
@@ -94,73 +94,30 @@ Deno.serve(async (req) => {
     console.log("Creating message in thread");
     await openai.beta.threads.messages.create(thread.id, {
       role: "user",
-      content: message,
-      // Only include file_ids if we actually have files
-      // This was causing the error before
+      content: message
     });
 
-    // If we have files, attach them to the thread instead of the message
-    if (fileIds.length > 0) {
-      console.log("Attaching files to assistant:", fileIds);
-      try {
-        // OpenAI API doesn't support direct file attachment to messages
-        // Instead, we'll mention the files in our run instructions
-        const fileAttachmentInstructions = `Please analyze the attached files: ${fileIds.join(', ')}`;
-        
-        // Run the assistant with file-specific instructions
-        const run = await openai.beta.threads.runs.create(thread.id, {
-          assistant_id: assistantId,
-          instructions: structuredOutput 
-            ? `${fileAttachmentInstructions}. Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers.`
-            : fileAttachmentInstructions
-        });
-        
-        console.log("Started run with file attachments:", run.id);
-      } catch (error) {
-        console.error("Error attaching files to run:", error);
-        throw new Error(`Failed to attach files to run: ${error.message}`);
-      }
-    } else {
-      // Run the assistant on the thread normally if no files
-      console.log("Running assistant without file attachments");
-      let run;
-      if (structuredOutput) {
-        run = await openai.beta.threads.runs.create(thread.id, {
-          assistant_id: assistantId,
-          instructions: "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers.",
-        });
-      } else {
-        run = await openai.beta.threads.runs.create(thread.id, {
-          assistant_id: assistantId,
-        });
-      }
-      
-      console.log("Started run:", run.id);
-    }
-
-    // Wait for the run to complete (common for both with/without files)
-    console.log("Waiting for run to complete");
-    let run;
-    let runId;
+    // Run the assistant on the thread
+    console.log("Running assistant");
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: assistantId,
+      instructions: structuredOutput 
+        ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers."
+        : undefined
+    });
     
-    // Get the latest run for this thread
-    const runs = await openai.beta.threads.runs.list(thread.id);
-    if (runs.data.length === 0) {
-      throw new Error("No runs found for this thread");
-    }
-    
-    runId = runs.data[0].id;
-    run = await openai.beta.threads.runs.retrieve(thread.id, runId);
+    console.log("Started run:", run.id);
 
     // Poll for the run completion
-    while (run.status !== 'completed' && run.status !== 'failed') {
-      console.log("Run status:", run.status);
+    let currentRun = run;
+    while (currentRun.status !== 'completed' && currentRun.status !== 'failed') {
+      console.log("Run status:", currentRun.status);
       await new Promise(resolve => setTimeout(resolve, 1000));
-      run = await openai.beta.threads.runs.retrieve(thread.id, runId);
+      currentRun = await openai.beta.threads.runs.retrieve(thread.id, run.id);
     }
 
-    if (run.status === 'failed') {
-      throw new Error(`Run failed with reason: ${run.last_error?.message || 'Unknown error'}`);
+    if (currentRun.status === 'failed') {
+      throw new Error(`Run failed with reason: ${currentRun.last_error?.message || 'Unknown error'}`);
     }
 
     // Get all messages from the thread
