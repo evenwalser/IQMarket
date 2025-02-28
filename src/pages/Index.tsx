@@ -351,7 +351,7 @@ const Index = () => {
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
           visualizations: visualizations,
-          session_id: sessionId
+          session_id: sessionId // Add session ID to conversation
         });
       
       if (dbError) {
