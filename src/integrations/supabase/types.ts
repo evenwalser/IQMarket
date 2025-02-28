@@ -44,6 +44,7 @@ export type Database = {
           id: string
           query: string
           response: string
+          session_id: string | null
           thread_id: string
           visualizations: Json[] | null
         }
@@ -54,6 +55,7 @@ export type Database = {
           id?: string
           query: string
           response: string
+          session_id?: string | null
           thread_id: string
           visualizations?: Json[] | null
         }
@@ -64,6 +66,7 @@ export type Database = {
           id?: string
           query?: string
           response?: string
+          session_id?: string | null
           thread_id?: string
           visualizations?: Json[] | null
         }

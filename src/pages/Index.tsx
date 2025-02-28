@@ -53,27 +53,36 @@ const Index = () => {
     loadConversations(existingSessionId);
   };
 
-  // Convert database visualization data to app visualization data
-  const mapVisualization = (dbViz: any): ChatVisualization => {
-    if (!dbViz || typeof dbViz !== 'object') {
-      // Return default visualization if invalid data
+  // Create a safer visualization mapper function that doesn't cause deep type issues
+  const safeMapVisualization = (vizData: any): ChatVisualization => {
+    // Default visualization if input is invalid
+    if (!vizData || typeof vizData !== 'object') {
       return { type: 'table', data: [] };
     }
     
-    // Create base visualization with required fields
-    const result: ChatVisualization = {
-      type: (dbViz.type as 'table' | 'chart') || 'table',
-      data: Array.isArray(dbViz.data) ? dbViz.data : []
-    };
+    // Explicitly type each field to avoid deep inference issues
+    const type = typeof vizData.type === 'string' ? 
+      (vizData.type === 'chart' ? 'chart' : 'table') : 'table';
     
-    // Add optional fields if they exist
-    if (dbViz.headers) result.headers = dbViz.headers;
-    if (dbViz.chartType) result.chartType = (dbViz.chartType as 'line' | 'bar');
-    if (dbViz.xKey) result.xKey = dbViz.xKey;
-    if (dbViz.yKeys) result.yKeys = dbViz.yKeys;
-    if (dbViz.height) result.height = dbViz.height;
+    const data = Array.isArray(vizData.data) ? vizData.data : [];
     
-    return result;
+    // Create the base visualization object
+    const viz: ChatVisualization = { type, data };
+    
+    // Only add optional properties if they exist and are valid
+    if (Array.isArray(vizData.headers)) viz.headers = vizData.headers;
+    
+    if (typeof vizData.chartType === 'string') {
+      viz.chartType = vizData.chartType === 'bar' ? 'bar' : 'line';
+    }
+    
+    if (typeof vizData.xKey === 'string') viz.xKey = vizData.xKey;
+    
+    if (Array.isArray(vizData.yKeys)) viz.yKeys = vizData.yKeys;
+    
+    if (typeof vizData.height === 'number') viz.height = vizData.height;
+    
+    return viz;
   };
 
   const loadConversations = async (sessId: string) => {
@@ -93,20 +102,20 @@ const Index = () => {
         return;
       }
       
-      // Manually construct conversations to avoid deep type issues
+      // Manually construct conversations list to avoid deep type issues
       const result: Conversation[] = [];
       
       for (const item of data) {
-        const visualizations: ChatVisualization[] = [];
+        // Process visualizations one by one to avoid deep nesting
+        const visualizationList: ChatVisualization[] = [];
         
-        // Handle visualizations as raw JSON data
         if (Array.isArray(item.visualizations)) {
-          for (const viz of item.visualizations) {
-            visualizations.push(mapVisualization(viz));
+          for (const vizData of item.visualizations) {
+            visualizationList.push(safeMapVisualization(vizData));
           }
         }
         
-        // Create conversation with explicit types to avoid recursion
+        // Build the conversation object with explicit property assignments
         const conversation: Conversation = {
           id: item.id,
           created_at: item.created_at,
@@ -114,13 +123,13 @@ const Index = () => {
           response: item.response,
           assistant_type: item.assistant_type as AssistantType,
           thread_id: item.thread_id,
-          session_id: item.session_id,
+          session_id: item.session_id || sessId, // Use session ID or fallback to current
           assistant_id: item.assistant_id
         };
         
         // Only add visualizations if there are any
-        if (visualizations.length > 0) {
-          conversation.visualizations = visualizations;
+        if (visualizationList.length > 0) {
+          conversation.visualizations = visualizationList;
         }
         
         result.push(conversation);
@@ -282,17 +291,22 @@ const Index = () => {
       
       const visualizations = processAssistantResponse(data);
 
+      // Build the insert object with all required fields
+      const insertData = {
+        query: searchQuery,
+        response: data.response,
+        assistant_type: selectedMode,
+        thread_id: data.thread_id,
+        assistant_id: data.assistant_id,
+        visualizations: visualizations,
+        session_id: sessionId
+      };
+
+      console.log("Inserting conversation with data:", insertData);
+
       const { error: dbError } = await supabase
         .from('conversations')
-        .insert({
-          query: searchQuery,
-          response: data.response,
-          assistant_type: selectedMode,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          session_id: sessionId
-        });
+        .insert(insertData);
 
       if (dbError) {
         console.error('Error storing conversation:', dbError);
@@ -341,18 +355,23 @@ const Index = () => {
       
       const visualizations = processAssistantResponse(data);
       
+      // Build insert data with all fields explicitly
+      const insertData = {
+        query: message,
+        response: data.response,
+        assistant_type: assistantType,
+        thread_id: data.thread_id,
+        assistant_id: data.assistant_id,
+        visualizations: visualizations,
+        session_id: sessionId
+      };
+      
+      console.log("Inserting reply with data:", insertData);
+      
       // Insert the new conversation in the database
       const { error: dbError } = await supabase
         .from('conversations')
-        .insert({
-          query: message,
-          response: data.response,
-          assistant_type: assistantType,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          session_id: sessionId // Add session ID to conversation
-        });
+        .insert(insertData);
       
       if (dbError) {
         console.error('Error storing conversation:', dbError);
