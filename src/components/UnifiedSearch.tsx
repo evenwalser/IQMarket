@@ -2,11 +2,10 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Upload, Search, Loader2, Mic, MicOff, Volume2, LayoutTemplate, X } from "lucide-react";
+import { Upload, Search, Loader2, Mic, MicOff, Volume2, X } from "lucide-react";
 import { AttachmentList } from "@/components/chat/AttachmentList";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
-import { Switch } from "@/components/ui/switch";
 import { ModeExplainer } from "@/components/ModeExplainer";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
@@ -49,10 +48,14 @@ export const UnifiedSearch = ({
     }
   }, [voiceMode]);
 
+  // Set structured output automatically based on selected mode
+  useEffect(() => {
+    // Automatically set structured output to true for benchmarks
+    setStructuredOutput(selectedMode === 'benchmarks');
+  }, [selectedMode, setStructuredOutput]);
+
   const onSearch = async () => {
     if (searchQuery.trim()) {
-      // For demonstration, we'll add text-to-speech functionality here
-      // In a real implementation, this would connect to a TTS service
       try {
         await handleSearch(searchQuery);
         setSearchQuery("");
@@ -245,20 +248,6 @@ export const UnifiedSearch = ({
                 )}
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2 shrink-0">
-          <Switch
-            id="structured-output"
-            checked={structuredOutput}
-            onCheckedChange={setStructuredOutput}
-          />
-          <div className="flex items-center gap-1.5">
-            <LayoutTemplate className="h-4 w-4 text-gray-600" />
-            <label htmlFor="structured-output" className="text-sm text-gray-700 whitespace-nowrap">
-              Structured Output
-            </label>
           </div>
         </div>
       </div>
