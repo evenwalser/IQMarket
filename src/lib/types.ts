@@ -8,6 +8,7 @@ export interface AssistantMessage {
   content: string;
 }
 
+// Define visualization type without recursive references
 export interface Conversation {
   id: string;
   created_at: string;
@@ -16,8 +17,8 @@ export interface Conversation {
   assistant_type: AssistantType;
   thread_id: string;
   session_id: string;
-  assistant_id?: string;
-  visualizations?: ChatVisualization[];
+  assistant_id?: string | null;
+  visualizations?: readonly ChatVisualization[];
 }
 
 export interface ChatMessage {

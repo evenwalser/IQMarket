@@ -75,51 +75,48 @@ const Index = () => {
       
       if (error) throw error;
       
-      // Create a new array for the typed data
-      const typedData: Conversation[] = [];
+      if (!data) {
+        setConversations([]);
+        return;
+      }
       
-      // Process each item safely using our explicit ConversationRecord type
-      if (data) {
-        // Cast data to our specific type to avoid type errors
-        const conversations = data as ConversationRecord[];
+      // Process with explicit type annotations to avoid deep recursion
+      const typedData: Array<Conversation> = data.map((item: any) => {
+        // Process visualizations with explicit typing
+        const parsedVisualizations: Array<ChatVisualization> = [];
         
-        for (const item of conversations) {
-          // Process visualizations
-          const parsedVisualizations: ChatVisualization[] = [];
-          
-          if (item.visualizations && Array.isArray(item.visualizations)) {
-            for (const viz of item.visualizations) {
-              if (typeof viz === 'object' && viz !== null) {
-                const visualization: ChatVisualization = {
-                  type: (viz as any).type as 'table' | 'chart',
-                  data: (viz as any).data || []
-                };
-  
-                if ((viz as any).headers) visualization.headers = (viz as any).headers as string[];
-                if ((viz as any).chartType) visualization.chartType = (viz as any).chartType as 'line' | 'bar';
-                if ((viz as any).xKey) visualization.xKey = (viz as any).xKey as string;
-                if ((viz as any).yKeys) visualization.yKeys = (viz as any).yKeys as string[];
-                if ((viz as any).height) visualization.height = (viz as any).height as number;
-                
-                parsedVisualizations.push(visualization);
-              }
+        if (Array.isArray(item.visualizations)) {
+          for (const viz of item.visualizations) {
+            if (viz && typeof viz === 'object') {
+              const visualization: ChatVisualization = {
+                type: viz.type || 'table',
+                data: viz.data || []
+              };
+              
+              if (viz.headers) visualization.headers = viz.headers;
+              if (viz.chartType) visualization.chartType = viz.chartType;
+              if (viz.xKey) visualization.xKey = viz.xKey;
+              if (viz.yKeys) visualization.yKeys = viz.yKeys;
+              if (viz.height) visualization.height = viz.height;
+              
+              parsedVisualizations.push(visualization);
             }
           }
-          
-          // Add to typed data
-          typedData.push({
-            id: item.id,
-            created_at: item.created_at,
-            query: item.query,
-            response: item.response,
-            assistant_type: item.assistant_type as AssistantType,
-            thread_id: item.thread_id,
-            session_id: item.session_id,
-            assistant_id: item.assistant_id ?? undefined,
-            visualizations: parsedVisualizations
-          });
         }
-      }
+        
+        // Create conversation object with explicit property assignments
+        return {
+          id: item.id,
+          created_at: item.created_at,
+          query: item.query,
+          response: item.response,
+          assistant_type: item.assistant_type as AssistantType,
+          thread_id: item.thread_id,
+          session_id: item.session_id,
+          assistant_id: item.assistant_id,
+          visualizations: parsedVisualizations
+        };
+      });
       
       setConversations(typedData);
     } catch (error) {
@@ -191,32 +188,26 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
-  const processAssistantResponse = (data: any) => {
+  const processAssistantResponse = (data: any): Array<any> => {
     // Set thread ID for conversation continuity
     if (data.thread_id) {
       setThreadId(data.thread_id);
     }
 
-    // Process visualization data safely
-    const visualizations: Array<any> = [];
-    
-    if (data.visualizations && Array.isArray(data.visualizations)) {
-      for (const viz of data.visualizations) {
-        if (typeof viz === 'object' && viz !== null) {
-          visualizations.push({
-            type: viz.type,
-            data: viz.data,
-            headers: viz.headers,
-            chartType: viz.chartType,
-            xKey: viz.xKey,
-            yKeys: viz.yKeys,
-            height: viz.height
-          });
-        }
-      }
+    // Process visualization data safely without recursion
+    if (!data.visualizations || !Array.isArray(data.visualizations)) {
+      return [];
     }
-
-    return visualizations;
+    
+    return data.visualizations.map((viz: any) => ({
+      type: viz?.type,
+      data: viz?.data || [],
+      headers: viz?.headers,
+      chartType: viz?.chartType,
+      xKey: viz?.xKey,
+      yKeys: viz?.yKeys,
+      height: viz?.height
+    }));
   };
 
   const handleSearch = async (searchQuery: string) => {
