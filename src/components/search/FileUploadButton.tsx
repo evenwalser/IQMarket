@@ -1,4 +1,3 @@
-
 import { Upload } from "lucide-react";
 import { AttachmentList } from "@/components/chat/AttachmentList";
 import { Button } from "@/components/ui/button";
@@ -19,28 +18,7 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
   return (
     <div className="space-y-2">
       <div className="relative">
-        <div className="absolute right-0 -top-[48px] z-10">
-          <label className="cursor-pointer relative inline-flex">
-            <input
-              type="file"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-              onChange={e => {
-                handleAttachmentUpload(e);
-                handleFileUpload(e);
-              }}
-              accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-              multiple
-              onClick={e => e.stopPropagation()}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200"
-            >
-              <Upload className="h-4 w-4 text-gray-600" />
-            </Button>
-          </label>
-        </div>
+        {/* File Upload UI is rendered in VoiceSearchInput */}
       </div>
       
       {/* Attachments List */}

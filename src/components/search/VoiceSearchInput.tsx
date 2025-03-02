@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Mic, MicOff, Volume2, X } from "lucide-react";
+import { Search, Loader2, Mic, MicOff, Volume2, X, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DataOrb from "@/components/DataOrb";
 import { toast } from "sonner";
@@ -127,7 +127,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           </AnimatePresence>
         </div>
         
-        {/* Clear & Search Buttons */}
+        {/* Clear, Upload & Search Buttons */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {/* Clear button when there's text */}
           {searchQuery && (
@@ -141,6 +141,32 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               <X className="h-4 w-4 text-gray-500" />
             </Button>
           )}
+          
+          {/* Upload button */}
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+              onChange={e => {
+                // Using the props passed to the FileUploadButton which is now empty
+                // we call both handlers here
+                if (window.handleAttachmentUpload && window.handleFileUpload) {
+                  window.handleAttachmentUpload(e);
+                  window.handleFileUpload(e);
+                }
+              }}
+              accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+              multiple
+              onClick={e => e.stopPropagation()}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200"
+            >
+              <Upload className="h-4 w-4 text-gray-600" />
+            </Button>
+          </label>
           
           {/* In voice mode, show stop reading button when applicable */}
           {voiceMode && isReadingResponse && (
