@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -7,6 +8,7 @@ import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
 import { FileUploadButton } from "@/components/search/FileUploadButton";
 import { ModeSelector } from "@/components/search/ModeSelector";
+import { ConversationalVoiceMode } from "@/components/ConversationalVoiceMode";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -41,8 +43,17 @@ export const UnifiedSearch = ({
   const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
   const submittedQueryRef = useRef<string>("");
   
-  // Handle transcription completion in voice mode with automatic submission
-  const handleTranscriptionComplete = async (text: string) => {
+  // For legacy voice mode - we'll transition to the new mode
+  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
+    setSearchQuery,
+    handleTranscriptionComplete
+  );
+  
+  const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
+  const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
+
+  // Handle transcription completion in legacy voice mode with automatic submission
+  function handleTranscriptionComplete(text: string) {
     console.log("Transcription complete, auto submitting search:", text);
     
     if (voiceMode && text.trim()) {
@@ -55,7 +66,7 @@ export const UnifiedSearch = ({
         
         console.log("About to submit search with query:", text);
         // Submit the query immediately in voice mode
-        await handleSearch(text);
+        handleSearch(text);
         console.log("Search automatically submitted in voice mode");
       } catch (error) {
         console.error("Error auto-submitting search:", error);
@@ -63,15 +74,7 @@ export const UnifiedSearch = ({
         setProcessingVoiceInteraction(false);
       }
     }
-  };
-  
-  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
-    setSearchQuery,
-    handleTranscriptionComplete
-  );
-  
-  const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
-  const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
+  }
 
   // Focus input when voice mode is deactivated
   useEffect(() => {
@@ -137,6 +140,7 @@ export const UnifiedSearch = ({
     }
   }, [voiceInteractionComplete, isSpeaking, voiceMode]);
 
+  // Handle search submission
   const onSearch = async () => {
     if (searchQuery.trim()) {
       try {
@@ -155,6 +159,7 @@ export const UnifiedSearch = ({
     }
   };
 
+  // Handle voice mode toggle
   const toggleVoiceMode = () => {
     const newVoiceMode = !voiceMode;
     setVoiceMode(newVoiceMode);
@@ -190,6 +195,7 @@ export const UnifiedSearch = ({
     }
   };
 
+  // Stop TTS reading
   const stopReading = () => {
     stopSpeaking();
     setIsReadingResponse(false);
@@ -201,10 +207,29 @@ export const UnifiedSearch = ({
       setProcessingVoiceInteraction(false);
     }
   };
+  
+  // Handler for messages from the new conversational voice assistant
+  const handleVoiceMessage = (message: { role: 'user' | 'assistant', content: string }) => {
+    if (message.role === 'user') {
+      // User messages should trigger search
+      console.log("Voice assistant user message:", message.content);
+      handleSearch(message.content);
+    }
+  };
 
   return (
     <div className="space-y-4">
       <div className="relative space-y-2">
+        {/* New conversational voice mode component */}
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 z-10">
+          <ConversationalVoiceMode 
+            isActive={voiceMode}
+            onToggle={toggleVoiceMode}
+            onMessage={handleVoiceMessage}
+            assistantType={selectedMode}
+          />
+        </div>
+        
         <VoiceSearchInput
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -240,4 +265,4 @@ export const UnifiedSearch = ({
       </div>
     </div>
   );
-};
+}
