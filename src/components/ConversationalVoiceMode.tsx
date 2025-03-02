@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { useRealtimeVoiceChat } from '@/hooks/useRealtimeVoiceChat';
+import { useRealtimeVoiceChat, VoiceChatMessage } from '@/hooks/useRealtimeVoiceChat';
 import DataOrb from '@/components/DataOrb';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Volume2, VolumeX, X } from 'lucide-react';
@@ -33,10 +33,14 @@ export function ConversationalVoiceMode({
     isSpeaking,
     stopPlayback
   } = useRealtimeVoiceChat({
-    onNewMessage: (message) => {
+    onNewMessage: (message: VoiceChatMessage) => {
       // Filter out system messages - only pass user or assistant messages to the handler
       if (message.role === 'user' || message.role === 'assistant') {
-        onMessage(message);
+        // Type assertion to ensure TypeScript knows we're only passing user/assistant roles
+        onMessage({
+          role: message.role,
+          content: message.content
+        });
       }
     },
     voiceId: 'alloy' // You can make this configurable
