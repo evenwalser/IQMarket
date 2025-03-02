@@ -22,6 +22,7 @@ export const useVoiceRecording = (
   const minRecordingDurationRef = useRef<number>(1500); // Minimum 1.5s recording
   const recordingTooShortRef = useRef<boolean>(false);
   const silenceThresholdRef = useRef<number>(5); // Configurable silence threshold
+  const lastTranscriptionRef = useRef<string>('');
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -148,6 +149,7 @@ export const useVoiceRecording = (
       audioChunksRef.current = []; // Reset audio chunks
       consecutiveSilenceCountRef.current = 0;
       recordingTooShortRef.current = false;
+      lastTranscriptionRef.current = ''; // Reset last transcription
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -216,24 +218,34 @@ export const useVoiceRecording = (
         if (error) throw error;
         if (!data?.text) throw new Error('No transcription received');
 
-        // Set the query text first
-        setSearchQuery(data.text);
+        // Store the transcribed text for comparison
+        const transcribedText = data.text;
+        lastTranscriptionRef.current = transcribedText;
+        
+        // Set the query text first - make sure this happens
+        console.log('Setting search query with transcribed text:', transcribedText);
+        setSearchQuery(transcribedText);
         
         // Calculate duration
         const recordingDuration = recordingStartTime 
           ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
           : 'unknown';
         
-        toast.success(`Transcribed ${recordingDuration}s audio: "${data.text}"`, { 
+        toast.success(`Transcribed ${recordingDuration}s audio: "${transcribedText}"`, { 
           id: 'transcription',
           duration: 4000 
         });
-        console.log('Transcription received:', data.text);
+        console.log('Transcription received:', transcribedText);
         
-        // Call the callback after transcription is complete
-        if (onTranscriptionComplete && data.text.trim()) {
-          onTranscriptionComplete(data.text);
-        }
+        // Add a slight delay before calling the callback to ensure state has updated
+        setTimeout(() => {
+          // Call the callback after transcription is complete
+          if (onTranscriptionComplete && transcribedText.trim()) {
+            console.log('Calling onTranscriptionComplete with:', transcribedText);
+            onTranscriptionComplete(transcribedText);
+          }
+        }, 300);
+        
       } catch (error) {
         console.error('Transcription error:', error);
         toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
@@ -292,6 +304,7 @@ export const useVoiceRecording = (
     isRecording,
     isTranscribing,
     handleMicClick,
-    recordingStartTime
+    recordingStartTime,
+    lastTranscription: lastTranscriptionRef.current // Expose the last transcription
   };
 };

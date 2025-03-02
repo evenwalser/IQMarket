@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -40,14 +39,21 @@ export const UnifiedSearch = ({
   const [lastResponse, setLastResponse] = useState<string>("");
   const [voiceInteractionComplete, setVoiceInteractionComplete] = useState(false);
   const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
+  const submittedQueryRef = useRef<string>("");
   
   // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = async (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
+    
     if (voiceMode && text.trim()) {
       try {
         setProcessingVoiceInteraction(true); // Prevent multiple submissions
-        setSearchQuery(text); // Set the search query explicitly
+        
+        // Set the search query explicitly and track what we're submitting
+        setSearchQuery(text);
+        submittedQueryRef.current = text;
+        
+        console.log("About to submit search with query:", text);
         // Submit the query immediately in voice mode
         await handleSearch(text);
         console.log("Search automatically submitted in voice mode");
@@ -125,6 +131,7 @@ export const UnifiedSearch = ({
           // Reset states for next interaction
           setVoiceInteractionComplete(false);
           setProcessingVoiceInteraction(false);
+          submittedQueryRef.current = ""; // Clear submitted query reference
         }
       }, 1000);
     }
@@ -133,6 +140,10 @@ export const UnifiedSearch = ({
   const onSearch = async () => {
     if (searchQuery.trim()) {
       try {
+        // Save what we're searching for
+        submittedQueryRef.current = searchQuery;
+        console.log("Manual search submitted with query:", searchQuery);
+        
         await handleSearch(searchQuery);
         // Clear the search query after sending
         if (!voiceMode) {
@@ -154,6 +165,7 @@ export const UnifiedSearch = ({
       setOrbState("idle");
       // Clear any previous search query
       setSearchQuery("");
+      submittedQueryRef.current = "";
       // Reset the voice interaction completion state
       setVoiceInteractionComplete(false);
       setProcessingVoiceInteraction(false);
@@ -174,6 +186,7 @@ export const UnifiedSearch = ({
       // Reset the voice interaction states
       setVoiceInteractionComplete(false);
       setProcessingVoiceInteraction(false);
+      submittedQueryRef.current = "";
     }
   };
 
