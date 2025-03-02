@@ -16,6 +16,7 @@ export const useVoiceRecording = (
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const silenceDetectionActiveRef = useRef<boolean>(false);
+  const audioLevelCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -23,17 +24,22 @@ export const useVoiceRecording = (
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
       }
+      if (audioLevelCheckIntervalRef.current) {
+        clearInterval(audioLevelCheckIntervalRef.current);
+      }
       if (audioContextRef.current) {
-        audioContextRef.current.close();
+        audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
       }
     };
   }, []);
 
   const detectSilence = (stream: MediaStream, silenceThreshold = 10, silenceDuration = 2000) => {
+    console.log("Setting up silence detection with threshold:", silenceThreshold, "and duration:", silenceDuration);
+    
     // Create audio context if it doesn't exist
     if (!audioContextRef.current) {
       try {
-        audioContextRef.current = new AudioContext();
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.fftSize = 256;
         
@@ -51,8 +57,15 @@ export const useVoiceRecording = (
       }
     }
     
-    const checkSilence = () => {
-      if (!analyserRef.current || !dataArrayRef.current || !silenceDetectionActiveRef.current) return;
+    // Instead of recursive requestAnimationFrame, use interval for more consistent checking
+    if (audioLevelCheckIntervalRef.current) {
+      clearInterval(audioLevelCheckIntervalRef.current);
+    }
+    
+    audioLevelCheckIntervalRef.current = setInterval(() => {
+      if (!analyserRef.current || !dataArrayRef.current || !silenceDetectionActiveRef.current) {
+        return;
+      }
       
       analyserRef.current.getByteFrequencyData(dataArrayRef.current);
       
@@ -60,12 +73,14 @@ export const useVoiceRecording = (
       const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / 
                      dataArrayRef.current.length;
       
+      console.log(`Current audio level: ${average.toFixed(2)}`);
+      
       if (average < silenceThreshold) {
         // If silence, set timeout to stop recording after silenceDuration
         if (!silenceTimeoutRef.current) {
           console.log(`Silence detected (avg: ${average}), setting timer to stop recording in ${silenceDuration}ms`);
           silenceTimeoutRef.current = setTimeout(() => {
-            console.log("Silence detected, stopping recording");
+            console.log("Silence timeout triggered, stopping recording");
             stopRecording();
           }, silenceDuration);
         }
@@ -77,20 +92,36 @@ export const useVoiceRecording = (
           silenceTimeoutRef.current = null;
         }
       }
-      
-      // Continue checking if still recording
-      if (isRecording && silenceDetectionActiveRef.current) {
-        requestAnimationFrame(checkSilence);
-      }
-    };
-    
-    // Start checking for silence
-    silenceDetectionActiveRef.current = true;
-    checkSilence();
+    }, 300); // Check every 300ms
   };
 
   const startRecording = async () => {
     try {
+      // Reset any existing silence detection state
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+      
+      if (audioLevelCheckIntervalRef.current) {
+        clearInterval(audioLevelCheckIntervalRef.current);
+        audioLevelCheckIntervalRef.current = null;
+      }
+      
+      // Close any existing audio context
+      if (audioContextRef.current) {
+        try {
+          await audioContextRef.current.close();
+        } catch (err) {
+          console.error("Error closing previous audio context:", err);
+        }
+        audioContextRef.current = null;
+        analyserRef.current = null;
+        dataArrayRef.current = null;
+      }
+      
+      silenceDetectionActiveRef.current = false;
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       const audioChunks: Blob[] = [];
@@ -104,7 +135,22 @@ export const useVoiceRecording = (
         setIsTranscribing(true);
         silenceDetectionActiveRef.current = false;
         
+        // Clean up audio monitoring
+        if (audioLevelCheckIntervalRef.current) {
+          clearInterval(audioLevelCheckIntervalRef.current);
+          audioLevelCheckIntervalRef.current = null;
+        }
+        
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        
+        // Skip empty recordings
+        if (audioBlob.size < 1000) { // Less than 1KB is probably empty
+          console.log("Recording too small, ignoring empty audio");
+          setIsTranscribing(false);
+          toast.error("No speech detected, please try again", { id: 'transcription' });
+          return;
+        }
+        
         const reader = new FileReader();
         
         reader.onload = async () => {
@@ -146,7 +192,7 @@ export const useVoiceRecording = (
             
             // Clean up audio context
             if (audioContextRef.current) {
-              audioContextRef.current.close();
+              audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
               audioContextRef.current = null;
               analyserRef.current = null;
               dataArrayRef.current = null;
@@ -158,14 +204,16 @@ export const useVoiceRecording = (
       };
 
       setMediaRecorder(recorder);
-      recorder.start();
+      recorder.start(1000); // Collect data in 1-second chunks
       setIsRecording(true);
       setRecordingStartTime(Date.now());
       toast.success('Listening... Speak now and pause when done', { id: 'recording' });
       
-      // Start silence detection after recording begins
-      silenceDetectionActiveRef.current = true;
-      detectSilence(stream);
+      // Start silence detection after a short delay to avoid initial setup noise
+      setTimeout(() => {
+        silenceDetectionActiveRef.current = true;
+        detectSilence(stream, 8, 2000); // Lower threshold (8) for better detection, 2s pause
+      }, 500);
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
@@ -173,10 +221,18 @@ export const useVoiceRecording = (
   };
 
   const stopRecording = () => {
+    console.log("Stopping recording...");
+    
     // Clear any pending silence timeout
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
+    }
+    
+    // Clear audio level check interval
+    if (audioLevelCheckIntervalRef.current) {
+      clearInterval(audioLevelCheckIntervalRef.current);
+      audioLevelCheckIntervalRef.current = null;
     }
 
     silenceDetectionActiveRef.current = false;

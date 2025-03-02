@@ -39,12 +39,15 @@ export const UnifiedSearch = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   
-  // Handle transcription completion in voice mode
+  // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
     if (voiceMode && text.trim()) {
-      // Automatically submit the query when in voice mode
-      handleSearch(text);
+      // Automatically submit the query when in voice mode with a small delay
+      // to allow the UI to update with the transcribed text first
+      setTimeout(() => {
+        handleSearch(text);
+      }, 500);
     }
   };
   
@@ -104,8 +107,10 @@ export const UnifiedSearch = ({
     if (searchQuery.trim()) {
       try {
         await handleSearch(searchQuery);
-        // Save the search query to use for speaking the response later
-        setSearchQuery("");
+        // Clear the search query after sending
+        if (!voiceMode) {
+          setSearchQuery("");
+        }
       } catch (error) {
         console.error("Search error:", error);
       }
@@ -120,7 +125,9 @@ export const UnifiedSearch = ({
       toast.info("Voice mode activated");
       // When voice mode is activated, orbState starts as idle (purple)
       setOrbState("idle");
-      // When voice mode is turned on, automatically start recording
+      // Clear any previous search query
+      setSearchQuery("");
+      // When voice mode is turned on, automatically start recording after a short delay
       setTimeout(() => {
         if (!isRecording) {
           handleMicClick();
@@ -141,6 +148,13 @@ export const UnifiedSearch = ({
     stopSpeaking();
     setIsReadingResponse(false);
     toast.info("Stopped reading response");
+    
+    // After stopping, if we're still in voice mode, restart listening
+    if (voiceMode && !isRecording && !isTranscribing) {
+      setTimeout(() => {
+        handleMicClick();
+      }, 1000);
+    }
   };
 
   return (

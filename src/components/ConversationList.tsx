@@ -30,7 +30,7 @@ export const ConversationList = ({
   // Track the latest response for TTS
   useEffect(() => {
     if (conversations.length > 0 && onLatestResponse) {
-      const latestConversation = conversations[conversations.length - 1];
+      const latestConversation = conversations[0]; // Assuming conversations are sorted newest first
       onLatestResponse(latestConversation.response);
     }
   }, [conversations, onLatestResponse]);
@@ -45,7 +45,7 @@ export const ConversationList = ({
     if (!replyText.trim() || conversations.length === 0) return;
     
     // Get the most recent conversation to reply to
-    const lastConversation = conversations[conversations.length - 1];
+    const lastConversation = conversations[0]; // Assuming conversations are sorted newest first
     
     setIsReplying(true);
     try {

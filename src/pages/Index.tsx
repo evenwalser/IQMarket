@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -32,7 +33,7 @@ const Index = () => {
   const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [voiceMode, setVoiceMode] = useState<boolean>(false);
-  const latestResponseRef = useRef<string | null>(null);
+  const [latestResponse, setLatestResponse] = useState<string | null>(null);
   const { speakText } = useTextToSpeech();
 
   useEffect(() => {
@@ -40,21 +41,8 @@ const Index = () => {
     initializeSession();
   }, []);
 
-  // Monitor conversations for new responses to read aloud in voice mode
-  useEffect(() => {
-    if (voiceMode && conversations.length > 0) {
-      const lastResponse = conversations[0]?.response;
-      
-      // Only speak if this is a new response (not on initial load)
-      if (lastResponse && lastResponse !== latestResponseRef.current) {
-        latestResponseRef.current = lastResponse;
-        speakText(lastResponse);
-      }
-    }
-  }, [conversations, voiceMode, speakText]);
-
-  const handleVoiceModeChange = (isActive: boolean) => {
-    setVoiceMode(isActive);
+  const handleLatestResponse = (response: string) => {
+    setLatestResponse(response);
   };
 
   const initializeSession = () => {
@@ -333,11 +321,8 @@ const Index = () => {
         await loadConversations(sessionId);
         clearAttachments();
         
-        latestResponseRef.current = data.response;
-        
-        if (voiceMode) {
-          speakText(data.response);
-        }
+        // Store latest response for possible TTS
+        setLatestResponse(data.response);
         
         toast.success("Response received!");
       }
@@ -398,6 +383,15 @@ const Index = () => {
       }
       
       await loadConversations(sessionId);
+      
+      // Store latest response for possible TTS
+      setLatestResponse(data.response);
+      
+      // If in voice mode, automatically read out the response
+      if (voiceMode) {
+        speakText(data.response);
+      }
+      
       toast.success("Reply sent!");
     } catch (error) {
       console.error("Error sending reply:", error);
@@ -458,6 +452,7 @@ const Index = () => {
                 attachments={attachments}
                 structuredOutput={structuredOutput}
                 setStructuredOutput={setStructuredOutput}
+                latestResponse={latestResponse || undefined}
               />
 
               <div className="flex justify-between items-center">
@@ -474,6 +469,8 @@ const Index = () => {
               <ConversationList 
                 conversations={conversations} 
                 onReply={handleReply}
+                voiceMode={voiceMode}
+                onLatestResponse={handleLatestResponse}
               />
             </div>
           </div>
