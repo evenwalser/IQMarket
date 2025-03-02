@@ -2,10 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Mic, MicOff, Volume2, X, Upload } from "lucide-react";
+import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DataOrb from "@/components/DataOrb";
-import { toast } from "sonner";
 
 interface VoiceSearchInputProps {
   searchQuery: string;
@@ -60,6 +59,15 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     }
   }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
 
+  // Helper function to get status text
+  const getStatusText = () => {
+    if (isRecording) return "Listening... Speak now and pause when done";
+    if (isTranscribing) return "Processing your speech...";
+    if (isReadingResponse) return "AI is speaking...";
+    if (voiceMode) return "Voice mode active. Click the purple button to start";
+    return "Ask our Intelligence anything about your business and journey";
+  };
+
   return (
     <div className="relative flex items-center">
       {/* Voice Mode Toggle Button */}
@@ -81,8 +89,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           >
             <Volume2 className="h-5 w-5 text-white" />
           </Button>
-          
-          {/* We're removing the visible microphone button as requested */}
         </div>
       </div>
       
@@ -113,7 +119,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         <Input 
           ref={inputRef}
           type="text" 
-          placeholder={voiceMode ? "Voice mode active. Ask anything..." : "Ask our Intelligence anything about your business and journey"} 
+          placeholder={getStatusText()} 
           className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
           value={searchQuery} 
           onChange={e => setSearchQuery(e.target.value)}

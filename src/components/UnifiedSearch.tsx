@@ -37,7 +37,19 @@ export const UnifiedSearch = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   
-  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
+  // Handle transcription completion in voice mode
+  const handleTranscriptionComplete = (text: string) => {
+    if (voiceMode && text.trim()) {
+      // Automatically submit the query when in voice mode
+      handleSearch(text);
+    }
+  };
+  
+  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
+    setSearchQuery,
+    handleTranscriptionComplete
+  );
+  
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
   const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
@@ -78,9 +90,6 @@ export const UnifiedSearch = ({
         // Save the search query to use for speaking the response later
         setLastResponse(searchQuery);
         setSearchQuery("");
-        
-        // In voice mode, we'll automatically read the response 
-        // (this will be done in the Index component where we have access to the response)
       } catch (error) {
         console.error("Search error:", error);
       }

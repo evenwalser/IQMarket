@@ -3,7 +3,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
+export const useVoiceRecording = (
+  setSearchQuery: (query: string) => void,
+  onTranscriptionComplete?: (text: string) => void // Add callback for transcription
+) => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -38,6 +41,7 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
             if (error) throw error;
             if (!data?.text) throw new Error('No transcription received');
 
+            // Set the query text first
             setSearchQuery(data.text);
             
             // Calculate duration
@@ -50,6 +54,11 @@ export const useVoiceRecording = (setSearchQuery: (query: string) => void) => {
               duration: 4000 
             });
             console.log('Transcription received:', data.text);
+            
+            // Call the callback after transcription is complete
+            if (onTranscriptionComplete && data.text.trim()) {
+              onTranscriptionComplete(data.text);
+            }
           } catch (error) {
             console.error('Transcription error:', error);
             toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });

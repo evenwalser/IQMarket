@@ -53,7 +53,6 @@ const Index = () => {
     }
   }, [conversations, voiceMode, speakText]);
 
-  // Keep track of voice mode state from the UnifiedSearch component
   const handleVoiceModeChange = (isActive: boolean) => {
     setVoiceMode(isActive);
   };
@@ -74,7 +73,6 @@ const Index = () => {
     loadConversations(existingSessionId);
   };
 
-  // Create a safer visualization mapper function that doesn't cause deep type issues
   const safeMapVisualization = (vizData: any): ChatVisualization => {
     // Default visualization if input is invalid
     if (!vizData || typeof vizData !== 'object') {
@@ -231,7 +229,6 @@ const Index = () => {
     setUploadedAttachments([]);
   };
 
-  // Create JSON-compatible visualization objects for database storage
   const processAssistantResponse = (data: any): JsonObject[] => {
     // Set thread ID for conversation continuity
     if (data.thread_id) {
@@ -317,22 +314,17 @@ const Index = () => {
       
       const visualizations = processAssistantResponse(data);
 
-      // Build the insert object with all required fields
-      const insertData = {
-        query: searchQuery,
-        response: data.response,
-        assistant_type: selectedMode,
-        thread_id: data.thread_id,
-        assistant_id: data.assistant_id,
-        visualizations: visualizations,
-        session_id: sessionId
-      };
-
-      console.log("Inserting conversation with data:", insertData);
-
       const { error: dbError } = await supabase
         .from('conversations')
-        .insert(insertData);
+        .insert({
+          query: searchQuery,
+          response: data.response,
+          assistant_type: selectedMode,
+          thread_id: data.thread_id,
+          assistant_id: data.assistant_id,
+          visualizations: visualizations,
+          session_id: sessionId
+        });
 
       if (dbError) {
         console.error('Error storing conversation:', dbError);
@@ -341,10 +333,8 @@ const Index = () => {
         await loadConversations(sessionId);
         clearAttachments();
         
-        // Store the latest response for voice processing
         latestResponseRef.current = data.response;
         
-        // If in voice mode, automatically read the response
         if (voiceMode) {
           speakText(data.response);
         }
@@ -390,30 +380,23 @@ const Index = () => {
       
       const visualizations = processAssistantResponse(data);
       
-      // Build insert data with all fields explicitly
-      const insertData = {
-        query: message,
-        response: data.response,
-        assistant_type: assistantType,
-        thread_id: data.thread_id,
-        assistant_id: data.assistant_id,
-        visualizations: visualizations,
-        session_id: sessionId
-      };
-      
-      console.log("Inserting reply with data:", insertData);
-      
-      // Insert the new conversation in the database
       const { error: dbError } = await supabase
         .from('conversations')
-        .insert(insertData);
+        .insert({
+          query: message,
+          response: data.response,
+          assistant_type: assistantType,
+          thread_id: data.thread_id,
+          assistant_id: data.assistant_id,
+          visualizations: visualizations,
+          session_id: sessionId
+        });
       
       if (dbError) {
         console.error('Error storing conversation:', dbError);
         throw dbError;
       }
       
-      // Reload conversations to show the new reply
       await loadConversations(sessionId);
       toast.success("Reply sent!");
     } catch (error) {
