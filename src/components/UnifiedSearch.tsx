@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -38,25 +37,21 @@ export const UnifiedSearch = ({
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
-  // Focus input when voice mode is turned off
   useEffect(() => {
     if (!voiceMode && inputRef.current) {
       inputRef.current.focus();
     }
   }, [voiceMode]);
 
-  // Set structured output automatically based on selected mode
   useEffect(() => {
-    // Automatically set structured output to true for benchmarks
     setStructuredOutput(selectedMode === 'benchmarks');
   }, [selectedMode, setStructuredOutput]);
 
-  // Update orb state based on recording/response status
   useEffect(() => {
     if (isRecording) {
       setOrbState("user");
     } else if (isTranscribing || isLoading) {
-      setOrbState("idle"); // Processing state
+      setOrbState("idle");
     } else if (isReadingResponse) {
       setOrbState("ai");
     } else {
@@ -70,12 +65,10 @@ export const UnifiedSearch = ({
         await handleSearch(searchQuery);
         setSearchQuery("");
         
-        // Simulate text-to-speech if in voice mode
         if (voiceMode) {
           toast.info("Reading response aloud...");
           setIsReadingResponse(true);
           
-          // Simulate TTS completion after 3 seconds
           setTimeout(() => {
             setIsReadingResponse(false);
             toast.success("Response read completely");

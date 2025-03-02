@@ -22,6 +22,8 @@ interface VoiceSearchInputProps {
   stopReading: () => void;
   orbState: "idle" | "user" | "ai";
   inputRef: React.RefObject<HTMLInputElement>;
+  handleAttachmentUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
@@ -37,7 +39,9 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   isReadingResponse,
   stopReading,
   orbState,
-  inputRef
+  inputRef,
+  handleAttachmentUpload,
+  handleFileUpload
 }) => {
   return (
     <div className="relative flex items-center">
@@ -182,7 +186,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
                   type="file"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                   onChange={e => {
-                    if (typeof handleAttachmentUpload === 'function' && typeof handleFileUpload === 'function') {
+                    if (handleAttachmentUpload && handleFileUpload) {
                       handleAttachmentUpload(e);
                       handleFileUpload(e);
                     }
