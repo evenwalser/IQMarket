@@ -53,6 +53,7 @@ export const UnifiedSearch = ({
       } catch (error) {
         console.error("Error auto-submitting search:", error);
         toast.error("Failed to process your request");
+        setProcessingVoiceInteraction(false);
       }
     }
   };

@@ -1,127 +1,74 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import OpenAI from 'https://esm.sh/openai@4.20.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MAX_TEXT_LENGTH = 4000;
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Text-to-speech function called')
-    const { text, voice = 'nova' } = await req.json()
-
-    if (!text) {
-      console.error('No text provided')
-      return new Response(
-        JSON.stringify({ error: 'Text is required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    const apiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!apiKey) {
-      console.error('OpenAI API key not found')
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // Initialize OpenAI
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    })
-
-    // Check text length and truncate if necessary
-    let processedText = text;
-    let wasTruncated = false;
+    const { text, voice = 'nova' } = await req.json();
     
-    if (text.length > MAX_TEXT_LENGTH) {
-      console.log(`Text exceeds ${MAX_TEXT_LENGTH} chars (${text.length}), truncating...`);
-      processedText = text.substring(0, MAX_TEXT_LENGTH) + "... [truncated due to length]";
-      wasTruncated = true;
+    if (!text || typeof text !== 'string') {
+      console.error('Invalid or missing text parameter');
+      throw new Error('Text is required and must be a string');
     }
 
-    console.log(`Generating speech with voice: ${voice}, text length: ${processedText.length} characters`);
-
-    // Generate speech from text
+    console.log(`Generating speech for: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}" with voice: ${voice}`);
+    
+    // Use streaming mode for OpenAI TTS
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'tts-1',
-        input: processedText,
+        input: text.substring(0, 4096), // Safety limit for very long inputs
         voice: voice,
         response_format: 'mp3',
       }),
-    })
+    });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
-      try {
-        const error = JSON.parse(errorText);
-        return new Response(
-          JSON.stringify({ error: error.error?.message || 'Failed to generate speech' }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        )
-      } catch (e) {
-        return new Response(
-          JSON.stringify({ error: `Failed to generate speech: ${errorText}` }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        )
-      }
+      const errorData = await response.json();
+      console.error('OpenAI API error:', errorData);
+      throw new Error(errorData.error?.message || `OpenAI API error: ${response.status}`);
     }
 
-    // Convert audio buffer to base64
-    const arrayBuffer = await response.arrayBuffer()
-    const base64Audio = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuffer))
-    )
-
-    console.log('Speech generated successfully, returning audio content');
-
+    // Get audio binary data
+    const audioArrayBuffer = await response.arrayBuffer();
+    
+    // Convert to base64 for sending over JSON
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioArrayBuffer)));
+    
+    console.log(`Successfully generated audio, size: ${Math.round(base64Audio.length / 1024)}KB`);
+    
+    // Check if text was truncated
+    const wasTruncated = text.length > 4096;
+    
     return new Response(
       JSON.stringify({ 
         audioContent: base64Audio,
         wasTruncated: wasTruncated
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error('Text-to-speech function error:', error);
+    console.error('Error in text-to-speech function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      JSON.stringify({ error: error.message || 'Unknown error' }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
   }
-})
+});

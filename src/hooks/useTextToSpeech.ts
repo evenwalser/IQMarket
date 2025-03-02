@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,6 +11,7 @@ export const useTextToSpeech = () => {
   const retryCountRef = useRef<number>(0);
   const retryDelay = 1500; // 1.5 seconds between retries
 
+  // Clean up function for the audio element
   const cleanupAudio = () => {
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -18,6 +19,13 @@ export const useTextToSpeech = () => {
       currentAudioRef.current = null;
     }
   };
+
+  // Effect to ensure audio cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupAudio();
+    };
+  }, []);
 
   const speakText = async (text: string, voice: string = 'nova') => {
     if (!text.trim()) {
@@ -38,6 +46,8 @@ export const useTextToSpeech = () => {
       console.log(`Calling text-to-speech function with ${text.length} characters and voice: ${voice}`);
       
       retryCountRef.current = 0;
+      
+      // Function to attempt TTS with retry logic
       const tryGenerateSpeech = async (): Promise<any> => {
         try {
           // Call our Edge Function
