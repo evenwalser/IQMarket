@@ -87,7 +87,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       </div>
       
       {/* Floating Orb Above Search Box - Appears when voice mode is active */}
-      <div className="absolute w-full">
+      <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
         <AnimatePresence>
           {showOrb && (
             <motion.div
@@ -95,7 +95,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               animate={{ opacity: 1, y: -120 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-              className="absolute left-1/2 transform -translate-x-1/2 z-30"
+              className="absolute z-30"
             >
               <DataOrb 
                 size={180} 
