@@ -43,6 +43,13 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   handleAttachmentUpload,
   handleFileUpload
 }) => {
+  const [showOrb, setShowOrb] = useState(false);
+  
+  // Show orb when voice mode is active and user is recording or AI is reading
+  useEffect(() => {
+    setShowOrb(voiceMode && (isRecording || isTranscribing || isReadingResponse));
+  }, [voiceMode, isRecording, isTranscribing, isReadingResponse]);
+
   return (
     <div className="relative flex items-center">
       {/* Voice Mode Toggle Button */}
@@ -95,10 +102,10 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       {/* Floating Orb Above Search Box - Appears when voice mode is active */}
       <div className="absolute w-full">
         <AnimatePresence>
-          {voiceMode && (isRecording || isTranscribing || isReadingResponse) && (
+          {showOrb && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: -80 }}
+              animate={{ opacity: 1, y: -120 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
               className="absolute left-1/2 transform -translate-x-1/2 z-30"

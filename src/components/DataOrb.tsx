@@ -183,7 +183,7 @@ const DataOrb: React.FC<DataOrbProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="relative"
+      className="relative z-50"
     >
       <canvas
         ref={canvasRef}
