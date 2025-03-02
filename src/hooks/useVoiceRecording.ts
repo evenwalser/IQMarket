@@ -15,6 +15,7 @@ export const useVoiceRecording = (
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
+  const silenceDetectionActiveRef = useRef<boolean>(false);
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -31,19 +32,27 @@ export const useVoiceRecording = (
   const detectSilence = (stream: MediaStream, silenceThreshold = 10, silenceDuration = 2000) => {
     // Create audio context if it doesn't exist
     if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 256;
-      
-      const bufferLength = analyserRef.current.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(bufferLength);
-      
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      source.connect(analyserRef.current);
+      try {
+        audioContextRef.current = new AudioContext();
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        analyserRef.current.fftSize = 256;
+        
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        dataArrayRef.current = new Uint8Array(bufferLength);
+        
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        source.connect(analyserRef.current);
+        
+        console.log("Audio analysis setup complete for silence detection");
+        silenceDetectionActiveRef.current = true;
+      } catch (err) {
+        console.error("Error setting up audio analysis:", err);
+        return;
+      }
     }
     
     const checkSilence = () => {
-      if (!analyserRef.current || !dataArrayRef.current) return;
+      if (!analyserRef.current || !dataArrayRef.current || !silenceDetectionActiveRef.current) return;
       
       analyserRef.current.getByteFrequencyData(dataArrayRef.current);
       
@@ -54,6 +63,7 @@ export const useVoiceRecording = (
       if (average < silenceThreshold) {
         // If silence, set timeout to stop recording after silenceDuration
         if (!silenceTimeoutRef.current) {
+          console.log(`Silence detected (avg: ${average}), setting timer to stop recording in ${silenceDuration}ms`);
           silenceTimeoutRef.current = setTimeout(() => {
             console.log("Silence detected, stopping recording");
             stopRecording();
@@ -62,18 +72,20 @@ export const useVoiceRecording = (
       } else {
         // If sound detected, clear the timeout
         if (silenceTimeoutRef.current) {
+          console.log(`Sound detected (avg: ${average}), clearing silence timer`);
           clearTimeout(silenceTimeoutRef.current);
           silenceTimeoutRef.current = null;
         }
       }
       
       // Continue checking if still recording
-      if (isRecording) {
+      if (isRecording && silenceDetectionActiveRef.current) {
         requestAnimationFrame(checkSilence);
       }
     };
     
     // Start checking for silence
+    silenceDetectionActiveRef.current = true;
     checkSilence();
   };
 
@@ -90,6 +102,7 @@ export const useVoiceRecording = (
       recorder.onstop = async () => {
         toast.loading('Converting speech to text...', { id: 'transcription' });
         setIsTranscribing(true);
+        silenceDetectionActiveRef.current = false;
         
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const reader = new FileReader();
@@ -151,6 +164,7 @@ export const useVoiceRecording = (
       toast.success('Listening... Speak now and pause when done', { id: 'recording' });
       
       // Start silence detection after recording begins
+      silenceDetectionActiveRef.current = true;
       detectSilence(stream);
     } catch (error) {
       console.error('Error accessing microphone:', error);
@@ -164,6 +178,8 @@ export const useVoiceRecording = (
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
     }
+
+    silenceDetectionActiveRef.current = false;
 
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();

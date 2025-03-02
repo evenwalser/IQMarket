@@ -64,7 +64,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     if (isRecording) return "Listening... Speak now and pause when done";
     if (isTranscribing) return "Processing your speech...";
     if (isReadingResponse) return "AI is speaking...";
-    if (voiceMode) return "Voice mode active. Click the purple button to start";
+    if (voiceMode) return "Voice mode active. Click to start speaking";
     return "Ask our Intelligence anything about your business and journey";
   };
 
@@ -89,6 +89,13 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           >
             <Volume2 className="h-5 w-5 text-white" />
           </Button>
+
+          {/* Recording indicator dot */}
+          {isRecording && (
+            <div className="absolute -top-1 -right-1">
+              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -128,13 +135,31 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               onSearch();
             }
           }}
-          disabled={voiceMode && isRecording}
+          readOnly={voiceMode}
+          disabled={voiceMode || isLoading}
         />
+        
+        {/* Status Indicator in Voice Mode */}
+        {voiceMode && (
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+              isRecording ? 'bg-green-100 text-green-700' : 
+              isTranscribing ? 'bg-amber-100 text-amber-700' :
+              isReadingResponse ? 'bg-blue-100 text-blue-700' :
+              'bg-purple-100 text-purple-700'
+            }`}>
+              {isRecording ? 'Listening...' : 
+               isTranscribing ? 'Processing...' :
+               isReadingResponse ? 'AI Speaking...' :
+               'Voice Mode Active'}
+            </div>
+          </div>
+        )}
         
         {/* Clear button and Search Button with Upload Icon */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {/* Clear button when there's text */}
-          {searchQuery && (
+          {searchQuery && !voiceMode && (
             <Button
               variant="ghost"
               size="icon"
@@ -176,7 +201,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               size="sm"
               className="rounded-full h-10 min-w-28 pr-3 pl-4 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-between"
               onClick={onSearch}
-              disabled={isLoading || (!searchQuery.trim() && !isRecording)}
+              disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
             >
               <span className="flex items-center gap-1">
                 {isLoading ? (
@@ -202,6 +227,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
                   accept=".pdf,.doc,.docx,.txt,.csv,image/*"
                   multiple
                   onClick={e => e.stopPropagation()}
+                  disabled={voiceMode}
                 />
                 <Upload className="h-4 w-4 text-white" />
               </label>

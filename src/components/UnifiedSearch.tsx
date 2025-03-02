@@ -41,6 +41,7 @@ export const UnifiedSearch = ({
   
   // Handle transcription completion in voice mode
   const handleTranscriptionComplete = (text: string) => {
+    console.log("Transcription complete, auto submitting search:", text);
     if (voiceMode && text.trim()) {
       // Automatically submit the query when in voice mode
       handleSearch(text);
@@ -87,23 +88,23 @@ export const UnifiedSearch = ({
   
   // Auto-read responses in voice mode
   useEffect(() => {
-    if (voiceMode && latestResponse && !isLoading && !isRecording && !isTranscribing) {
+    if (voiceMode && latestResponse && latestResponse !== lastResponse && !isLoading && !isRecording && !isTranscribing) {
       // Wait a short delay to ensure UI updates first
       const timer = setTimeout(() => {
         console.log("Auto-reading response in voice mode:", latestResponse);
         speakText(latestResponse);
+        setLastResponse(latestResponse); // Update last response to prevent repeated reading
       }, 800);
       
       return () => clearTimeout(timer);
     }
-  }, [voiceMode, latestResponse, isLoading, isRecording, isTranscribing, speakText]);
+  }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {
       try {
         await handleSearch(searchQuery);
         // Save the search query to use for speaking the response later
-        setLastResponse(searchQuery);
         setSearchQuery("");
       } catch (error) {
         console.error("Search error:", error);
