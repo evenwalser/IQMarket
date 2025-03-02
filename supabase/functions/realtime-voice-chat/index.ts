@@ -142,10 +142,26 @@ serve(async (req) => {
   }
 
   // For regular HTTP requests (non-WebSocket)
-  return new Response('This endpoint requires a WebSocket connection.', {
-    status: 400,
-    headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
-  });
+  try {
+    // Allow a ping request for connection testing
+    const { action } = await req.json();
+    
+    if (action === 'ping') {
+      return new Response(JSON.stringify({ success: true, project: 'realtime-voice-chat' }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+    
+    return new Response('This endpoint requires a WebSocket connection.', {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+    });
+  } catch (e) {
+    return new Response('This endpoint requires a WebSocket connection.', {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
+    });
+  }
 });
 
 // Handle function shutdown

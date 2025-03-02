@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { encodeAudioForAPI } from '@/utils/audioProcessing';
 import { supabase } from '@/integrations/supabase/client';
@@ -231,12 +230,7 @@ export function useRealtimeVoiceChat({
       const audioInitialized = await initializeAudio();
       if (!audioInitialized) return;
       
-      // Get project reference for WebSocket URL
-      const { data: { project } } = await supabase.functions.invoke('realtime-voice-chat', {
-        body: { action: 'ping' },
-        method: 'POST',
-      });
-      
+      // Define the project reference directly
       const projectRef = 'nmfhetqfewbjwqyoxqkd';
       
       // Create WebSocket connection to our Edge Function
