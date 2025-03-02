@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
@@ -34,9 +35,11 @@ export const UnifiedSearch = ({
   const [isReadingResponse, setIsReadingResponse] = useState(false);
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [lastResponse, setLastResponse] = useState<string>("");
   
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
+  const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
   // Focus input when voice mode is deactivated
   useEffect(() => {
@@ -63,22 +66,21 @@ export const UnifiedSearch = ({
     }
   }, [isRecording, isTranscribing, isLoading, isReadingResponse]);
 
+  // Update isReadingResponse based on isSpeaking
+  useEffect(() => {
+    setIsReadingResponse(isSpeaking);
+  }, [isSpeaking]);
+
   const onSearch = async () => {
     if (searchQuery.trim()) {
       try {
         await handleSearch(searchQuery);
+        // Save the search query to use for speaking the response later
+        setLastResponse(searchQuery);
         setSearchQuery("");
         
-        if (voiceMode) {
-          toast.info("Reading response aloud...");
-          setIsReadingResponse(true);
-          
-          // Simulate AI speaking time (would be replaced with actual TTS duration)
-          setTimeout(() => {
-            setIsReadingResponse(false);
-            toast.success("Response read completely");
-          }, 3000);
-        }
+        // In voice mode, we'll automatically read the response 
+        // (this will be done in the Index component where we have access to the response)
       } catch (error) {
         console.error("Search error:", error);
       }
@@ -97,6 +99,7 @@ export const UnifiedSearch = ({
     } else {
       toast.info("Voice mode deactivated");
       setIsReadingResponse(false);
+      stopSpeaking();
       // Stop recording if active when turning off voice mode
       if (isRecording) {
         handleMicClick();
@@ -105,6 +108,7 @@ export const UnifiedSearch = ({
   };
 
   const stopReading = () => {
+    stopSpeaking();
     setIsReadingResponse(false);
     toast.info("Stopped reading response");
   };

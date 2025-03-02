@@ -6,6 +6,7 @@ import { DataChart } from "@/components/chat/visualizations/DataChart";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, Volume2, VolumeX } from "lucide-react";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -16,7 +17,8 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
   const conversationsEndRef = useRef<HTMLDivElement>(null);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
-  const [isSpeakingResponse, setIsSpeakingResponse] = useState(false);
+  const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(null);
+  const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
   useEffect(() => {
     if (conversationsEndRef.current) {
@@ -41,17 +43,16 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
     }
   };
 
-  const toggleSpeakResponse = (response: string) => {
-    if (isSpeakingResponse) {
-      // Stop speaking
-      window.speechSynthesis.cancel();
-      setIsSpeakingResponse(false);
+  const toggleSpeakResponse = (response: string, conversationId: string) => {
+    if (isSpeaking && currentSpeakingId === conversationId) {
+      // Stop speaking if this is the current speaking response
+      stopSpeaking();
+      setCurrentSpeakingId(null);
     } else {
-      // Start speaking
-      const utterance = new SpeechSynthesisUtterance(response);
-      utterance.onend = () => setIsSpeakingResponse(false);
-      window.speechSynthesis.speak(utterance);
-      setIsSpeakingResponse(true);
+      // Stop any ongoing speech and speak this response
+      stopSpeaking();
+      speakText(response);
+      setCurrentSpeakingId(conversationId);
     }
   };
 
@@ -103,6 +104,7 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
       <div className="p-4 space-y-6 max-h-[600px] overflow-y-auto">
         {currentThread.map((conversation, index) => {
           const isBenchmarks = conversation.assistant_type === 'benchmarks';
+          const isCurrentlySpeaking = isSpeaking && currentSpeakingId === conversation.id;
           
           return (
             <div key={conversation.id} className="space-y-4">
@@ -124,9 +126,9 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                       size="icon"
                       variant="ghost"
                       className="absolute top-0 right-0 h-8 w-8 opacity-70 hover:opacity-100"
-                      onClick={() => toggleSpeakResponse(conversation.response)}
+                      onClick={() => toggleSpeakResponse(conversation.response, conversation.id)}
                     >
-                      {isSpeakingResponse ? (
+                      {isCurrentlySpeaking ? (
                         <VolumeX className="h-4 w-4 text-gray-500" />
                       ) : (
                         <Volume2 className="h-4 w-4 text-gray-500" />

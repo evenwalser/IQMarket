@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
 import type { ChatVisualization } from "@/types/chat";
@@ -9,6 +8,7 @@ import { UnifiedSearch } from "@/components/UnifiedSearch";
 import { ConversationList } from "@/components/ConversationList";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 
 interface UploadedAttachment {
   id: string;
@@ -31,11 +31,32 @@ const Index = () => {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>("");
+  const [voiceMode, setVoiceMode] = useState<boolean>(false);
+  const latestResponseRef = useRef<string | null>(null);
+  const { speakText } = useTextToSpeech();
 
   useEffect(() => {
     // Initialize or retrieve session ID
     initializeSession();
   }, []);
+
+  // Monitor conversations for new responses to read aloud in voice mode
+  useEffect(() => {
+    if (voiceMode && conversations.length > 0) {
+      const lastResponse = conversations[0]?.response;
+      
+      // Only speak if this is a new response (not on initial load)
+      if (lastResponse && lastResponse !== latestResponseRef.current) {
+        latestResponseRef.current = lastResponse;
+        speakText(lastResponse);
+      }
+    }
+  }, [conversations, voiceMode, speakText]);
+
+  // Keep track of voice mode state from the UnifiedSearch component
+  const handleVoiceModeChange = (isActive: boolean) => {
+    setVoiceMode(isActive);
+  };
 
   const initializeSession = () => {
     // Check if session ID exists in local storage
@@ -319,6 +340,15 @@ const Index = () => {
       } else {
         await loadConversations(sessionId);
         clearAttachments();
+        
+        // Store the latest response for voice processing
+        latestResponseRef.current = data.response;
+        
+        // If in voice mode, automatically read the response
+        if (voiceMode) {
+          speakText(data.response);
+        }
+        
         toast.success("Response received!");
       }
     } catch (error) {
