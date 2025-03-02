@@ -1,3 +1,4 @@
+
 import { Upload } from "lucide-react";
 import { AttachmentList } from "@/components/chat/AttachmentList";
 import { Button } from "@/components/ui/button";

@@ -38,17 +38,6 @@ export const UnifiedSearch = ({
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
-  // Make the handlers globally available for the upload button in VoiceSearchInput
-  useEffect(() => {
-    window.handleAttachmentUpload = handleAttachmentUpload;
-    window.handleFileUpload = handleFileUpload;
-    
-    return () => {
-      delete window.handleAttachmentUpload;
-      delete window.handleFileUpload;
-    };
-  }, [handleAttachmentUpload, handleFileUpload]);
-
   // Focus input when voice mode is turned off
   useEffect(() => {
     if (!voiceMode && inputRef.current) {
@@ -132,6 +121,8 @@ export const UnifiedSearch = ({
           stopReading={stopReading}
           orbState={orbState}
           inputRef={inputRef}
+          handleAttachmentUpload={handleAttachmentUpload}
+          handleFileUpload={handleFileUpload}
         />
         
         <FileUploadButton 

@@ -127,7 +127,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           </AnimatePresence>
         </div>
         
-        {/* Clear, Upload & Search Buttons */}
+        {/* Clear button and Search Button with Upload Icon */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {/* Clear button when there's text */}
           {searchQuery && (
@@ -141,32 +141,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               <X className="h-4 w-4 text-gray-500" />
             </Button>
           )}
-          
-          {/* Upload button */}
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-              onChange={e => {
-                // Using the props passed to the FileUploadButton which is now empty
-                // we call both handlers here
-                if (window.handleAttachmentUpload && window.handleFileUpload) {
-                  window.handleAttachmentUpload(e);
-                  window.handleFileUpload(e);
-                }
-              }}
-              accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-              multiple
-              onClick={e => e.stopPropagation()}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200"
-            >
-              <Upload className="h-4 w-4 text-gray-600" />
-            </Button>
-          </label>
           
           {/* In voice mode, show stop reading button when applicable */}
           {voiceMode && isReadingResponse && (
@@ -182,21 +156,45 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             </Button>
           )}
           
-          {/* Search button */}
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className="rounded-full h-10 w-10 p-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-center"
-            onClick={onSearch}
-            disabled={isLoading || (!searchQuery.trim() && !isRecording)}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 text-white animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-          </Button>
+          {/* Wider Search button with Upload functionality inside */}
+          <div className="relative inline-flex items-center">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="rounded-full h-10 min-w-28 pr-3 pl-4 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-between"
+              onClick={onSearch}
+              disabled={isLoading || (!searchQuery.trim() && !isRecording)}
+            >
+              <span className="flex items-center gap-1">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                <span className="ml-1">Search</span>
+              </span>
+              
+              <span className="h-6 w-px bg-purple-400 mx-2"></span>
+              
+              <label className="cursor-pointer relative inline-flex items-center">
+                <input
+                  type="file"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                  onChange={e => {
+                    if (typeof handleAttachmentUpload === 'function' && typeof handleFileUpload === 'function') {
+                      handleAttachmentUpload(e);
+                      handleFileUpload(e);
+                    }
+                  }}
+                  accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                  multiple
+                  onClick={e => e.stopPropagation()}
+                />
+                <Upload className="h-4 w-4 text-white" />
+              </label>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
