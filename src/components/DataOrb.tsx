@@ -19,7 +19,7 @@ const DataOrb: React.FC<DataOrbProps> = ({
   
   // Enhanced colors for different states with gradients that match the UI theme
   const colors = {
-    idle: { primary: "#8b5cf6", secondary: "#6366f1" },            // Purple for idle (default)
+    idle: { primary: "#8b5cf6", secondary: "#6366f1" },            // Purple for idle/thinking
     user: { primary: "#10b981", secondary: "#34d399" },            // Green for listening (user speaking)
     ai: { primary: "#3b82f6", secondary: "#60a5fa" },              // Blue for AI speaking
   };

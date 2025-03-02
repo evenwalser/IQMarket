@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -37,25 +38,28 @@ export const UnifiedSearch = ({
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
+  // Focus input when voice mode is deactivated
   useEffect(() => {
     if (!voiceMode && inputRef.current) {
       inputRef.current.focus();
     }
   }, [voiceMode]);
 
+  // Set structured output based on selected mode
   useEffect(() => {
     setStructuredOutput(selectedMode === 'benchmarks');
   }, [selectedMode, setStructuredOutput]);
 
+  // Update orb state based on current interaction state
   useEffect(() => {
     if (isRecording) {
-      setOrbState("user");
+      setOrbState("user");  // Green - user is speaking
     } else if (isTranscribing || isLoading) {
-      setOrbState("idle");
+      setOrbState("idle");  // Purple - processing/thinking
     } else if (isReadingResponse) {
-      setOrbState("ai");
+      setOrbState("ai");    // Blue - AI is speaking
     } else {
-      setOrbState("idle");
+      setOrbState("idle");  // Default state
     }
   }, [isRecording, isTranscribing, isLoading, isReadingResponse]);
 
@@ -69,6 +73,7 @@ export const UnifiedSearch = ({
           toast.info("Reading response aloud...");
           setIsReadingResponse(true);
           
+          // Simulate AI speaking time (would be replaced with actual TTS duration)
           setTimeout(() => {
             setIsReadingResponse(false);
             toast.success("Response read completely");
@@ -81,13 +86,21 @@ export const UnifiedSearch = ({
   };
 
   const toggleVoiceMode = () => {
-    setVoiceMode(!voiceMode);
-    if (!voiceMode) {
-      toast.info("Voice mode activated. Click the microphone to start speaking.");
+    const newVoiceMode = !voiceMode;
+    setVoiceMode(newVoiceMode);
+    
+    if (newVoiceMode) {
+      toast.info("Voice mode activated");
+      // When voice mode is activated, orbState starts as idle (purple)
+      setOrbState("idle");
+      // The microphone activation is handled in the VoiceSearchInput component
     } else {
       toast.info("Voice mode deactivated");
       setIsReadingResponse(false);
-      setOrbState("idle");
+      // Stop recording if active when turning off voice mode
+      if (isRecording) {
+        handleMicClick();
+      }
     }
   };
 

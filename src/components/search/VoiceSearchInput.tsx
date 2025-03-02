@@ -45,10 +45,20 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 }) => {
   const [showOrb, setShowOrb] = useState(false);
   
-  // Show orb when voice mode is active and user is recording or AI is reading
+  // Show orb when voice mode is active
   useEffect(() => {
-    setShowOrb(voiceMode && (isRecording || isTranscribing || isReadingResponse));
-  }, [voiceMode, isRecording, isTranscribing, isReadingResponse]);
+    setShowOrb(voiceMode);
+    
+    // Auto-start recording when voice mode is activated
+    if (voiceMode && !isRecording && !isTranscribing && !isReadingResponse) {
+      // Small delay to ensure the UI updates first
+      const timer = setTimeout(() => {
+        handleMicClick();
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
 
   return (
     <div className="relative flex items-center">
@@ -66,36 +76,13 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
                 ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
                 : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
               }
-              ${!isRecording && voiceMode ? 'animate-pulse' : ''}
+              ${isRecording ? 'animate-pulse' : ''}
             `}
           >
             <Volume2 className="h-5 w-5 text-white" />
           </Button>
           
-          {/* Microphone Button */}
-          {voiceMode && (
-            <Button
-              variant={isRecording ? "destructive" : "default"}
-              size="icon"
-              type="button"
-              className={`
-                absolute -bottom-4 -right-1 h-8 w-8 rounded-full shadow-md
-                ${isRecording 
-                  ? 'bg-red-500 hover:bg-red-600 animate-pulse border-2 border-white' 
-                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-2 border-white'
-                } 
-                ${isTranscribing ? 'opacity-50' : 'opacity-100'}
-              `}
-              onClick={handleMicClick}
-              disabled={isLoading || isTranscribing}
-            >
-              {isRecording ? (
-                <MicOff className="h-3 w-3 text-white" />
-              ) : (
-                <Mic className="h-3 w-3 text-white" />
-              )}
-            </Button>
-          )}
+          {/* We're removing the visible microphone button as requested */}
         </div>
       </div>
       
@@ -165,6 +152,14 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               <X className="h-3 w-3 mr-1" />
               Stop
             </Button>
+          )}
+          
+          {/* Recording indicator - small visual cue */}
+          {voiceMode && isRecording && (
+            <div className="mr-2 flex items-center">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mr-1.5"></span>
+              <span className="text-xs text-red-500 font-medium">Recording</span>
+            </div>
           )}
           
           {/* Wider Search button with Upload functionality inside */}
