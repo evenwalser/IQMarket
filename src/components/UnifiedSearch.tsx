@@ -110,22 +110,47 @@ export const UnifiedSearch = ({
 
   return (
     <div className="space-y-4">
+      {/* Voice Button - Prominent and centered above search bar */}
+      <div className="flex justify-center mb-4">
+        <Button
+          variant={voiceMode ? "default" : "outline"}
+          size="lg"
+          type="button"
+          onClick={toggleVoiceMode}
+          className={`rounded-full px-6 py-6 h-auto flex items-center gap-2 transition-all shadow-lg ${
+            voiceMode 
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white' 
+              : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
+          }`}
+        >
+          <Volume2 className="h-5 w-5" />
+          <span className="font-medium">
+            {voiceMode ? "Voice Mode Active" : "Enable Voice Assistant"}
+          </span>
+        </Button>
+      </div>
+
       <div className="relative space-y-2">
         <div className="relative flex items-center bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
-          {/* Voice Mode Toggle Button - Made more prominent */}
+          {/* Microphone Button - Left side */}
           <div className="absolute left-4 top-1/2 -translate-y-1/2">
             <Button
-              variant={voiceMode ? "default" : "outline"}
+              variant={isRecording ? "destructive" : "default"}
               size="icon"
               type="button"
-              className={`h-12 w-12 rounded-full p-2 transition-all ${
-                voiceMode 
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700' 
-                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
-              }`}
-              onClick={toggleVoiceMode}
+              className={`h-12 w-12 rounded-full ${
+                isRecording 
+                  ? 'bg-red-500 hover:bg-red-600 animate-pulse border-none' 
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+              } ${isTranscribing ? 'opacity-50' : ''} ${voiceMode ? 'opacity-100' : 'opacity-60'}`}
+              onClick={handleMicClick}
+              disabled={isLoading || isTranscribing || !voiceMode}
             >
-              <Volume2 className={`h-6 w-6 ${voiceMode ? 'text-white' : ''}`} />
+              {isRecording ? (
+                <MicOff className="h-6 w-6 text-white" />
+              ) : (
+                <Mic className="h-6 w-6 text-white" />
+              )}
             </Button>
           </div>
           
@@ -134,7 +159,7 @@ export const UnifiedSearch = ({
             <Input 
               ref={inputRef}
               type="text" 
-              placeholder={voiceMode ? "Voice mode active. Start speaking..." : "Ask our Intelligence anything about your business and journey"} 
+              placeholder={voiceMode ? "Voice mode active. Ask anything..." : "Ask our Intelligence anything about your business and journey"} 
               className={`w-full h-14 pl-24 pr-24 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
               value={searchQuery} 
               onChange={e => setSearchQuery(e.target.value)}
@@ -169,7 +194,7 @@ export const UnifiedSearch = ({
             </div>
           </div>
           
-          {/* Combined Search/Upload Button + Mic Button */}
+          {/* Combined Search/Upload Button */}
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
             {/* Clear button when there's text */}
             {searchQuery && (
@@ -184,41 +209,18 @@ export const UnifiedSearch = ({
               </Button>
             )}
             
-            {/* In voice mode, show mic button */}
-            {voiceMode && (
-              <div className="flex items-center gap-2">
-                {isReadingResponse ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                    onClick={stopReading}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Stop Reading
-                  </Button>
-                ) : (
-                  <Button
-                    variant={isRecording ? "destructive" : "default"}
-                    size="icon"
-                    type="button"
-                    className={`h-12 w-12 rounded-full ${
-                      isRecording 
-                        ? 'bg-red-500 hover:bg-red-600 animate-pulse border-none' 
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none'
-                    } ${isTranscribing ? 'opacity-50' : ''}`}
-                    onClick={handleMicClick}
-                    disabled={isLoading || isTranscribing}
-                  >
-                    {isRecording ? (
-                      <MicOff className="h-6 w-6 text-white" />
-                    ) : (
-                      <Mic className="h-6 w-6 text-white" />
-                    )}
-                  </Button>
-                )}
-              </div>
+            {/* In voice mode, show stop reading button when applicable */}
+            {voiceMode && isReadingResponse && (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                onClick={stopReading}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Stop Reading
+              </Button>
             )}
             
             {/* Combined Search/Upload button */}
