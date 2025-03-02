@@ -6,6 +6,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Efficient base64 encoding for binary data
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -20,7 +31,11 @@ serve(async (req) => {
       throw new Error('Text is required and must be a string');
     }
 
-    console.log(`Generating speech for: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}" with voice: ${voice}`);
+    // Truncate very long inputs to prevent memory issues
+    const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
+    const wasTruncated = text.length > 4000;
+    
+    console.log(`Generating speech for: "${truncatedText.substring(0, 100)}${truncatedText.length > 100 ? '...' : ''}" with voice: ${voice}`);
     
     // Use streaming mode for OpenAI TTS
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -31,7 +46,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'tts-1',
-        input: text.substring(0, 4096), // Safety limit for very long inputs
+        input: truncatedText,
         voice: voice,
         response_format: 'mp3',
       }),
@@ -46,13 +61,11 @@ serve(async (req) => {
     // Get audio binary data
     const audioArrayBuffer = await response.arrayBuffer();
     
-    // Convert to base64 for sending over JSON
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioArrayBuffer)));
+    // Use the safe base64 conversion function
+    const base64Audio = arrayBufferToBase64(audioArrayBuffer);
     
-    console.log(`Successfully generated audio, size: ${Math.round(base64Audio.length / 1024)}KB`);
-    
-    // Check if text was truncated
-    const wasTruncated = text.length > 4096;
+    const audioSizeKB = Math.round(base64Audio.length / 1024);
+    console.log(`Successfully generated audio, size: ${audioSizeKB}KB`);
     
     return new Response(
       JSON.stringify({ 
