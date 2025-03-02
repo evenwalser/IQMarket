@@ -110,35 +110,34 @@ export const UnifiedSearch = ({
 
   return (
     <div className="space-y-4">
-      {/* Voice Button - Prominent and centered above search bar */}
-      <div className="flex justify-center mb-4">
-        <Button
-          variant={voiceMode ? "default" : "outline"}
-          size="lg"
-          type="button"
-          onClick={toggleVoiceMode}
-          className={`rounded-full px-6 py-6 h-auto flex items-center gap-2 transition-all shadow-lg ${
-            voiceMode 
-              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white' 
-              : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
-          }`}
-        >
-          <Volume2 className="h-5 w-5" />
-          <span className="font-medium">
-            {voiceMode ? "Voice Mode Active" : "Enable Voice Assistant"}
-          </span>
-        </Button>
-      </div>
-
+      {/* Removed the centered voice button that was here previously */}
+      
       <div className="relative space-y-2">
         <div className="relative flex items-center bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
-          {/* Microphone Button - Left side */}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+          {/* Voice Mode Toggle Button - Blended into left side of search box */}
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center">
+            <Button
+              variant={voiceMode ? "default" : "ghost"}
+              size="icon"
+              type="button"
+              onClick={toggleVoiceMode}
+              className={`rounded-full transition-all ${
+                voiceMode 
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              <Volume2 className={`h-5 w-5 ${voiceMode ? 'text-white' : ''}`} />
+            </Button>
+          </div>
+          
+          {/* Microphone Button - Next to voice toggle */}
+          <div className="absolute left-16 top-1/2 -translate-y-1/2">
             <Button
               variant={isRecording ? "destructive" : "default"}
               size="icon"
               type="button"
-              className={`h-12 w-12 rounded-full ${
+              className={`h-10 w-10 rounded-full ${
                 isRecording 
                   ? 'bg-red-500 hover:bg-red-600 animate-pulse border-none' 
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
@@ -147,20 +146,20 @@ export const UnifiedSearch = ({
               disabled={isLoading || isTranscribing || !voiceMode}
             >
               {isRecording ? (
-                <MicOff className="h-6 w-6 text-white" />
+                <MicOff className="h-5 w-5 text-white" />
               ) : (
-                <Mic className="h-6 w-6 text-white" />
+                <Mic className="h-5 w-5 text-white" />
               )}
             </Button>
           </div>
           
-          {/* Search Input */}
+          {/* Search Input - Adjusted padding for the left side controls */}
           <div className="relative w-full">
             <Input 
               ref={inputRef}
               type="text" 
               placeholder={voiceMode ? "Voice mode active. Ask anything..." : "Ask our Intelligence anything about your business and journey"} 
-              className={`w-full h-14 pl-24 pr-24 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
+              className={`w-full h-14 pl-32 pr-24 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
               value={searchQuery} 
               onChange={e => setSearchQuery(e.target.value)}
               onKeyDown={e => {
