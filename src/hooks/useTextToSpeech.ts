@@ -74,7 +74,11 @@ export const useTextToSpeech = () => {
       // Set up audio event listeners
       audio.onplay = () => {
         console.log("Audio playback started");
-        toast.success('Playing audio response', { id: 'tts' });
+        if (data.wasTruncated) {
+          toast.success('Playing truncated audio (text was too long)', { id: 'tts' });
+        } else {
+          toast.success('Playing audio response', { id: 'tts' });
+        }
         setIsSpeaking(true);
       };
       
