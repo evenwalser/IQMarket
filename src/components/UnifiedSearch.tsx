@@ -9,6 +9,8 @@ import { useFileAttachments } from "@/hooks/useFileAttachments";
 import { ModeExplainer } from "@/components/ModeExplainer";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
+import DataOrb from "@/components/DataOrb";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -32,13 +34,13 @@ export const UnifiedSearch = ({
   setStructuredOutput
 }: UnifiedSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showModeExplainer, setShowModeExplainer] = useState<AssistantType | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isReadingResponse, setIsReadingResponse] = useState(false);
+  const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const { isRecording, isTranscribing, handleMicClick } = useVoiceRecording(setSearchQuery);
+  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
   // Focus input when voice mode is turned off
@@ -53,6 +55,19 @@ export const UnifiedSearch = ({
     // Automatically set structured output to true for benchmarks
     setStructuredOutput(selectedMode === 'benchmarks');
   }, [selectedMode, setStructuredOutput]);
+
+  // Update orb state based on recording/response status
+  useEffect(() => {
+    if (isRecording) {
+      setOrbState("user");
+    } else if (isTranscribing || isLoading) {
+      setOrbState("idle"); // Processing state
+    } else if (isReadingResponse) {
+      setOrbState("ai");
+    } else {
+      setOrbState("idle");
+    }
+  }, [isRecording, isTranscribing, isLoading, isReadingResponse]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {
@@ -84,6 +99,7 @@ export const UnifiedSearch = ({
     } else {
       toast.info("Voice mode deactivated");
       setIsReadingResponse(false);
+      setOrbState("idle");
     }
   };
 
@@ -96,59 +112,64 @@ export const UnifiedSearch = ({
     <div className="space-y-4">
       <div className="relative space-y-2">
         <div className="relative flex items-center bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
-          {/* Voice Mode Toggle */}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
+          {/* Voice Mode Toggle Button - Made more prominent */}
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
             <Button
               variant={voiceMode ? "default" : "outline"}
               size="icon"
               type="button"
-              className={`h-10 w-10 rounded-full p-2 transition-all ${voiceMode ? 'bg-purple-600 hover:bg-purple-700' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`h-12 w-12 rounded-full p-2 transition-all ${
+                voiceMode 
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700' 
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+              }`}
               onClick={toggleVoiceMode}
             >
-              <Volume2 className={`h-5 w-5 ${voiceMode ? 'text-white' : ''}`} />
+              <Volume2 className={`h-6 w-6 ${voiceMode ? 'text-white' : ''}`} />
             </Button>
-            
-            {/* File Upload Button */}
-            <div className="relative">
-              <Button 
-                variant="outline"
-                size="icon"
-                type="button"
-                className="h-10 w-10 rounded-full p-2 text-gray-500 hover:text-gray-800"
-              >
-                <Upload className="h-5 w-5" />
-              </Button>
-              <input
-                type="file"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={e => {
-                  handleAttachmentUpload(e);
-                  handleFileUpload(e);
-                }}
-                accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-                multiple
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
           </div>
           
           {/* Search Input */}
-          <Input 
-            ref={inputRef}
-            type="text" 
-            placeholder={voiceMode ? "Voice mode active. Start speaking..." : "Ask our Intelligence anything about your business and journey"} 
-            className={`w-full h-14 pl-24 pr-32 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
-            value={searchQuery} 
-            onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                onSearch();
-              }
-            }}
-            disabled={voiceMode && isRecording}
-          />
+          <div className="relative w-full">
+            <Input 
+              ref={inputRef}
+              type="text" 
+              placeholder={voiceMode ? "Voice mode active. Start speaking..." : "Ask our Intelligence anything about your business and journey"} 
+              className={`w-full h-14 pl-24 pr-24 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
+              value={searchQuery} 
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  onSearch();
+                }
+              }}
+              disabled={voiceMode && isRecording}
+            />
+            
+            {/* Orb Overlay for Voice Mode */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <AnimatePresence>
+                {(voiceMode && (isRecording || isTranscribing || isReadingResponse)) && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute z-10"
+                  >
+                    <DataOrb 
+                      size={200} 
+                      speakingState={orbState} 
+                      pulseIntensity={1.3} 
+                      speed={1.2} 
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
           
-          {/* Right side controls */}
+          {/* Combined Search/Upload Button */}
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
             {/* Clear button when there's text */}
             {searchQuery && (
@@ -163,7 +184,7 @@ export const UnifiedSearch = ({
               </Button>
             )}
             
-            {/* In voice mode, show controls for recording */}
+            {/* In voice mode, show mic button */}
             {voiceMode && (
               <div className="flex items-center gap-2">
                 {isReadingResponse ? (
@@ -179,41 +200,59 @@ export const UnifiedSearch = ({
                   </Button>
                 ) : (
                   <Button
-                    variant={isRecording ? "default" : "outline"}
+                    variant={isRecording ? "destructive" : "outline"}
                     size="icon"
                     type="button"
-                    className={`h-10 w-10 rounded-full ${isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'text-gray-600 hover:text-gray-800'} ${isTranscribing ? 'opacity-50' : ''}`}
+                    className={`h-12 w-12 rounded-full ${
+                      isRecording 
+                        ? 'bg-red-500 hover:bg-red-600 animate-pulse border-none' 
+                        : 'text-gray-600 hover:text-gray-800 border-2'
+                    } ${isTranscribing ? 'opacity-50' : ''}`}
                     onClick={handleMicClick}
                     disabled={isLoading || isTranscribing}
                   >
                     {isRecording ? (
-                      <MicOff className="h-5 w-5 text-white" />
+                      <MicOff className="h-6 w-6 text-white" />
                     ) : (
-                      <Mic className="h-5 w-5" />
+                      <Mic className="h-6 w-6" />
                     )}
                   </Button>
                 )}
               </div>
             )}
             
-            {/* Search button */}
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="rounded-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white"
-              onClick={onSearch}
-              disabled={isLoading || (!searchQuery.trim() && !isRecording)}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 text-white animate-spin" />
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-1" />
-                  Search
-                </>
-              )}
-            </Button>
+            {/* Combined Search/Upload button */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="rounded-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                onClick={onSearch}
+                disabled={isLoading || (!searchQuery.trim() && !isRecording)}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-1" />
+                    Search
+                  </>
+                )}
+                <Upload className="h-4 w-4 ml-1 opacity-70" />
+              </Button>
+              <input
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={e => {
+                  handleAttachmentUpload(e);
+                  handleFileUpload(e);
+                }}
+                accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                multiple
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
           </div>
         </div>
         

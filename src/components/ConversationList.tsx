@@ -5,7 +5,7 @@ import { DataTable } from "@/components/chat/visualizations/DataTable";
 import { DataChart } from "@/components/chat/visualizations/DataChart";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Volume2, VolumeX } from "lucide-react";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -16,6 +16,7 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
   const conversationsEndRef = useRef<HTMLDivElement>(null);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const [isSpeakingResponse, setIsSpeakingResponse] = useState(false);
 
   useEffect(() => {
     if (conversationsEndRef.current) {
@@ -37,6 +38,20 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
       console.error("Error sending reply:", error);
     } finally {
       setIsReplying(false);
+    }
+  };
+
+  const toggleSpeakResponse = (response: string) => {
+    if (isSpeakingResponse) {
+      // Stop speaking
+      window.speechSynthesis.cancel();
+      setIsSpeakingResponse(false);
+    } else {
+      // Start speaking
+      const utterance = new SpeechSynthesisUtterance(response);
+      utterance.onend = () => setIsSpeakingResponse(false);
+      window.speechSynthesis.speak(utterance);
+      setIsSpeakingResponse(true);
     }
   };
 
@@ -101,7 +116,23 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
               {/* Assistant response */}
               <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
-                  <div className="whitespace-pre-wrap text-gray-800">{conversation.response}</div>
+                  <div className="whitespace-pre-wrap text-gray-800 relative pr-8">
+                    {conversation.response}
+                    
+                    {/* Text-to-speech button */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-0 right-0 h-8 w-8 opacity-70 hover:opacity-100"
+                      onClick={() => toggleSpeakResponse(conversation.response)}
+                    >
+                      {isSpeakingResponse ? (
+                        <VolumeX className="h-4 w-4 text-gray-500" />
+                      ) : (
+                        <Volume2 className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
                   
                   {conversation.visualizations?.map((visualization, vizIndex) => (
                     <div key={`${conversation.id}-viz-${vizIndex}`} className="mt-4">
@@ -155,6 +186,7 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
           <Button 
             onClick={handleReply}
             disabled={isReplying || !replyText.trim()}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
           >
             {isReplying ? (
               <Loader2 className="h-4 w-4 animate-spin" />
