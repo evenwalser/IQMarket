@@ -18,6 +18,9 @@ export const useVoiceRecording = (
   const silenceDetectionActiveRef = useRef<boolean>(false);
   const audioLevelCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const consecutiveSilenceCountRef = useRef<number>(0);
+  const minRecordingDurationRef = useRef<number>(1500); // Minimum 1.5s recording
+  const recordingTooShortRef = useRef<boolean>(false);
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -34,7 +37,7 @@ export const useVoiceRecording = (
     };
   }, []);
 
-  const detectSilence = (stream: MediaStream, silenceThreshold = 10, silenceDuration = 2000) => {
+  const detectSilence = (stream: MediaStream, silenceThreshold = 5, silenceDuration = 1500) => {
     console.log("Setting up silence detection with threshold:", silenceThreshold, "and duration:", silenceDuration);
     
     // Create audio context if it doesn't exist
@@ -68,6 +71,12 @@ export const useVoiceRecording = (
         return;
       }
       
+      // Don't trigger silence detection if we haven't recorded long enough
+      const currentDuration = recordingStartTime ? Date.now() - recordingStartTime : 0;
+      if (currentDuration < minRecordingDurationRef.current) {
+        return;
+      }
+      
       analyserRef.current.getByteFrequencyData(dataArrayRef.current);
       
       // Calculate average volume level
@@ -77,15 +86,23 @@ export const useVoiceRecording = (
       console.log(`Current audio level: ${average.toFixed(2)}`);
       
       if (average < silenceThreshold) {
-        // If silence, set timeout to stop recording after silenceDuration
-        if (!silenceTimeoutRef.current) {
-          console.log(`Silence detected (avg: ${average}), setting timer to stop recording in ${silenceDuration}ms`);
-          silenceTimeoutRef.current = setTimeout(() => {
-            console.log("Silence timeout triggered, stopping recording");
-            stopRecording();
-          }, silenceDuration);
+        consecutiveSilenceCountRef.current += 1;
+        console.log(`Silence count: ${consecutiveSilenceCountRef.current}`);
+        
+        // If we've detected silence for multiple consecutive checks
+        if (consecutiveSilenceCountRef.current >= 3) {
+          if (!silenceTimeoutRef.current) {
+            console.log(`Consistent silence detected (avg: ${average}), stopping recording in ${silenceDuration}ms`);
+            silenceTimeoutRef.current = setTimeout(() => {
+              console.log("Silence timeout triggered, stopping recording");
+              stopRecording();
+            }, silenceDuration);
+          }
         }
       } else {
+        // Reset silence counter if we hear sound
+        consecutiveSilenceCountRef.current = 0;
+        
         // If sound detected, clear the timeout
         if (silenceTimeoutRef.current) {
           console.log(`Sound detected (avg: ${average}), clearing silence timer`);
@@ -123,6 +140,8 @@ export const useVoiceRecording = (
       
       silenceDetectionActiveRef.current = false;
       audioChunksRef.current = []; // Reset audio chunks
+      consecutiveSilenceCountRef.current = 0;
+      recordingTooShortRef.current = false;
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
@@ -144,7 +163,7 @@ export const useVoiceRecording = (
       // Start silence detection after a short delay to avoid initial setup noise
       setTimeout(() => {
         silenceDetectionActiveRef.current = true;
-        detectSilence(stream, 8, 2000); // Lower threshold (8) for better detection, 2s pause
+        detectSilence(stream, 5, 1000); // Lower threshold (5) for better detection, 1s pause
       }, 500);
     } catch (error) {
       console.error('Error accessing microphone:', error);

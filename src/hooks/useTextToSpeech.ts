@@ -7,6 +7,8 @@ export const useTextToSpeech = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingTextRef = useRef<string | null>(null);
+  const maxRetries = 2;
+  const retryCountRef = useRef<number>(0);
 
   const cleanupAudio = () => {
     if (currentAudioRef.current) {
@@ -17,7 +19,10 @@ export const useTextToSpeech = () => {
   };
 
   const speakText = async (text: string, voice: string = 'nova') => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      console.log("Empty text provided to text-to-speech, skipping");
+      return;
+    }
     
     // If something is already playing, stop it
     cleanupAudio();
@@ -31,18 +36,36 @@ export const useTextToSpeech = () => {
       
       console.log(`Calling text-to-speech function with ${text.length} characters and voice: ${voice}`);
       
-      // Call our Edge Function
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { 
-          text, 
-          voice 
-        },
-      });
+      retryCountRef.current = 0;
+      const tryGenerateSpeech = async (): Promise<any> => {
+        try {
+          // Call our Edge Function
+          const { data, error } = await supabase.functions.invoke('text-to-speech', {
+            body: { 
+              text, 
+              voice 
+            },
+          });
 
-      if (error) {
-        console.error('Supabase Edge Function error:', error);
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
+          if (error) {
+            console.error('Supabase Edge Function error:', error);
+            throw new Error(`Edge Function error: ${error.message}`);
+          }
+
+          return { data };
+        } catch (error) {
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current++;
+            console.log(`Retrying text-to-speech (attempt ${retryCountRef.current}/${maxRetries})...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            return tryGenerateSpeech();
+          } else {
+            throw error;
+          }
+        }
+      };
+      
+      const { data } = await tryGenerateSpeech();
 
       if (!data) {
         console.error('No data received from text-to-speech function');

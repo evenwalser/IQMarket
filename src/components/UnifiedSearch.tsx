@@ -38,6 +38,7 @@ export const UnifiedSearch = ({
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
+  const [voiceInteractionComplete, setVoiceInteractionComplete] = useState(false);
   
   // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = async (text: string) => {
@@ -100,18 +101,20 @@ export const UnifiedSearch = ({
         console.log("Auto-reading response in voice mode:", latestResponse);
         speakText(latestResponse);
         setLastResponse(latestResponse); // Update last response to prevent repeated reading
+        setVoiceInteractionComplete(true); // Mark this voice interaction as complete
       }, 800);
       
       return () => clearTimeout(timer);
     }
   }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
 
-  // Start listening again after response is read in voice mode
+  // In voice mode, only restart listening automatically when we haven't completed an interaction yet
   useEffect(() => {
-    if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
+    // Only auto-restart listening if we're still in voice mode but haven't completed an interaction
+    if (voiceMode && !voiceInteractionComplete && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
       // Auto restart listening after a short delay once everything is idle
       const timer = setTimeout(() => {
-        if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
+        if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking && !voiceInteractionComplete) {
           console.log("Auto-restarting voice recording in voice mode");
           handleMicClick();
         }
@@ -119,7 +122,7 @@ export const UnifiedSearch = ({
       
       return () => clearTimeout(timer);
     }
-  }, [voiceMode, isRecording, isTranscribing, isLoading, isSpeaking, handleMicClick]);
+  }, [voiceMode, isRecording, isTranscribing, isLoading, isSpeaking, handleMicClick, voiceInteractionComplete]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {
@@ -145,6 +148,8 @@ export const UnifiedSearch = ({
       setOrbState("idle");
       // Clear any previous search query
       setSearchQuery("");
+      // Reset the voice interaction completion state
+      setVoiceInteractionComplete(false);
       // When voice mode is turned on, automatically start recording after a short delay
       setTimeout(() => {
         if (!isRecording) {
@@ -159,6 +164,8 @@ export const UnifiedSearch = ({
       if (isRecording) {
         handleMicClick();
       }
+      // Reset the voice interaction completion state
+      setVoiceInteractionComplete(false);
     }
   };
 
@@ -167,13 +174,27 @@ export const UnifiedSearch = ({
     setIsReadingResponse(false);
     toast.info("Stopped reading response");
     
-    // After stopping, if we're still in voice mode, restart listening
-    if (voiceMode && !isRecording && !isTranscribing) {
+    // After stopping, if we're still in voice mode and we haven't completed an interaction,
+    // restart listening (user might want to continue the conversation)
+    if (voiceMode && !isRecording && !isTranscribing && !voiceInteractionComplete) {
       setTimeout(() => {
         handleMicClick();
       }, 1000);
     }
   };
+
+  // Reset interaction after TTS completes
+  useEffect(() => {
+    if (voiceInteractionComplete && !isSpeaking) {
+      // Automatically turn off voice mode after completion
+      setTimeout(() => {
+        if (voiceMode) {
+          setVoiceMode(false);
+          toast.info("Voice interaction complete");
+        }
+      }, 1000);
+    }
+  }, [voiceInteractionComplete, isSpeaking, voiceMode]);
 
   return (
     <div className="space-y-4">
