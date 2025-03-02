@@ -45,7 +45,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 }) => {
   return (
     <div className="relative flex items-center">
-      {/* Voice Mode Toggle Button - Colorful orb-like button */}
+      {/* Voice Mode Toggle Button */}
       <div className="mr-4">
         <div className="relative">
           <Button
@@ -65,7 +65,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             <Volume2 className="h-5 w-5 text-white" />
           </Button>
           
-          {/* Microphone Button - Overlaid on the voice toggle when in voice mode */}
+          {/* Microphone Button */}
           {voiceMode && (
             <Button
               variant={isRecording ? "destructive" : "default"}
@@ -92,7 +92,29 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         </div>
       </div>
       
-      {/* Search Box with Shadow and Rounded Corners */}
+      {/* Floating Orb Above Search Box - Appears when voice mode is active */}
+      <div className="absolute w-full">
+        <AnimatePresence>
+          {voiceMode && (isRecording || isTranscribing || isReadingResponse) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: -80 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+              className="absolute left-1/2 transform -translate-x-1/2 z-30"
+            >
+              <DataOrb 
+                size={180} 
+                speakingState={orbState} 
+                pulseIntensity={1.5} 
+                speed={1.2} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      {/* Search Box */}
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
         <Input 
           ref={inputRef}
@@ -108,28 +130,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           }}
           disabled={voiceMode && isRecording}
         />
-        
-        {/* Orb Overlay for Voice Mode */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <AnimatePresence>
-            {(voiceMode && (isRecording || isTranscribing || isReadingResponse)) && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.3 }}
-                className="absolute z-10"
-              >
-                <DataOrb 
-                  size={200} 
-                  speakingState={orbState} 
-                  pulseIntensity={1.3} 
-                  speed={1.2} 
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
         
         {/* Clear button and Search Button with Upload Icon */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">

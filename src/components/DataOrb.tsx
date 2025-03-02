@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
@@ -16,11 +17,11 @@ const DataOrb: React.FC<DataOrbProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Colors for different states
+  // Enhanced colors for different states with gradients that match the UI theme
   const colors = {
-    idle: { primary: "#8b5cf6", secondary: "#6366f1" },
-    user: { primary: "#10b981", secondary: "#34d399" }, // Green for listening
-    ai: { primary: "#3b82f6", secondary: "#60a5fa" },   // Blue for speaking
+    idle: { primary: "#8b5cf6", secondary: "#6366f1" },            // Purple for idle (default)
+    user: { primary: "#10b981", secondary: "#34d399" },            // Green for listening (user speaking)
+    ai: { primary: "#3b82f6", secondary: "#60a5fa" },              // Blue for AI speaking
   };
   
   useEffect(() => {
@@ -50,7 +51,7 @@ const DataOrb: React.FC<DataOrbProps> = ({
     // Initialize particles
     const initParticles = () => {
       particles = [];
-      const particleCount = 100;
+      const particleCount = 120; // Slightly more particles for a richer effect
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       
@@ -79,20 +80,21 @@ const DataOrb: React.FC<DataOrbProps> = ({
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Draw center orb glow
+      // Draw center orb glow with enhanced gradient
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
       const gradient = ctx.createRadialGradient(
         centerX, centerY, 0,
-        centerX, centerY, size / 3
+        centerX, centerY, size / 2.8
       );
       
-      gradient.addColorStop(0, `${currentColors.primary}80`);
+      gradient.addColorStop(0, `${currentColors.primary}90`);
+      gradient.addColorStop(0.6, `${currentColors.secondary}50`);
       gradient.addColorStop(1, "transparent");
       
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, size / 3, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, size / 2.8, 0, Math.PI * 2);
       ctx.fill();
       
       // Update and draw particles
@@ -129,26 +131,36 @@ const DataOrb: React.FC<DataOrbProps> = ({
           particle.velocity.y = -particle.velocity.y * 0.8 + (Math.random() - 0.5) * 0.5;
         }
         
-        // Draw particle
+        // Draw particle with enhanced effect based on state
         ctx.globalAlpha = particle.alpha;
         ctx.fillStyle = particle.color;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius * (speakingState !== "idle" ? pulseIntensity : 1), 0, Math.PI * 2);
+        
+        // Adjust particle size based on current state
+        const particleSize = particle.radius * 
+          (speakingState === "user" ? pulseIntensity * 1.2 : 
+           speakingState === "ai" ? pulseIntensity * 1.1 : 
+           1);
+           
+        ctx.arc(particle.x, particle.y, particleSize, 0, Math.PI * 2);
         ctx.fill();
       });
       
       // Add pulse effect based on speaking state
       if (speakingState !== "idle") {
-        const pulseSize = size / 2 * (0.8 + Math.sin(Date.now() * 0.003) * 0.2);
+        // Create a pulsing effect that's unique to each state
+        const pulseFrequency = speakingState === "user" ? 0.004 : 0.003;
+        const pulseSize = size / 2 * (0.8 + Math.sin(Date.now() * pulseFrequency) * 0.2);
+        
         const pulseGradient = ctx.createRadialGradient(
           centerX, centerY, pulseSize * 0.7,
           centerX, centerY, pulseSize
         );
         
         pulseGradient.addColorStop(0, "transparent");
-        pulseGradient.addColorStop(1, `${currentColors.secondary}30`);
+        pulseGradient.addColorStop(1, `${currentColors.secondary}40`);
         
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = 0.7;
         ctx.fillStyle = pulseGradient;
         ctx.beginPath();
         ctx.arc(centerX, centerY, pulseSize, 0, Math.PI * 2);
