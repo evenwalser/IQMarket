@@ -17,6 +17,7 @@ export const useVoiceRecording = (
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const silenceDetectionActiveRef = useRef<boolean>(false);
   const audioLevelCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -57,7 +58,7 @@ export const useVoiceRecording = (
       }
     }
     
-    // Instead of recursive requestAnimationFrame, use interval for more consistent checking
+    // Use interval for more consistent checking
     if (audioLevelCheckIntervalRef.current) {
       clearInterval(audioLevelCheckIntervalRef.current);
     }
@@ -121,86 +122,17 @@ export const useVoiceRecording = (
       }
       
       silenceDetectionActiveRef.current = false;
+      audioChunksRef.current = []; // Reset audio chunks
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      const audioChunks: Blob[] = [];
 
       recorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
+        audioChunksRef.current.push(event.data);
       };
 
       recorder.onstop = async () => {
-        toast.loading('Converting speech to text...', { id: 'transcription' });
-        setIsTranscribing(true);
-        silenceDetectionActiveRef.current = false;
-        
-        // Clean up audio monitoring
-        if (audioLevelCheckIntervalRef.current) {
-          clearInterval(audioLevelCheckIntervalRef.current);
-          audioLevelCheckIntervalRef.current = null;
-        }
-        
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        
-        // Skip empty recordings
-        if (audioBlob.size < 1000) { // Less than 1KB is probably empty
-          console.log("Recording too small, ignoring empty audio");
-          setIsTranscribing(false);
-          toast.error("No speech detected, please try again", { id: 'transcription' });
-          return;
-        }
-        
-        const reader = new FileReader();
-        
-        reader.onload = async () => {
-          const base64Audio = (reader.result as string).split(',')[1];
-          
-          try {
-            console.log('Sending audio to OpenAI Whisper API...');
-            const { data, error } = await supabase.functions.invoke('voice-to-text', {
-              body: { audio: base64Audio }
-            });
-
-            if (error) throw error;
-            if (!data?.text) throw new Error('No transcription received');
-
-            // Set the query text first
-            setSearchQuery(data.text);
-            
-            // Calculate duration
-            const recordingDuration = recordingStartTime 
-              ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
-              : 'unknown';
-            
-            toast.success(`Transcribed ${recordingDuration}s audio: "${data.text}"`, { 
-              id: 'transcription',
-              duration: 4000 
-            });
-            console.log('Transcription received:', data.text);
-            
-            // Call the callback after transcription is complete
-            if (onTranscriptionComplete && data.text.trim()) {
-              onTranscriptionComplete(data.text);
-            }
-          } catch (error) {
-            console.error('Transcription error:', error);
-            toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
-          } finally {
-            setIsTranscribing(false);
-            setRecordingStartTime(null);
-            
-            // Clean up audio context
-            if (audioContextRef.current) {
-              audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
-              audioContextRef.current = null;
-              analyserRef.current = null;
-              dataArrayRef.current = null;
-            }
-          }
-        };
-
-        reader.readAsDataURL(audioBlob);
+        processRecording();
       };
 
       setMediaRecorder(recorder);
@@ -218,6 +150,79 @@ export const useVoiceRecording = (
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
     }
+  };
+
+  const processRecording = async () => {
+    toast.loading('Converting speech to text...', { id: 'transcription' });
+    setIsTranscribing(true);
+    silenceDetectionActiveRef.current = false;
+    
+    // Clean up audio monitoring
+    if (audioLevelCheckIntervalRef.current) {
+      clearInterval(audioLevelCheckIntervalRef.current);
+      audioLevelCheckIntervalRef.current = null;
+    }
+    
+    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    
+    // Skip empty recordings
+    if (audioBlob.size < 1000) { // Less than 1KB is probably empty
+      console.log("Recording too small, ignoring empty audio");
+      setIsTranscribing(false);
+      toast.error("No speech detected, please try again", { id: 'transcription' });
+      return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = async () => {
+      const base64Audio = (reader.result as string).split(',')[1];
+      
+      try {
+        console.log('Sending audio to OpenAI Whisper API...');
+        const { data, error } = await supabase.functions.invoke('voice-to-text', {
+          body: { audio: base64Audio }
+        });
+
+        if (error) throw error;
+        if (!data?.text) throw new Error('No transcription received');
+
+        // Set the query text first
+        setSearchQuery(data.text);
+        
+        // Calculate duration
+        const recordingDuration = recordingStartTime 
+          ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
+          : 'unknown';
+        
+        toast.success(`Transcribed ${recordingDuration}s audio: "${data.text}"`, { 
+          id: 'transcription',
+          duration: 4000 
+        });
+        console.log('Transcription received:', data.text);
+        
+        // Call the callback after transcription is complete
+        if (onTranscriptionComplete && data.text.trim()) {
+          onTranscriptionComplete(data.text);
+        }
+      } catch (error) {
+        console.error('Transcription error:', error);
+        toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
+      } finally {
+        setIsTranscribing(false);
+        setRecordingStartTime(null);
+        
+        // Clean up audio context
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
+          audioContextRef.current = null;
+          analyserRef.current = null;
+          dataArrayRef.current = null;
+        }
+      }
+    };
+
+    reader.readAsDataURL(audioBlob);
   };
 
   const stopRecording = () => {

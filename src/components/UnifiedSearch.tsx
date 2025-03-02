@@ -18,7 +18,7 @@ interface UnifiedSearchProps {
   attachments: File[];
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
-  latestResponse?: string; // Add latest response prop to read aloud
+  latestResponse?: string;
 }
 
 export const UnifiedSearch = ({
@@ -40,14 +40,17 @@ export const UnifiedSearch = ({
   const [lastResponse, setLastResponse] = useState<string>("");
   
   // Handle transcription completion in voice mode with automatic submission
-  const handleTranscriptionComplete = (text: string) => {
+  const handleTranscriptionComplete = async (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
     if (voiceMode && text.trim()) {
-      // Automatically submit the query when in voice mode with a small delay
-      // to allow the UI to update with the transcribed text first
-      setTimeout(() => {
-        handleSearch(text);
-      }, 500);
+      try {
+        // Submit the query immediately in voice mode
+        await handleSearch(text);
+        console.log("Search automatically submitted in voice mode");
+      } catch (error) {
+        console.error("Error auto-submitting search:", error);
+        toast.error("Failed to process your request");
+      }
     }
   };
   
@@ -89,7 +92,7 @@ export const UnifiedSearch = ({
     setIsReadingResponse(isSpeaking);
   }, [isSpeaking]);
   
-  // Auto-read responses in voice mode
+  // Auto-read responses in voice mode - enhanced to be more reliable
   useEffect(() => {
     if (voiceMode && latestResponse && latestResponse !== lastResponse && !isLoading && !isRecording && !isTranscribing) {
       // Wait a short delay to ensure UI updates first
@@ -102,6 +105,21 @@ export const UnifiedSearch = ({
       return () => clearTimeout(timer);
     }
   }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
+
+  // Start listening again after response is read in voice mode
+  useEffect(() => {
+    if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
+      // Auto restart listening after a short delay once everything is idle
+      const timer = setTimeout(() => {
+        if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
+          console.log("Auto-restarting voice recording in voice mode");
+          handleMicClick();
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [voiceMode, isRecording, isTranscribing, isLoading, isSpeaking, handleMicClick]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
+import { Search, Loader2, Volume2, X, Upload, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DataOrb from "@/components/DataOrb";
 
@@ -43,29 +43,49 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   handleFileUpload
 }) => {
   const [showOrb, setShowOrb] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Show orb when voice mode is active
   useEffect(() => {
     setShowOrb(voiceMode);
-    
-    // Auto-start recording when voice mode is activated
-    if (voiceMode && !isRecording && !isTranscribing && !isReadingResponse) {
-      // Small delay to ensure the UI updates first
-      const timer = setTimeout(() => {
-        handleMicClick();
-      }, 300);
-      
-      return () => clearTimeout(timer);
+  }, [voiceMode]);
+  
+  // Update recording duration timer
+  useEffect(() => {
+    if (isRecording) {
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setRecordingDuration(0);
     }
-  }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
+    
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, [isRecording]);
 
   // Helper function to get status text
   const getStatusText = () => {
-    if (isRecording) return "Listening... Speak now and pause when done";
+    if (isRecording) return `Listening... (${recordingDuration}s) - Pause when done`;
     if (isTranscribing) return "Processing your speech...";
     if (isReadingResponse) return "AI is speaking...";
     if (voiceMode) return "Voice mode active. Click to start speaking";
     return "Ask our Intelligence anything about your business and journey";
+  };
+
+  // Format recording duration
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' + secs : secs}`;
   };
 
   return (
@@ -131,7 +151,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           value={searchQuery} 
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={e => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !voiceMode) {
               onSearch();
             }
           }}
@@ -142,21 +162,21 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         {/* Status Indicator in Voice Mode */}
         {voiceMode && (
           <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
-            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
               isRecording ? 'bg-green-100 text-green-700' : 
               isTranscribing ? 'bg-amber-100 text-amber-700' :
               isReadingResponse ? 'bg-blue-100 text-blue-700' :
               'bg-purple-100 text-purple-700'
             }`}>
-              {isRecording ? 'Listening...' : 
-               isTranscribing ? 'Processing...' :
+              {isRecording ? `Recording (${formatDuration(recordingDuration)})` : 
+               isTranscribing ? 'Processing speech...' :
                isReadingResponse ? 'AI Speaking...' :
                'Voice Mode Active'}
             </div>
           </div>
         )}
         
-        {/* Clear button and Search Button with Upload Icon */}
+        {/* Action buttons on the right side of input */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {/* Clear button when there's text */}
           {searchQuery && !voiceMode && (
@@ -177,11 +197,38 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               variant="outline"
               size="sm"
               type="button"
-              className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100 h-8 px-2 py-0"
+              className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100 h-8 px-3 py-0"
               onClick={stopReading}
             >
               <X className="h-3 w-3 mr-1" />
-              Stop
+              Stop AI
+            </Button>
+          )}
+          
+          {/* Voice mode - manual microphone control */}
+          {voiceMode && !isReadingResponse && !isTranscribing && (
+            <Button
+              variant={isRecording ? "destructive" : "outline"}
+              size="sm"
+              type="button"
+              className={`rounded-full h-8 px-3 py-0 ${
+                isRecording 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+              }`}
+              onClick={handleMicClick}
+            >
+              {isRecording ? (
+                <>
+                  <X className="h-3 w-3 mr-1" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Mic className="h-3 w-3 mr-1" />
+                  Speak
+                </>
+              )}
             </Button>
           )}
           
@@ -189,11 +236,11 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           {voiceMode && isRecording && (
             <div className="mr-2 flex items-center">
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mr-1.5"></span>
-              <span className="text-xs text-red-500 font-medium">Recording</span>
+              <span className="text-xs text-red-500 font-medium">{formatDuration(recordingDuration)}</span>
             </div>
           )}
           
-          {/* Wider Search button with Upload functionality inside */}
+          {/* Search/Upload button (disabled in voice mode) */}
           <div className="relative inline-flex items-center">
             <Button
               type="button"
