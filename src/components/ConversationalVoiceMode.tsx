@@ -34,7 +34,10 @@ export function ConversationalVoiceMode({
     stopPlayback
   } = useRealtimeVoiceChat({
     onNewMessage: (message) => {
-      onMessage(message);
+      // Filter out system messages - only pass user or assistant messages to the handler
+      if (message.role === 'user' || message.role === 'assistant') {
+        onMessage(message);
+      }
     },
     voiceId: 'alloy' // You can make this configurable
   });

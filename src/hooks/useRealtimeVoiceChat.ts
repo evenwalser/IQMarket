@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { encodeAudioForAPI } from '@/utils/audioProcessing';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,9 +13,10 @@ type VoiceChatStatus =
   | 'speaking'
   | 'error';
 
-type MessageRole = 'user' | 'assistant' | 'system';
+// Define a union type for the message roles that includes 'system'
+export type MessageRole = 'user' | 'assistant' | 'system';
 
-interface VoiceChatMessage {
+export interface VoiceChatMessage {
   role: MessageRole;
   content: string;
 }
