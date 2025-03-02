@@ -169,7 +169,7 @@ export const UnifiedSearch = ({
             </div>
           </div>
           
-          {/* Combined Search/Upload Button */}
+          {/* Combined Search/Upload Button + Mic Button */}
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
             {/* Clear button when there's text */}
             {searchQuery && (
@@ -200,13 +200,13 @@ export const UnifiedSearch = ({
                   </Button>
                 ) : (
                   <Button
-                    variant={isRecording ? "destructive" : "outline"}
+                    variant={isRecording ? "destructive" : "default"}
                     size="icon"
                     type="button"
                     className={`h-12 w-12 rounded-full ${
                       isRecording 
                         ? 'bg-red-500 hover:bg-red-600 animate-pulse border-none' 
-                        : 'text-gray-600 hover:text-gray-800 border-2'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none'
                     } ${isTranscribing ? 'opacity-50' : ''}`}
                     onClick={handleMicClick}
                     disabled={isLoading || isTranscribing}
@@ -214,7 +214,7 @@ export const UnifiedSearch = ({
                     {isRecording ? (
                       <MicOff className="h-6 w-6 text-white" />
                     ) : (
-                      <Mic className="h-6 w-6" />
+                      <Mic className="h-6 w-6 text-white" />
                     )}
                   </Button>
                 )}
