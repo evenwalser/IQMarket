@@ -7,8 +7,9 @@ export const useTextToSpeech = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingTextRef = useRef<string | null>(null);
-  const maxRetries = 2;
+  const maxRetries = 3;
   const retryCountRef = useRef<number>(0);
+  const retryDelay = 1500; // 1.5 seconds between retries
 
   const cleanupAudio = () => {
     if (currentAudioRef.current) {
@@ -54,10 +55,12 @@ export const useTextToSpeech = () => {
 
           return { data };
         } catch (error) {
+          console.error(`TTS error attempt ${retryCountRef.current + 1}/${maxRetries}:`, error);
+          
           if (retryCountRef.current < maxRetries) {
             retryCountRef.current++;
-            console.log(`Retrying text-to-speech (attempt ${retryCountRef.current}/${maxRetries})...`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            console.log(`Retrying text-to-speech (attempt ${retryCountRef.current}/${maxRetries}) in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay)); // Wait before retry
             return tryGenerateSpeech();
           } else {
             throw error;

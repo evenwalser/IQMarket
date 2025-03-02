@@ -39,12 +39,14 @@ export const UnifiedSearch = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   const [voiceInteractionComplete, setVoiceInteractionComplete] = useState(false);
+  const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
   
   // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = async (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
-    if (voiceMode && text.trim()) {
+    if (voiceMode && text.trim() && !processingVoiceInteraction) {
       try {
+        setProcessingVoiceInteraction(true); // Prevent multiple submissions
         // Submit the query immediately in voice mode
         await handleSearch(text);
         console.log("Search automatically submitted in voice mode");
@@ -102,27 +104,29 @@ export const UnifiedSearch = ({
         speakText(latestResponse);
         setLastResponse(latestResponse); // Update last response to prevent repeated reading
         setVoiceInteractionComplete(true); // Mark this voice interaction as complete
+        setProcessingVoiceInteraction(false); // Reset processing flag
       }, 800);
       
       return () => clearTimeout(timer);
     }
   }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
 
-  // In voice mode, only restart listening automatically when we haven't completed an interaction yet
+  // When TTS completes, auto-turn off voice mode
   useEffect(() => {
-    // Only auto-restart listening if we're still in voice mode but haven't completed an interaction
-    if (voiceMode && !voiceInteractionComplete && !isRecording && !isTranscribing && !isLoading && !isSpeaking) {
-      // Auto restart listening after a short delay once everything is idle
-      const timer = setTimeout(() => {
-        if (voiceMode && !isRecording && !isTranscribing && !isLoading && !isSpeaking && !voiceInteractionComplete) {
-          console.log("Auto-restarting voice recording in voice mode");
-          handleMicClick();
+    if (voiceInteractionComplete && !isSpeaking) {
+      // Automatically turn off voice mode after completion
+      setTimeout(() => {
+        if (voiceMode) {
+          console.log("Voice interaction complete, turning off voice mode");
+          setVoiceMode(false);
+          toast.info("Voice interaction complete");
+          // Reset states for next interaction
+          setVoiceInteractionComplete(false);
+          setProcessingVoiceInteraction(false);
         }
-      }, 2000);
-      
-      return () => clearTimeout(timer);
+      }, 1000);
     }
-  }, [voiceMode, isRecording, isTranscribing, isLoading, isSpeaking, handleMicClick, voiceInteractionComplete]);
+  }, [voiceInteractionComplete, isSpeaking, voiceMode]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {
@@ -150,6 +154,7 @@ export const UnifiedSearch = ({
       setSearchQuery("");
       // Reset the voice interaction completion state
       setVoiceInteractionComplete(false);
+      setProcessingVoiceInteraction(false);
       // When voice mode is turned on, automatically start recording after a short delay
       setTimeout(() => {
         if (!isRecording) {
@@ -164,8 +169,9 @@ export const UnifiedSearch = ({
       if (isRecording) {
         handleMicClick();
       }
-      // Reset the voice interaction completion state
+      // Reset the voice interaction states
       setVoiceInteractionComplete(false);
+      setProcessingVoiceInteraction(false);
     }
   };
 
@@ -174,27 +180,12 @@ export const UnifiedSearch = ({
     setIsReadingResponse(false);
     toast.info("Stopped reading response");
     
-    // After stopping, if we're still in voice mode and we haven't completed an interaction,
-    // restart listening (user might want to continue the conversation)
-    if (voiceMode && !isRecording && !isTranscribing && !voiceInteractionComplete) {
-      setTimeout(() => {
-        handleMicClick();
-      }, 1000);
+    // After stopping, if we're still in voice mode, end the voice interaction
+    if (voiceMode) {
+      setVoiceInteractionComplete(true);
+      setProcessingVoiceInteraction(false);
     }
   };
-
-  // Reset interaction after TTS completes
-  useEffect(() => {
-    if (voiceInteractionComplete && !isSpeaking) {
-      // Automatically turn off voice mode after completion
-      setTimeout(() => {
-        if (voiceMode) {
-          setVoiceMode(false);
-          toast.info("Voice interaction complete");
-        }
-      }, 1000);
-    }
-  }, [voiceInteractionComplete, isSpeaking, voiceMode]);
 
   return (
     <div className="space-y-4">

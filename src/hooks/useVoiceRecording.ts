@@ -21,6 +21,7 @@ export const useVoiceRecording = (
   const consecutiveSilenceCountRef = useRef<number>(0);
   const minRecordingDurationRef = useRef<number>(1500); // Minimum 1.5s recording
   const recordingTooShortRef = useRef<boolean>(false);
+  const silenceThresholdRef = useRef<number>(5); // Configurable silence threshold
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -37,8 +38,8 @@ export const useVoiceRecording = (
     };
   }, []);
 
-  const detectSilence = (stream: MediaStream, silenceThreshold = 5, silenceDuration = 1500) => {
-    console.log("Setting up silence detection with threshold:", silenceThreshold, "and duration:", silenceDuration);
+  const detectSilence = (stream: MediaStream, silenceDuration = 2000) => {
+    console.log("Setting up silence detection with threshold:", silenceThresholdRef.current, "and duration:", silenceDuration);
     
     // Create audio context if it doesn't exist
     if (!audioContextRef.current) {
@@ -83,14 +84,19 @@ export const useVoiceRecording = (
       const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / 
                      dataArrayRef.current.length;
       
-      console.log(`Current audio level: ${average.toFixed(2)}`);
+      // Log less frequently to avoid console spam
+      if (Math.random() < 0.05) {  // Only log ~5% of audio readings
+        console.log(`Current audio level: ${average.toFixed(2)}`);
+      }
       
-      if (average < silenceThreshold) {
+      if (average < silenceThresholdRef.current) {
         consecutiveSilenceCountRef.current += 1;
-        console.log(`Silence count: ${consecutiveSilenceCountRef.current}`);
+        if (consecutiveSilenceCountRef.current % 3 === 0) {
+          console.log(`Silence count: ${consecutiveSilenceCountRef.current}`);
+        }
         
-        // If we've detected silence for multiple consecutive checks
-        if (consecutiveSilenceCountRef.current >= 3) {
+        // More sensitive silence detection: stop after fewer consecutive silent readings
+        if (consecutiveSilenceCountRef.current >= 4) {  // Reduced from 5 to 4
           if (!silenceTimeoutRef.current) {
             console.log(`Consistent silence detected (avg: ${average}), stopping recording in ${silenceDuration}ms`);
             silenceTimeoutRef.current = setTimeout(() => {
@@ -110,7 +116,7 @@ export const useVoiceRecording = (
           silenceTimeoutRef.current = null;
         }
       }
-    }, 300); // Check every 300ms
+    }, 250); // Check more frequently (250ms instead of 300ms)
   };
 
   const startRecording = async () => {
@@ -160,10 +166,14 @@ export const useVoiceRecording = (
       setRecordingStartTime(Date.now());
       toast.success('Listening... Speak now and pause when done', { id: 'recording' });
       
+      // Set silence threshold based on device (mobile vs desktop)
+      const isMobile = window.innerWidth <= 768;
+      silenceThresholdRef.current = isMobile ? 7 : 5; // Higher threshold for mobile devices
+      
       // Start silence detection after a short delay to avoid initial setup noise
       setTimeout(() => {
         silenceDetectionActiveRef.current = true;
-        detectSilence(stream, 5, 1000); // Lower threshold (5) for better detection, 1s pause
+        detectSilence(stream, 2000); // 2-second pause detection
       }, 500);
     } catch (error) {
       console.error('Error accessing microphone:', error);
