@@ -44,9 +44,10 @@ export const UnifiedSearch = ({
   // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = async (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
-    if (voiceMode && text.trim() && !processingVoiceInteraction) {
+    if (voiceMode && text.trim()) {
       try {
         setProcessingVoiceInteraction(true); // Prevent multiple submissions
+        setSearchQuery(text); // Set the search query explicitly
         // Submit the query immediately in voice mode
         await handleSearch(text);
         console.log("Search automatically submitted in voice mode");
