@@ -14,33 +14,48 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'alloy' } = await req.json();
+    const { text, voice = 'nova' } = await req.json();
 
     if (!text) {
       throw new Error('Text is required');
     }
 
-    console.log(`Converting to speech: "${text.substring(0, 100)}..." using voice ${voice}`);
+    // Trim the text if it's too long for OpenAI's TTS API
+    const trimmedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
+    console.log(`Converting to speech: "${trimmedText.substring(0, 100)}..." using voice ${voice}`);
+
+    // Check if API key exists
+    const openAiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAiKey) {
+      console.error('OpenAI API key is missing');
+      throw new Error('OpenAI API key is not configured');
+    }
 
     // Generate speech from text using OpenAI API
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'tts-1',
-        input: text.length > 4000 ? text.substring(0, 4000) : text, // OpenAI TTS has a 4096 character limit
+        input: trimmedText,
         voice: voice, // Options: alloy, echo, fable, onyx, nova, shimmer
         response_format: 'mp3',
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('OpenAI TTS API error:', error);
-      throw new Error(error.error?.message || 'Failed to generate speech');
+      const errorText = await response.text();
+      console.error('OpenAI TTS API error response:', errorText);
+      
+      try {
+        const error = JSON.parse(errorText);
+        throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
     }
 
     // Convert audio buffer to base64
@@ -49,6 +64,7 @@ serve(async (req) => {
       String.fromCharCode(...new Uint8Array(arrayBuffer))
     );
 
+    console.log("Successfully generated speech audio");
     return new Response(
       JSON.stringify({ audioContent: base64Audio }),
       {
@@ -58,7 +74,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Text-to-speech error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error in text-to-speech function' }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

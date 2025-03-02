@@ -29,13 +29,35 @@ export const useTextToSpeech = () => {
       toast.loading('Generating audio...', { id: 'tts' });
       pendingTextRef.current = text;
       
+      console.log(`Calling text-to-speech function with ${text.length} characters and voice: ${voice}`);
+      
       // Call our Edge Function
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text, voice },
+        body: { 
+          text, 
+          voice 
+        },
       });
 
-      if (error) throw error;
-      if (!data || !data.audioContent) throw new Error('No audio data received');
+      if (error) {
+        console.error('Supabase Edge Function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
+      if (!data) {
+        console.error('No data received from text-to-speech function');
+        throw new Error('No data received from text-to-speech function');
+      }
+
+      if (data.error) {
+        console.error('Text-to-speech function returned an error:', data.error);
+        throw new Error(data.error);
+      }
+
+      if (!data.audioContent) {
+        console.error('No audio content in response:', data);
+        throw new Error('No audio content received');
+      }
 
       // If the pending text has changed by the time we get a response, don't play it
       if (pendingTextRef.current !== text) {
@@ -43,12 +65,15 @@ export const useTextToSpeech = () => {
         return;
       }
       
+      console.log("Received audio data, creating audio element");
+      
       // Convert base64 back to audio
       const audioSrc = `data:audio/mp3;base64,${data.audioContent}`;
       const audio = new Audio(audioSrc);
       
       // Set up audio event listeners
       audio.onplay = () => {
+        console.log("Audio playback started");
         toast.success('Playing audio response', { id: 'tts' });
         setIsSpeaking(true);
       };
@@ -72,6 +97,7 @@ export const useTextToSpeech = () => {
       currentAudioRef.current = audio;
       
       // Play the audio
+      console.log("Attempting to play audio");
       const playPromise = audio.play();
       if (playPromise) {
         playPromise.catch(error => {
