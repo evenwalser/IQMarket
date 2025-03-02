@@ -50,7 +50,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             onClick={toggleVoiceMode}
             className={`
-              rounded-full w-14 h-14 transition-all shadow-lg
+              rounded-full w-12 h-12 transition-all shadow-lg
               ${voiceMode 
                 ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
                 : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
@@ -58,7 +58,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               ${!isRecording && voiceMode ? 'animate-pulse' : ''}
             `}
           >
-            <Volume2 className="h-6 w-6 text-white" />
+            <Volume2 className="h-5 w-5 text-white" />
           </Button>
           
           {/* Microphone Button - Overlaid on the voice toggle when in voice mode */}
@@ -68,7 +68,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               size="icon"
               type="button"
               className={`
-                absolute -bottom-5 -right-2 h-10 w-10 rounded-full shadow-md
+                absolute -bottom-4 -right-1 h-8 w-8 rounded-full shadow-md
                 ${isRecording 
                   ? 'bg-red-500 hover:bg-red-600 animate-pulse border-2 border-white' 
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-2 border-white'
@@ -79,9 +79,9 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               disabled={isLoading || isTranscribing}
             >
               {isRecording ? (
-                <MicOff className="h-4 w-4 text-white" />
+                <MicOff className="h-3 w-3 text-white" />
               ) : (
-                <Mic className="h-4 w-4 text-white" />
+                <Mic className="h-3 w-3 text-white" />
               )}
             </Button>
           )}
@@ -128,7 +128,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         </div>
         
         {/* Clear & Search Buttons */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
           {/* Clear button when there's text */}
           {searchQuery && (
             <Button
@@ -148,11 +148,11 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
               variant="outline"
               size="sm"
               type="button"
-              className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+              className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100 h-8 px-2 py-0"
               onClick={stopReading}
             >
-              <X className="h-4 w-4 mr-1" />
-              Stop Reading
+              <X className="h-3 w-3 mr-1" />
+              Stop
             </Button>
           )}
           
@@ -161,17 +161,14 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             variant="default"
             size="sm"
-            className="rounded-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+            className="rounded-full h-10 w-10 p-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-center"
             onClick={onSearch}
             disabled={isLoading || (!searchQuery.trim() && !isRecording)}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 text-white animate-spin" />
             ) : (
-              <>
-                <Search className="h-4 w-4 mr-1" />
-                Search
-              </>
+              <Search className="h-4 w-4" />
             )}
           </Button>
         </div>
