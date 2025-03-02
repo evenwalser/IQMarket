@@ -11,14 +11,29 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 interface ConversationListProps {
   conversations: Conversation[];
   onReply: (threadId: string, message: string, assistantType: string) => Promise<void>;
+  voiceMode?: boolean; // Add voiceMode prop
+  onLatestResponse?: (response: string) => void; // Callback to inform parent of latest response
 }
 
-export const ConversationList = ({ conversations, onReply }: ConversationListProps) => {
+export const ConversationList = ({ 
+  conversations, 
+  onReply, 
+  voiceMode = false,
+  onLatestResponse 
+}: ConversationListProps) => {
   const conversationsEndRef = useRef<HTMLDivElement>(null);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
   const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(null);
   const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
+
+  // Track the latest response for TTS
+  useEffect(() => {
+    if (conversations.length > 0 && onLatestResponse) {
+      const latestConversation = conversations[conversations.length - 1];
+      onLatestResponse(latestConversation.response);
+    }
+  }, [conversations, onLatestResponse]);
 
   useEffect(() => {
     if (conversationsEndRef.current) {
@@ -98,6 +113,12 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
           <span className="text-sm font-medium text-gray-700 capitalize">
             {currentThread[0]?.assistant_type} Assistant
           </span>
+          
+          {voiceMode && (
+            <span className="ml-auto text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+              Voice Mode Active
+            </span>
+          )}
         </div>
       </div>
       
@@ -117,7 +138,7 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
               
               {/* Assistant response */}
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
+                <div className={`rounded-lg p-3 max-w-[80%] ${isCurrentlySpeaking ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
                   <div className="whitespace-pre-wrap text-gray-800 relative pr-8">
                     {conversation.response}
                     
@@ -125,11 +146,11 @@ export const ConversationList = ({ conversations, onReply }: ConversationListPro
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="absolute top-0 right-0 h-8 w-8 opacity-70 hover:opacity-100"
+                      className={`absolute top-0 right-0 h-8 w-8 ${isCurrentlySpeaking ? 'text-indigo-600' : 'opacity-70 hover:opacity-100'}`}
                       onClick={() => toggleSpeakResponse(conversation.response, conversation.id)}
                     >
                       {isCurrentlySpeaking ? (
-                        <VolumeX className="h-4 w-4 text-gray-500" />
+                        <VolumeX className="h-4 w-4" />
                       ) : (
                         <Volume2 className="h-4 w-4 text-gray-500" />
                       )}

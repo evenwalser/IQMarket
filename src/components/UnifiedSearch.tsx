@@ -18,6 +18,7 @@ interface UnifiedSearchProps {
   attachments: File[];
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
+  latestResponse?: string; // Add latest response prop to read aloud
 }
 
 export const UnifiedSearch = ({
@@ -28,7 +29,8 @@ export const UnifiedSearch = ({
   handleFileUpload,
   attachments,
   structuredOutput,
-  setStructuredOutput
+  setStructuredOutput,
+  latestResponse
 }: UnifiedSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [voiceMode, setVoiceMode] = useState(false);
@@ -82,6 +84,19 @@ export const UnifiedSearch = ({
   useEffect(() => {
     setIsReadingResponse(isSpeaking);
   }, [isSpeaking]);
+  
+  // Auto-read responses in voice mode
+  useEffect(() => {
+    if (voiceMode && latestResponse && !isLoading && !isRecording && !isTranscribing) {
+      // Wait a short delay to ensure UI updates first
+      const timer = setTimeout(() => {
+        console.log("Auto-reading response in voice mode:", latestResponse);
+        speakText(latestResponse);
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [voiceMode, latestResponse, isLoading, isRecording, isTranscribing, speakText]);
 
   const onSearch = async () => {
     if (searchQuery.trim()) {
@@ -104,7 +119,12 @@ export const UnifiedSearch = ({
       toast.info("Voice mode activated");
       // When voice mode is activated, orbState starts as idle (purple)
       setOrbState("idle");
-      // The microphone activation is handled in the VoiceSearchInput component
+      // When voice mode is turned on, automatically start recording
+      setTimeout(() => {
+        if (!isRecording) {
+          handleMicClick();
+        }
+      }, 500);
     } else {
       toast.info("Voice mode deactivated");
       setIsReadingResponse(false);
