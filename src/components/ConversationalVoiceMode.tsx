@@ -38,7 +38,7 @@ export function ConversationalVoiceMode({
       if (message.role === 'user' || message.role === 'assistant') {
         // Type assertion to ensure TypeScript knows we're only passing user/assistant roles
         onMessage({
-          role: message.role,
+          role: message.role as 'user' | 'assistant',
           content: message.content
         });
       }

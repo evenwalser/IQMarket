@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { encodeAudioForAPI } from '@/utils/audioProcessing';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +46,7 @@ export function useRealtimeVoiceChat({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+  const reconnectTimeoutRef = useRef<number | null>(null);
   
   // Audio processing references
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -432,7 +434,11 @@ export function useRealtimeVoiceChat({
           
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current})`);
           
-          setTimeout(() => {
+          if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          reconnectTimeoutRef.current = window.setTimeout(() => {
             connect();
           }, delay);
         }
@@ -453,6 +459,11 @@ export function useRealtimeVoiceChat({
 
   // Disconnect from the server
   const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
