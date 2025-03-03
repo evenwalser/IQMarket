@@ -92,30 +92,25 @@ export function ConversationalVoiceMode({
   
   return (
     <div className="relative">
-      {/* Voice mode toggle button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        type="button"
-        onClick={onToggle}
-        className={`
-          rounded-full w-12 h-12 transition-all shadow-lg
-          ${isActive 
-            ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
-            : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
-          }
-          ${isListening ? 'animate-pulse' : ''}
-        `}
-      >
-        <Volume2 className="h-5 w-5 text-white" />
-      </Button>
-      
-      {/* Microphone active indicator */}
-      {isListening && (
-        <div className="absolute -top-1 -right-1">
-          <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
-        </div>
-      )}
+      {/* Voice mode orb display - only show when active */}
+      <AnimatePresence>
+        {isActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: -120 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+            className="absolute left-1/2 -translate-x-1/2 top-0 z-30"
+          >
+            <DataOrb 
+              size={180} 
+              speakingState={orbState} 
+              pulseIntensity={1.5} 
+              speed={1.2} 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Status indicator - don't show when connecting to avoid double indicators */}
       {isActive && status !== 'connecting' && (

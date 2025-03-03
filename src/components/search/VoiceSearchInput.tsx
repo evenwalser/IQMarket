@@ -90,9 +90,23 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   return (
     <div className="relative flex items-center">
-      {/* Placeholder for spacing - needed for layout alignment */}
-      <div className="mr-4 w-12 h-12">
-        {/* Empty div to maintain spacing */}
+      {/* Voice Mode Toggle Button */}
+      <div className="mr-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          onClick={toggleVoiceMode}
+          className={`
+            rounded-full w-12 h-12 transition-all shadow-lg
+            ${voiceMode 
+              ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
+              : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 border border-gray-200'
+            }
+          `}
+        >
+          <Volume2 className={`h-5 w-5 ${voiceMode ? 'text-white' : 'text-gray-600'}`} />
+        </Button>
       </div>
       
       {/* Search Box */}
