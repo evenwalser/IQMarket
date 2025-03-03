@@ -92,6 +92,23 @@ export function ConversationalVoiceMode({
   
   return (
     <div className="relative">
+      {/* Voice Mode Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        type="button"
+        onClick={onToggle}
+        className={`
+          rounded-full w-12 h-12 transition-all shadow-lg z-20 relative
+          ${isActive 
+            ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
+            : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 border border-gray-200'
+          }
+        `}
+      >
+        <Volume2 className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-600'}`} />
+      </Button>
+      
       {/* Voice mode orb display - only show when active */}
       <AnimatePresence>
         {isActive && (
@@ -137,9 +154,9 @@ export function ConversationalVoiceMode({
         </div>
       )}
       
-      {/* Connecting status (shown outside the main status indicator) */}
+      {/* Connecting status (shown at a specific position to avoid overlap) */}
       {isActive && status === 'connecting' && (
-        <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white/90 shadow-md rounded-full min-w-32 text-center">
+        <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white/90 shadow-md rounded-full min-w-32 text-center z-30">
           <div className="flex items-center justify-center gap-2">
             <div className="animate-spin h-3 w-3 rounded-full bg-indigo-600"></div>
             <span className="text-sm font-medium text-indigo-700">Connecting...</span>

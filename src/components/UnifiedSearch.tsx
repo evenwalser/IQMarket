@@ -192,7 +192,7 @@ export const UnifiedSearch = ({
   return (
     <div className="space-y-4">
       <div className="relative space-y-2">
-        <div className="absolute -left-16 top-1/2 -translate-y-1/2 z-10">
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 z-20">
           <ConversationalVoiceMode 
             isActive={voiceMode}
             onToggle={toggleVoiceMode}

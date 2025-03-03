@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import DataOrb from "@/components/DataOrb";
 
 interface VoiceSearchInputProps {
   searchQuery: string;
@@ -42,14 +41,10 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   handleAttachmentUpload,
   handleFileUpload
 }) => {
-  const [showOrb, setShowOrb] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // We no longer show the orb in this component as the ConversationalVoiceMode handles that
-  useEffect(() => {
-    setShowOrb(false);
-  }, [voiceMode]);
   
   // Update recording duration timer
   useEffect(() => {
@@ -90,25 +85,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   return (
     <div className="relative flex items-center">
-      {/* Voice Mode Toggle Button */}
-      <div className="mr-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          onClick={toggleVoiceMode}
-          className={`
-            rounded-full w-12 h-12 transition-all shadow-lg
-            ${voiceMode 
-              ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
-              : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 border border-gray-200'
-            }
-          `}
-        >
-          <Volume2 className={`h-5 w-5 ${voiceMode ? 'text-white' : 'text-gray-600'}`} />
-        </Button>
-      </div>
-      
       {/* Search Box */}
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
         <Input 
