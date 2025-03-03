@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -45,16 +46,9 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Show orb only when voice mode is active AND there is no conversational voice mode active
-  // We use useEffect to delay this slightly so that the conversational mode can initialize first
+  // We no longer show the orb in this component as the ConversationalVoiceMode handles that
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Only show the orb in standard voice mode, not when the conversational assistant is active
-      // (the conversational assistant will show its own orb)
-      setShowOrb(voiceMode);
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    setShowOrb(false);
   }, [voiceMode]);
   
   // Update recording duration timer
@@ -96,31 +90,9 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   return (
     <div className="relative flex items-center">
-      {/* Voice Mode Toggle Button - REMOVED, now handled by ConversationalVoiceMode */}
+      {/* Placeholder for spacing - needed for layout alignment */}
       <div className="mr-4 w-12 h-12">
-        {/* This is just a placeholder div to maintain spacing */}
-      </div>
-      
-      {/* Floating Orb Above Search Box - Only show when in legacy voice mode */}
-      <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
-        <AnimatePresence>
-          {showOrb && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: -120 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-              className="absolute z-30"
-            >
-              <DataOrb 
-                size={180} 
-                speakingState={orbState} 
-                pulseIntensity={1.5} 
-                speed={1.2} 
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Empty div to maintain spacing */}
       </div>
       
       {/* Search Box */}
@@ -266,4 +238,4 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       </div>
     </div>
   );
-};
+}
