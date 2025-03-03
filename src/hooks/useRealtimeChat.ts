@@ -19,8 +19,7 @@ interface WebSocketMessage {
   data?: any;
 }
 
-// Using a more specific URL format that includes the actual project ID
-// This is hardcoded for now to ensure it works consistently
+// Using the direct URL format to the Supabase Edge Function
 const PROJECT_ID = "nmfhetqfewbjwqyoxqkd";
 const WEBSOCKET_URL = `wss://${PROJECT_ID}.supabase.co/functions/v1/realtime-voice-chat`;
 
@@ -29,6 +28,7 @@ export const useRealtimeChat = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [latency, setLatency] = useState<number | null>(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   
   const socketRef = useRef<WebSocket | null>(null);
   const pingTimestampRef = useRef<number | null>(null);
@@ -45,6 +45,10 @@ export const useRealtimeChat = () => {
         const currentLatency = Date.now() - pingTimestampRef.current;
         setLatency(currentLatency);
         pingTimestampRef.current = null;
+      } else if (data.type === "connection_established") {
+        console.log("Connection established with the server");
+        // Reset connection attempts on successful connection
+        setConnectionAttempts(0);
       }
       
       setMessages(prev => [...prev, data]);
@@ -74,46 +78,56 @@ export const useRealtimeChat = () => {
       const socket = new WebSocket(WEBSOCKET_URL);
       socketRef.current = socket;
       
-      // Set up event handlers
-      socket.onopen = () => {
-        console.log("WebSocket connection opened");
-        setIsConnected(true);
-        setIsConnecting(false);
+      return new Promise<boolean>((resolve) => {
+        // Set up event handlers
+        socket.onopen = () => {
+          console.log("WebSocket connection opened");
+          setIsConnected(true);
+          setIsConnecting(false);
+          
+          // Send initial ping to measure latency
+          sendPing();
+          resolve(true);
+        };
         
-        // Send initial ping to measure latency
-        sendPing();
-      };
-      
-      socket.onmessage = handleMessage;
-      
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        toast.error("WebSocket connection error");
-      };
-      
-      socket.onclose = (event) => {
-        console.log("WebSocket connection closed:", event.code, event.reason);
-        setIsConnected(false);
+        socket.onmessage = handleMessage;
         
-        // Attempt to reconnect after a delay
-        if (reconnectTimeoutRef.current) {
-          window.clearTimeout(reconnectTimeoutRef.current);
-        }
+        socket.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          setIsConnecting(false);
+          toast.error("WebSocket connection error");
+          setConnectionAttempts(prev => prev + 1);
+          resolve(false);
+        };
         
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          console.log("Attempting to reconnect...");
-          connect();
-        }, 3000);
-      };
-      
-      return true;
+        socket.onclose = (event) => {
+          console.log("WebSocket connection closed:", event.code, event.reason);
+          setIsConnected(false);
+          setIsConnecting(false);
+          
+          // Attempt to reconnect after a delay, with increasing backoff
+          if (reconnectTimeoutRef.current) {
+            window.clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          const backoffDelay = Math.min(3000 * Math.pow(1.5, Math.min(connectionAttempts, 5)), 30000);
+          console.log(`Will attempt to reconnect in ${backoffDelay}ms (attempt ${connectionAttempts + 1})`);
+          
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            console.log("Attempting to reconnect...");
+            connect();
+          }, backoffDelay);
+          
+          resolve(false);
+        };
+      });
     } catch (error) {
       console.error("Failed to connect to WebSocket:", error);
       setIsConnecting(false);
       toast.error("Failed to establish WebSocket connection");
       return false;
     }
-  }, [handleMessage]);
+  }, [handleMessage, connectionAttempts, sendPing]);
 
   // Clean up function to close the connection
   const disconnect = useCallback(() => {
@@ -180,6 +194,7 @@ export const useRealtimeChat = () => {
     isConnected,
     isConnecting,
     messages,
-    latency
+    latency,
+    connectionAttempts
   };
 };

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Radio, WifiOff } from "lucide-react";
+import { AlertCircle, Loader2, Radio, WifiOff } from "lucide-react";
 
 export const RealtimeChatTester = () => {
   const { 
@@ -16,20 +16,24 @@ export const RealtimeChatTester = () => {
     isConnected, 
     isConnecting, 
     messages, 
-    latency 
+    latency,
+    connectionAttempts
   } = useRealtimeChat();
   
   const [testMessage, setTestMessage] = useState("");
+  const [autoConnect, setAutoConnect] = useState(true);
   
   useEffect(() => {
-    // Auto-connect when component mounts
-    connect();
+    // Auto-connect when component mounts if autoConnect is true
+    if (autoConnect) {
+      connect();
+    }
     
     // Clean up on unmount
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [connect, disconnect, autoConnect]);
   
   const handleSendTest = () => {
     if (testMessage.trim()) {
@@ -72,13 +76,19 @@ export const RealtimeChatTester = () => {
               Latency: {latency}ms
             </span>
           )}
+          {connectionAttempts > 0 && !isConnected && (
+            <div className="mt-2 text-xs flex items-center text-destructive">
+              <AlertCircle className="w-3 h-3 mr-1" />
+              Connection attempts: {connectionAttempts}
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-4">
         <div className="flex space-x-2">
           <Button 
-            onClick={connect} 
+            onClick={() => connect()}
             disabled={isConnected || isConnecting}
             variant="outline"
           >
