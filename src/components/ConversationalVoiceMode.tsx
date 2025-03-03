@@ -117,28 +117,8 @@ export function ConversationalVoiceMode({
         </div>
       )}
       
-      {/* Floating orb for visual feedback */}
-      {isActive && (
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: -120 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-            className="absolute left-1/2 -translate-x-1/2 z-30"
-          >
-            <DataOrb 
-              size={180} 
-              speakingState={orbState} 
-              pulseIntensity={1.5} 
-              speed={1.2} 
-            />
-          </motion.div>
-        </AnimatePresence>
-      )}
-      
-      {/* Status indicator */}
-      {isActive && (
+      {/* Status indicator - don't show when connecting to avoid double indicators */}
+      {isActive && status !== 'connecting' && (
         <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white shadow-md rounded-full min-w-48 text-center">
           <div className={`text-sm font-medium ${
             isListening ? 'text-green-600' :
@@ -159,6 +139,16 @@ export function ConversationalVoiceMode({
               <X className="h-3.5 w-3.5 text-gray-500" />
             </Button>
           )}
+        </div>
+      )}
+      
+      {/* Connecting status (shown outside the main status indicator) */}
+      {isActive && status === 'connecting' && (
+        <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white/90 shadow-md rounded-full min-w-32 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="animate-spin h-3 w-3 rounded-full bg-indigo-600"></div>
+            <span className="text-sm font-medium text-indigo-700">Connecting...</span>
+          </div>
         </div>
       )}
     </div>

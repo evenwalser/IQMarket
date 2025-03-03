@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -46,9 +45,16 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Show orb when voice mode is active
+  // Show orb only when voice mode is active AND there is no conversational voice mode active
+  // We use useEffect to delay this slightly so that the conversational mode can initialize first
   useEffect(() => {
-    setShowOrb(voiceMode);
+    const timer = setTimeout(() => {
+      // Only show the orb in standard voice mode, not when the conversational assistant is active
+      // (the conversational assistant will show its own orb)
+      setShowOrb(voiceMode);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [voiceMode]);
   
   // Update recording duration timer
@@ -90,36 +96,12 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   return (
     <div className="relative flex items-center">
-      {/* Voice Mode Toggle Button */}
-      <div className="mr-4">
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            onClick={toggleVoiceMode}
-            className={`
-              rounded-full w-12 h-12 transition-all shadow-lg
-              ${voiceMode 
-                ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
-                : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
-              }
-              ${isRecording ? 'animate-pulse' : ''}
-            `}
-          >
-            <Volume2 className="h-5 w-5 text-white" />
-          </Button>
-
-          {/* Recording indicator dot */}
-          {isRecording && (
-            <div className="absolute -top-1 -right-1">
-              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
-            </div>
-          )}
-        </div>
+      {/* Voice Mode Toggle Button - REMOVED, now handled by ConversationalVoiceMode */}
+      <div className="mr-4 w-12 h-12">
+        {/* This is just a placeholder div to maintain spacing */}
       </div>
       
-      {/* Floating Orb Above Search Box - Appears when voice mode is active */}
+      {/* Floating Orb Above Search Box - Only show when in legacy voice mode */}
       <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
         <AnimatePresence>
           {showOrb && (
