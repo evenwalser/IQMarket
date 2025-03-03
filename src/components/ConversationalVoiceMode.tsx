@@ -99,14 +99,14 @@ export function ConversationalVoiceMode({
         type="button"
         onClick={onToggle}
         className={`
-          rounded-full w-12 h-12 transition-all shadow-lg z-20 relative
+          rounded-full w-14 h-14 transition-all shadow-lg z-20 relative
           ${isActive 
-            ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
-            : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-700 border border-gray-200'
+            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white voice-button-active' 
+            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border border-purple-400'
           }
         `}
       >
-        <Volume2 className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-600'}`} />
+        <Volume2 className="h-6 w-6 text-white" />
       </Button>
       
       {/* Voice mode orb display - only show when active */}
@@ -114,10 +114,10 @@ export function ConversationalVoiceMode({
         {isActive && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: -120 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-            className="absolute left-1/2 -translate-x-1/2 top-0 z-30"
+            className="fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-[200px] z-50"
           >
             <DataOrb 
               size={180} 
@@ -131,7 +131,7 @@ export function ConversationalVoiceMode({
       
       {/* Status indicator - don't show when connecting to avoid double indicators */}
       {isActive && status !== 'connecting' && (
-        <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white shadow-md rounded-full min-w-48 text-center">
+        <div className="absolute left-20 top-1/2 -translate-y-1/2 px-4 py-2 bg-white shadow-md rounded-full min-w-48 text-center z-40">
           <div className={`text-sm font-medium ${
             isListening ? 'text-green-600' :
             isSpeaking ? 'text-blue-600' :
@@ -156,7 +156,7 @@ export function ConversationalVoiceMode({
       
       {/* Connecting status (shown at a specific position to avoid overlap) */}
       {isActive && status === 'connecting' && (
-        <div className="absolute left-16 top-1/2 -translate-y-1/2 px-4 py-2 bg-white/90 shadow-md rounded-full min-w-32 text-center z-30">
+        <div className="absolute left-20 top-1/2 -translate-y-1/2 px-4 py-2 bg-white/90 shadow-md rounded-full min-w-32 text-center z-40">
           <div className="flex items-center justify-center gap-2">
             <div className="animate-spin h-3 w-3 rounded-full bg-indigo-600"></div>
             <span className="text-sm font-medium text-indigo-700">Connecting...</span>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { encodeAudioForAPI } from '@/utils/audioProcessing';
 import { supabase } from '@/integrations/supabase/client';
@@ -239,9 +238,22 @@ export function useRealtimeVoiceChat({
       const ws = new WebSocket(`wss://${projectRef}.supabase.co/functions/v1/realtime-voice-chat`);
       wsRef.current = ws;
       
+      console.log('Attempting to connect to WebSocket:', `wss://${projectRef}.supabase.co/functions/v1/realtime-voice-chat`);
+      
+      // Set a timeout for connection
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.error('WebSocket connection timeout');
+          toast.error('Connection timeout. Please try again.');
+          ws.close();
+          updateStatus('error');
+        }
+      }, 10000);
+      
       // WebSocket event handlers
       ws.onopen = () => {
         console.log('WebSocket connected to Edge Function');
+        clearTimeout(connectionTimeout);
         reconnectAttempts.current = 0;
         
         // Initialize session
@@ -253,174 +265,185 @@ export function useRealtimeVoiceChat({
           type: 'init',
           sessionId: newSessionId
         }));
+        
+        console.log('Sent init message with sessionId:', newSessionId);
       };
       
       ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        
-        // Handle different message types
-        switch (data.type) {
-          case 'connection_ready':
-            updateStatus('connected');
-            console.log('Connection ready, session ID:', data.sessionId);
-            break;
-            
-          case 'session.created':
-            console.log('OpenAI session created:', data.session.id);
-            isSessionInitializedRef.current = true;
-            
-            // Update session configuration
-            ws.send(JSON.stringify({
-              type: 'session.update',
-              session: {
-                modalities: ["text", "audio"],
-                instructions: "You are a helpful assistant. Your knowledge cutoff is 2023-10. Keep responses concise but helpful.",
-                voice: currentVoiceIDRef.current,
-                input_audio_format: "pcm16",
-                output_audio_format: "pcm16",
-                input_audio_transcription: {
-                  model: "whisper-1"
-                },
-                turn_detection: {
-                  type: "server_vad",
-                  threshold: 0.5,
-                  prefix_padding_ms: 300,
-                  silence_duration_ms: 1000
-                },
-                temperature: 0.7,
-                max_response_output_tokens: 800
-              }
-            }));
-            
-            // Start listening
-            const micStarted = await startMicrophone();
-            if (micStarted) {
-              updateStatus('listening');
-              toast.success('Voice assistant ready');
-            }
-            break;
-            
-          case 'session.updated':
-            console.log('Session configuration updated');
-            needsSessionUpdateRef.current = false;
-            break;
-            
-          case 'response.audio.delta':
-            if (data.delta) {
-              // Decode base64 audio
-              const binaryString = atob(data.delta);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data.type);
+          
+          // Handle different message types
+          switch (data.type) {
+            case 'connection_ready':
+              updateStatus('connected');
+              console.log('Connection ready, session ID:', data.sessionId);
+              break;
               
-              // Add to audio queue and start playback if not already playing
-              audioQueueRef.current.push(bytes);
+            case 'session.created':
+              console.log('OpenAI session created:', data.session?.id);
+              isSessionInitializedRef.current = true;
               
-              if (!isPlayingRef.current) {
-                updateStatus('speaking');
-                playNextAudioChunk();
-              }
-            }
-            break;
-            
-          case 'speech_started':
-            updateStatus('speaking');
-            break;
-            
-          case 'speech_stopped':
-            // Reset barge-in flag when speech stops naturally
-            isBargeInDetectedRef.current = false;
-            break;
-            
-          case 'input_text.transcription.delta':
-            if (data.delta) {
-              const newTranscript = currentTranscript + data.delta;
-              setCurrentTranscript(newTranscript);
-              currentUserTextRef.current = newTranscript;
-              
-              if (onTranscriptUpdate) {
-                onTranscriptUpdate(newTranscript, false);
-              }
-            }
-            break;
-            
-          case 'input_text.transcription.complete':
-            if (data.text) {
-              setCurrentTranscript(data.text);
-              currentUserTextRef.current = data.text;
-              
-              if (onTranscriptUpdate) {
-                onTranscriptUpdate(data.text, true);
-              }
-              
-              // Add user message to conversation
-              const userMessage: VoiceChatMessage = {
-                role: 'user',
-                content: data.text
-              };
-              
-              setMessages(prev => [...prev, userMessage]);
-              
-              if (onNewMessage) {
-                onNewMessage(userMessage);
-              }
-              
-              updateStatus('processing');
-            }
-            break;
-            
-          case 'response.message.delta':
-            if (data.delta && data.role === 'assistant') {
-              // Update assistant message
-              setMessages(prev => {
-                const lastMessage = prev[prev.length - 1];
-                
-                // If last message is from assistant, append to it
-                if (lastMessage && lastMessage.role === 'assistant') {
-                  const updatedMessages = [...prev];
-                  updatedMessages[updatedMessages.length - 1] = {
-                    ...lastMessage,
-                    content: lastMessage.content + data.delta
-                  };
-                  return updatedMessages;
-                } 
-                // Otherwise create a new assistant message
-                else {
-                  const newMessage: VoiceChatMessage = {
-                    role: 'assistant',
-                    content: data.delta
-                  };
-                  
-                  if (onNewMessage) {
-                    onNewMessage(newMessage);
+              // Update session configuration
+              if (ws.readyState === WebSocket.OPEN) {
+                console.log('Sending session update with voice:', currentVoiceIDRef.current);
+                ws.send(JSON.stringify({
+                  type: 'session.update',
+                  session: {
+                    modalities: ["text", "audio"],
+                    instructions: "You are a helpful assistant. Your knowledge cutoff is 2023-10. Keep responses concise but helpful.",
+                    voice: currentVoiceIDRef.current,
+                    input_audio_format: "pcm16",
+                    output_audio_format: "pcm16",
+                    input_audio_transcription: {
+                      model: "whisper-1"
+                    },
+                    turn_detection: {
+                      type: "server_vad",
+                      threshold: 0.5,
+                      prefix_padding_ms: 300,
+                      silence_duration_ms: 1000
+                    },
+                    temperature: 0.7,
+                    max_response_output_tokens: 800
                   }
-                  
-                  return [...prev, newMessage];
-                }
-              });
-            }
-            break;
-            
-          case 'response.done':
-            // After response finishes, reset state and prepare for next turn
-            setTimeout(() => {
-              if (status === 'speaking') {
-                updateStatus('listening');
+                }));
               }
-              setCurrentTranscript('');
-            }, 1000);
-            break;
-            
-          case 'error':
-            console.error('Error from WebSocket:', data.message);
-            toast.error(`Voice assistant error: ${data.message}`);
-            break;
+              
+              // Start listening
+              const micStarted = await startMicrophone();
+              if (micStarted) {
+                updateStatus('listening');
+                toast.success('Voice assistant ready');
+              }
+              break;
+              
+            case 'session.updated':
+              console.log('Session configuration updated');
+              needsSessionUpdateRef.current = false;
+              break;
+              
+            case 'response.audio.delta':
+              if (data.delta) {
+                // Decode base64 audio
+                const binaryString = atob(data.delta);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Add to audio queue and start playback if not already playing
+                audioQueueRef.current.push(bytes);
+                
+                if (!isPlayingRef.current) {
+                  updateStatus('speaking');
+                  playNextAudioChunk();
+                }
+              }
+              break;
+              
+            case 'speech_started':
+              updateStatus('speaking');
+              break;
+              
+            case 'speech_stopped':
+              // Reset barge-in flag when speech stops naturally
+              isBargeInDetectedRef.current = false;
+              break;
+              
+            case 'input_text.transcription.delta':
+              if (data.delta) {
+                const newTranscript = currentTranscript + data.delta;
+                setCurrentTranscript(newTranscript);
+                currentUserTextRef.current = newTranscript;
+                
+                if (onTranscriptUpdate) {
+                  onTranscriptUpdate(newTranscript, false);
+                }
+              }
+              break;
+              
+            case 'input_text.transcription.complete':
+              if (data.text) {
+                setCurrentTranscript(data.text);
+                currentUserTextRef.current = data.text;
+                
+                if (onTranscriptUpdate) {
+                  onTranscriptUpdate(data.text, true);
+                }
+                
+                // Add user message to conversation
+                const userMessage: VoiceChatMessage = {
+                  role: 'user',
+                  content: data.text
+                };
+                
+                setMessages(prev => [...prev, userMessage]);
+                
+                if (onNewMessage) {
+                  onNewMessage(userMessage);
+                }
+                
+                updateStatus('processing');
+              }
+              break;
+              
+            case 'response.message.delta':
+              if (data.delta && data.role === 'assistant') {
+                // Update assistant message
+                setMessages(prev => {
+                  const lastMessage = prev[prev.length - 1];
+                  
+                  // If last message is from assistant, append to it
+                  if (lastMessage && lastMessage.role === 'assistant') {
+                    const updatedMessages = [...prev];
+                    updatedMessages[updatedMessages.length - 1] = {
+                      ...lastMessage,
+                      content: lastMessage.content + data.delta
+                    };
+                    return updatedMessages;
+                  } 
+                  // Otherwise create a new assistant message
+                  else {
+                    const newMessage: VoiceChatMessage = {
+                      role: 'assistant',
+                      content: data.delta
+                    };
+                    
+                    if (onNewMessage) {
+                      onNewMessage(newMessage);
+                    }
+                    
+                    return [...prev, newMessage];
+                  }
+                });
+              }
+              break;
+              
+            case 'response.done':
+              // After response finishes, reset state and prepare for next turn
+              setTimeout(() => {
+                if (status === 'speaking') {
+                  updateStatus('listening');
+                }
+                setCurrentTranscript('');
+              }, 1000);
+              break;
+              
+            case 'error':
+              console.error('Error from WebSocket:', data.message);
+              toast.error(`Voice assistant error: ${data.message}`);
+              break;
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
         }
       };
       
       ws.onclose = (event) => {
         console.log(`WebSocket closed: ${event.code} ${event.reason}`);
+        clearTimeout(connectionTimeout);
         wsRef.current = null;
         updateStatus('disconnected');
         
@@ -446,7 +469,7 @@ export function useRealtimeVoiceChat({
       
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        toast.error('Connection error');
+        toast.error('Connection error. Please try again later.');
         updateStatus('error');
       };
       
