@@ -191,16 +191,14 @@ export const UnifiedSearch = ({
 
   return (
     <div className="space-y-4">
+      <ConversationalVoiceMode 
+        isActive={voiceMode}
+        onToggle={toggleVoiceMode}
+        onMessage={handleVoiceMessage}
+        assistantType={selectedMode}
+      />
+      
       <div className="relative space-y-2">
-        <div className="absolute -left-20 top-1/2 -translate-y-1/2 z-50">
-          <ConversationalVoiceMode 
-            isActive={voiceMode}
-            onToggle={toggleVoiceMode}
-            onMessage={handleVoiceMessage}
-            assistantType={selectedMode}
-          />
-        </div>
-        
         <VoiceSearchInput
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}

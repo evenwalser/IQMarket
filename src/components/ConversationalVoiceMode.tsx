@@ -91,7 +91,7 @@ export function ConversationalVoiceMode({
   };
   
   return (
-    <div className="relative z-30">
+    <div className="fixed z-50 left-[100px] top-1/2 -translate-y-1/2">
       {/* Voice Mode Toggle Button */}
       <Button
         variant="ghost"
@@ -99,7 +99,7 @@ export function ConversationalVoiceMode({
         type="button"
         onClick={onToggle}
         className={`
-          rounded-full w-14 h-14 transition-all shadow-lg z-20 relative
+          rounded-full w-14 h-14 transition-all shadow-lg z-40 relative
           ${isActive 
             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white voice-button-active animate-pulse' 
             : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border border-purple-400'
