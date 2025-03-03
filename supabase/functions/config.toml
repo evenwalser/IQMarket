@@ -12,3 +12,7 @@ verify_jwt = false
 
 [functions.search-with-attachments]
 verify_jwt = false
+
+[functions.realtime-voice-chat]
+verify_jwt = false
+
