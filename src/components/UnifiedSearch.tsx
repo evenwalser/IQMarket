@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -190,33 +191,38 @@ export const UnifiedSearch = ({
   };
 
   return (
-    <div className="space-y-4">
-      <ConversationalVoiceMode 
-        isActive={voiceMode}
-        onToggle={toggleVoiceMode}
-        onMessage={handleVoiceMessage}
-        assistantType={selectedMode}
-      />
-      
+    <div className="space-y-4 relative">      
       <div className="relative space-y-2">
-        <VoiceSearchInput
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearch={onSearch}
-          isLoading={isLoading}
-          isRecording={isRecording}
-          isTranscribing={isTranscribing}
-          handleMicClick={handleMicClick}
-          recordingStartTime={recordingStartTime}
-          voiceMode={voiceMode}
-          toggleVoiceMode={toggleVoiceMode}
-          isReadingResponse={isReadingResponse}
-          stopReading={stopReading}
-          orbState={orbState}
-          inputRef={inputRef}
-          handleAttachmentUpload={handleAttachmentUpload}
-          handleFileUpload={handleFileUpload}
-        />
+        <div className="relative flex items-center">
+          {/* Position the voice button to the left of search box */}
+          <div className="absolute -left-20 top-1/2 -translate-y-1/2">
+            <ConversationalVoiceMode 
+              isActive={voiceMode}
+              onToggle={toggleVoiceMode}
+              onMessage={handleVoiceMessage}
+              assistantType={selectedMode}
+            />
+          </div>
+          
+          <VoiceSearchInput
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            onSearch={onSearch}
+            isLoading={isLoading}
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            handleMicClick={handleMicClick}
+            recordingStartTime={recordingStartTime}
+            voiceMode={voiceMode}
+            toggleVoiceMode={toggleVoiceMode}
+            isReadingResponse={isReadingResponse}
+            stopReading={stopReading}
+            orbState={orbState}
+            inputRef={inputRef}
+            handleAttachmentUpload={handleAttachmentUpload}
+            handleFileUpload={handleFileUpload}
+          />
+        </div>
         
         <FileUploadButton 
           handleFileUpload={handleFileUpload}

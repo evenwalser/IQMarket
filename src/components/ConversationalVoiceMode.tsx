@@ -84,22 +84,22 @@ export function ConversationalVoiceMode({
       case 'speaking': return 'Speaking...';
       case 'connecting': return 'Connecting...';
       case 'connected': return 'Ready';
-      case 'disconnected': return 'Voice mode inactive';
+      case 'disconnected': return ''; // Remove "Voice mode inactive" text
       case 'error': return 'Connection error';
       default: return '';
     }
   };
   
   return (
-    <div className="fixed z-50 left-[100px] top-1/2 -translate-y-1/2">
-      {/* Voice Mode Toggle Button */}
+    <>
+      {/* Voice Mode Toggle Button - positioned at the left of search box */}
       <Button
         variant="ghost"
         size="icon"
         type="button"
         onClick={onToggle}
         className={`
-          rounded-full w-14 h-14 transition-all shadow-lg z-40 relative
+          rounded-full w-14 h-14 transition-all shadow-lg z-50 
           ${isActive 
             ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white voice-button-active animate-pulse' 
             : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border border-purple-400'
@@ -110,7 +110,7 @@ export function ConversationalVoiceMode({
         <Volume2 className="h-6 w-6 text-white" />
       </Button>
       
-      {/* Voice mode orb display - only show when active */}
+      {/* Voice mode orb display - only show when active, centered above search box */}
       <AnimatePresence>
         {isActive && (
           <motion.div
@@ -118,7 +118,7 @@ export function ConversationalVoiceMode({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
-            className="fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-[200px] z-50"
+            className="fixed left-1/2 -translate-x-1/2 top-[25%] z-50"
           >
             <DataOrb 
               size={180} 
@@ -131,7 +131,7 @@ export function ConversationalVoiceMode({
       </AnimatePresence>
       
       {/* Status indicator - don't show when connecting to avoid double indicators */}
-      {isActive && status !== 'connecting' && (
+      {isActive && status !== 'connecting' && status !== 'disconnected' && (
         <div className="absolute left-20 top-1/2 -translate-y-1/2 px-4 py-2 bg-white shadow-md rounded-full min-w-48 text-center z-40">
           <div className={`text-sm font-medium ${
             isListening ? 'text-green-600' :
@@ -164,6 +164,6 @@ export function ConversationalVoiceMode({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
