@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import DataOrb from "@/components/DataOrb";
 
 interface VoiceSearchInputProps {
   searchQuery: string;
@@ -41,10 +42,14 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   handleAttachmentUpload,
   handleFileUpload
 }) => {
+  const [showOrb, setShowOrb] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // We no longer show the orb in this component as the ConversationalVoiceMode handles that
+  // Show orb when voice mode is active
+  useEffect(() => {
+    setShowOrb(voiceMode);
+  }, [voiceMode]);
   
   // Update recording duration timer
   useEffect(() => {
@@ -85,6 +90,57 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   return (
     <div className="relative flex items-center">
+      {/* Voice Mode Toggle Button */}
+      <div className="mr-4">
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            onClick={toggleVoiceMode}
+            className={`
+              rounded-full w-12 h-12 transition-all shadow-lg
+              ${voiceMode 
+                ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
+                : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
+              }
+              ${isRecording ? 'animate-pulse' : ''}
+            `}
+          >
+            <Volume2 className="h-5 w-5 text-white" />
+          </Button>
+
+          {/* Recording indicator dot */}
+          {isRecording && (
+            <div className="absolute -top-1 -right-1">
+              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Floating Orb Above Search Box - Appears when voice mode is active */}
+      <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
+        <AnimatePresence>
+          {showOrb && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: -120 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+              className="absolute z-30"
+            >
+              <DataOrb 
+                size={180} 
+                speakingState={orbState} 
+                pulseIntensity={1.5} 
+                speed={1.2} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
       {/* Search Box */}
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
         <Input 
@@ -228,4 +284,4 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       </div>
     </div>
   );
-}
+};
