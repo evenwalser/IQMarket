@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 // Message types for type safety
 type MessageType = 
