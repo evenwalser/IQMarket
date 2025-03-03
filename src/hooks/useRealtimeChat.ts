@@ -57,6 +57,35 @@ export const useRealtimeChat = () => {
     }
   }, []);
 
+  // Send a message to the WebSocket server
+  const sendMessage = useCallback((message: Omit<WebSocketMessage, "timestamp">) => {
+    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket not connected");
+      return false;
+    }
+    
+    try {
+      const fullMessage = {
+        ...message,
+        timestamp: Date.now()
+      };
+      
+      socketRef.current.send(JSON.stringify(fullMessage));
+      return true;
+    } catch (error) {
+      console.error("Error sending WebSocket message:", error);
+      return false;
+    }
+  }, []);
+
+  // Send a ping to measure latency
+  const sendPing = useCallback(() => {
+    if (isConnected) {
+      pingTimestampRef.current = Date.now();
+      sendMessage({ type: "ping" });
+    }
+  }, [isConnected, sendMessage]);
+
   // Establish connection to the WebSocket server
   const connect = useCallback(async () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -129,6 +158,11 @@ export const useRealtimeChat = () => {
     }
   }, [handleMessage, connectionAttempts, sendPing]);
 
+  // Send a test message
+  const sendTestMessage = useCallback((data: any) => {
+    return sendMessage({ type: "test", data });
+  }, [sendMessage]);
+
   // Clean up function to close the connection
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -143,40 +177,6 @@ export const useRealtimeChat = () => {
     
     setIsConnected(false);
   }, []);
-
-  // Send a message to the WebSocket server
-  const sendMessage = useCallback((message: Omit<WebSocketMessage, "timestamp">) => {
-    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-      toast.error("WebSocket not connected");
-      return false;
-    }
-    
-    try {
-      const fullMessage = {
-        ...message,
-        timestamp: Date.now()
-      };
-      
-      socketRef.current.send(JSON.stringify(fullMessage));
-      return true;
-    } catch (error) {
-      console.error("Error sending WebSocket message:", error);
-      return false;
-    }
-  }, []);
-
-  // Send a ping to measure latency
-  const sendPing = useCallback(() => {
-    if (isConnected) {
-      pingTimestampRef.current = Date.now();
-      sendMessage({ type: "ping" });
-    }
-  }, [isConnected, sendMessage]);
-
-  // Send a test message
-  const sendTestMessage = useCallback((data: any) => {
-    return sendMessage({ type: "test", data });
-  }, [sendMessage]);
 
   // Clean up on unmount
   useEffect(() => {
