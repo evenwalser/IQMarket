@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
@@ -10,18 +9,45 @@ type MessageType =
   | "test"
   | "test_response"
   | "error"
-  | "connection_established";
+  | "connection_established"
+  | "transcription"
+  | "assistant_response"
+  | "speech_response"
+  | "voice_data"
+  | "echo"
+  | "chat_request";
 
 interface WebSocketMessage {
   type: MessageType;
   message?: string;
   timestamp?: number;
   data?: any;
+  text?: string;
+  response?: string;
+  thread_id?: string;
+  visualizations?: any[];
+  audio?: string;
+  error?: string;
 }
 
 // Using the direct URL format to the Supabase Edge Function
 const PROJECT_ID = "nmfhetqfewbjwqyoxqkd";
-const WEBSOCKET_URL = `wss://${PROJECT_ID}.supabase.co/functions/v1/realtime-voice-chat`;
+// Determine if we're in development or production mode
+const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Use the appropriate WebSocket URL based on environment
+// Check for a custom WebSocket URL in environment variables first
+const WEBSOCKET_URL = isLocalDevelopment
+  ? (import.meta.env.VITE_LOCAL_WEBSOCKET_URL || `ws://localhost:54321/functions/v1/realtime-voice-chat`)
+  : `wss://${PROJECT_ID}.supabase.co/functions/v1/realtime-voice-chat`;
+
+// Log which WebSocket URL we're using on startup
+console.log(`Using WebSocket URL: ${WEBSOCKET_URL} (${isLocalDevelopment ? 'development' : 'production'} mode)`);
+
+// Configure the exponential backoff parameters
+const MAX_RETRY_COUNT = 5; // Maximum number of retry attempts
+const MAX_RETRY_DELAY = 10000; // Maximum retry delay (10 seconds)
+const INITIAL_RETRY_DELAY = 1000; // Initial retry delay (1 second)
 
 export const useRealtimeChat = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -29,10 +55,19 @@ export const useRealtimeChat = () => {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [latency, setLatency] = useState<number | null>(null);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [transcription, setTranscription] = useState<string | null>(null);
+  const [assistantResponse, setAssistantResponse] = useState<{
+    response: string;
+    thread_id: string;
+    visualizations: any[];
+  } | null>(null);
+  const [speechAudio, setSpeechAudio] = useState<string | null>(null);
   
   const socketRef = useRef<WebSocket | null>(null);
   const pingTimestampRef = useRef<number | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const messageQueueRef = useRef<WebSocketMessage[]>([]);
+  const isProcessingQueueRef = useRef<boolean>(false);
 
   // Handle incoming messages
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -49,6 +84,19 @@ export const useRealtimeChat = () => {
         console.log("Connection established with the server");
         // Reset connection attempts on successful connection
         setConnectionAttempts(0);
+      } else if (data.type === "transcription" && data.text) {
+        setTranscription(data.text);
+      } else if (data.type === "assistant_response" && data.response) {
+        setAssistantResponse({
+          response: data.response,
+          thread_id: data.thread_id || "",
+          visualizations: data.visualizations || []
+        });
+      } else if (data.type === "speech_response" && data.audio) {
+        setSpeechAudio(data.audio);
+      } else if (data.type === "error") {
+        toast.error(`WebSocket error: ${data.message || 'Unknown error'}`);
+        console.error("WebSocket error:", data);
       }
       
       setMessages(prev => [...prev, data]);
@@ -58,143 +106,281 @@ export const useRealtimeChat = () => {
   }, []);
 
   // Send a message to the WebSocket server
-  const sendMessage = useCallback((message: Omit<WebSocketMessage, "timestamp">) => {
+  const sendMessage = useCallback((message: Omit<WebSocketMessage, 'timestamp'>) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-      toast.error("WebSocket not connected");
+      console.warn("WebSocket not connected, queueing message");
+      messageQueueRef.current.push({
+        ...message,
+        timestamp: Date.now()
+      });
+      connect(); // Try to reconnect
       return false;
     }
     
     try {
-      const fullMessage = {
+      const messageWithTimestamp = {
         ...message,
         timestamp: Date.now()
       };
-      
-      socketRef.current.send(JSON.stringify(fullMessage));
+      socketRef.current.send(JSON.stringify(messageWithTimestamp));
       return true;
     } catch (error) {
-      console.error("Error sending WebSocket message:", error);
+      console.error("Error sending message:", error);
       return false;
     }
   }, []);
 
-  // Send a ping to measure latency
-  const sendPing = useCallback(() => {
-    if (isConnected) {
+  // Process the queue of messages that couldn't be sent due to connection issues
+  const processMessageQueue = useCallback(() => {
+    if (isProcessingQueueRef.current || messageQueueRef.current.length === 0) {
+      return;
+    }
+    
+    isProcessingQueueRef.current = true;
+    
+    try {
+      // Process as many messages as we can
+      while (
+        messageQueueRef.current.length > 0 && 
+        socketRef.current && 
+        socketRef.current.readyState === WebSocket.OPEN
+      ) {
+        const message = messageQueueRef.current[0];
+        socketRef.current.send(JSON.stringify(message));
+        messageQueueRef.current.shift(); // Remove the message after sending
+      }
+    } catch (error) {
+      console.error("Error processing message queue:", error);
+    } finally {
+      isProcessingQueueRef.current = false;
+    }
+  }, []);
+
+  // Measure connection latency
+  const measureLatency = useCallback(() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       pingTimestampRef.current = Date.now();
       sendMessage({ type: "ping" });
     }
-  }, [isConnected, sendMessage]);
+  }, [sendMessage]);
 
-  // Establish connection to the WebSocket server
-  const connect = useCallback(async () => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log("WebSocket already connected");
-      return true;
+  // Send a test message
+  const sendTestMessage = useCallback((testData: any = { test: "data" }) => {
+    return sendMessage({
+      type: "test",
+      data: testData
+    });
+  }, [sendMessage]);
+
+  // Send voice data for processing
+  const sendVoiceData = useCallback((
+    audioData: string, 
+    options: { 
+      processWithAssistant?: boolean; 
+      assistantType?: string; 
+      threadId?: string;
+      structuredOutput?: boolean;
+      textToSpeech?: boolean;
+    } = {}
+  ) => {
+    console.log("Sending voice data for processing, options:", options);
+    return sendMessage({
+      type: "voice_data",
+      data: audioData,
+      ...options
+    });
+  }, [sendMessage]);
+
+  // Send a chat request with attachments
+  const sendChatRequest = useCallback((
+    message: string,
+    options: {
+      assistantType?: string;
+      threadId?: string;
+      structuredOutput?: boolean;
+      textToSpeech?: boolean;
+      attachments?: { name: string; url: string; type: string; path: string }[];
+    } = {}
+  ) => {
+    console.log("Sending chat request:", { message, ...options });
+    if (!isConnected) {
+      toast.error("Not connected to the server. Please try again.", { 
+        id: "chat-connection-error" 
+      });
+      return false;
     }
 
+    return sendMessage({
+      type: "chat_request",
+      message,
+      ...options
+    });
+  }, [sendMessage, isConnected]);
+
+  // Connect to the WebSocket server
+  const connect = useCallback(() => {
+    // Don't try to connect if we're already connecting
+    if (isConnecting) return;
+    
+    // Don't try to connect if we already have a connection
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      console.log("WebSocket already connected");
+      return;
+    }
+
+    // Limit reconnection attempts to prevent excessive retries
+    if (connectionAttempts >= MAX_RETRY_COUNT) {
+      console.log(`Maximum reconnection attempts (${MAX_RETRY_COUNT}) reached. Stopping retry.`);
+      toast.error("Could not connect to voice service. Please try again later.", {
+        duration: 5000,
+        id: "websocket-connection-error"
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+    
+    // Increase the connection attempts counter
+    setConnectionAttempts(prev => prev + 1);
+    
+    // Calculate the exponential backoff delay
+    const retryDelay = Math.min(
+      INITIAL_RETRY_DELAY * Math.pow(2, connectionAttempts),
+      MAX_RETRY_DELAY
+    );
+    
+    // Close any existing connection
+    if (socketRef.current) {
+      socketRef.current.close();
+    }
+    
+    console.log(`Connecting to WebSocket server (attempt ${connectionAttempts + 1}, delay: ${retryDelay}ms)`);
+    
+    // Create a new WebSocket connection
     try {
-      setIsConnecting(true);
-      
-      // Close existing connection if any
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-      
-      console.log("Connecting to WebSocket at:", WEBSOCKET_URL);
-      
-      // Create new WebSocket connection
       const socket = new WebSocket(WEBSOCKET_URL);
       socketRef.current = socket;
       
-      return new Promise<boolean>((resolve) => {
-        // Set up event handlers
-        socket.onopen = () => {
-          console.log("WebSocket connection opened");
-          setIsConnected(true);
-          setIsConnecting(false);
-          
-          // Send initial ping to measure latency
-          sendPing();
-          resolve(true);
-        };
+      socket.onopen = () => {
+        console.log("WebSocket connection opened");
+        setIsConnected(true);
+        setIsConnecting(false);
         
-        socket.onmessage = handleMessage;
+        // Reset connection attempts on successful connection
+        setConnectionAttempts(0);
         
-        socket.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          setIsConnecting(false);
-          toast.error("WebSocket connection error");
-          setConnectionAttempts(prev => prev + 1);
-          resolve(false);
-        };
+        // Process any queued messages
+        processMessageQueue();
         
+        // Measure initial latency
+        measureLatency();
+        
+        // Start periodic latency measurements
+        const latencyInterval = setInterval(() => {
+          measureLatency();
+        }, 30000); // Every 30 seconds
+        
+        // Clean up the interval when the socket closes
         socket.onclose = (event) => {
-          console.log("WebSocket connection closed:", event.code, event.reason);
+          clearInterval(latencyInterval);
           setIsConnected(false);
           setIsConnecting(false);
           
-          // Attempt to reconnect after a delay, with increasing backoff
-          if (reconnectTimeoutRef.current) {
-            window.clearTimeout(reconnectTimeoutRef.current);
+          console.log(`WebSocket connection closed (code: ${event.code}, reason: ${event.reason || 'No reason provided'})`);
+          
+          // Only reconnect for abnormal closures and if we haven't exceeded max attempts
+          if (event.code !== 1000 && connectionAttempts < MAX_RETRY_COUNT) {
+            console.log("Scheduling reconnection");
+            
+            // Schedule reconnection if not already scheduled
+            if (reconnectTimeoutRef.current === null) {
+              reconnectTimeoutRef.current = window.setTimeout(() => {
+                reconnectTimeoutRef.current = null;
+                connect();
+              }, retryDelay);
+            }
+          } else if (connectionAttempts >= MAX_RETRY_COUNT) {
+            console.log("Maximum reconnection attempts reached, not reconnecting");
           }
-          
-          const backoffDelay = Math.min(3000 * Math.pow(1.5, Math.min(connectionAttempts, 5)), 30000);
-          console.log(`Will attempt to reconnect in ${backoffDelay}ms (attempt ${connectionAttempts + 1})`);
-          
-          reconnectTimeoutRef.current = window.setTimeout(() => {
-            console.log("Attempting to reconnect...");
-            connect();
-          }, backoffDelay);
-          
-          resolve(false);
         };
-      });
+      };
+      
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setIsConnecting(false);
+        
+        toast.error("Connection error. Voice features may be unavailable.", {
+          id: "websocket-error",
+          duration: 3000
+        });
+      };
+      
+      socket.onmessage = handleMessage;
     } catch (error) {
-      console.error("Failed to connect to WebSocket:", error);
+      console.error("Error creating WebSocket:", error);
       setIsConnecting(false);
-      toast.error("Failed to establish WebSocket connection");
-      return false;
+      
+      // Schedule reconnection
+      if (connectionAttempts < MAX_RETRY_COUNT) {
+        reconnectTimeoutRef.current = window.setTimeout(() => {
+          reconnectTimeoutRef.current = null;
+          connect();
+        }, retryDelay);
+      }
     }
-  }, [handleMessage, connectionAttempts, sendPing]);
+  }, [handleMessage, isConnecting, connectionAttempts, measureLatency, processMessageQueue]);
 
-  // Send a test message
-  const sendTestMessage = useCallback((data: any) => {
-    return sendMessage({ type: "test", data });
-  }, [sendMessage]);
-
-  // Clean up function to close the connection
+  // Disconnect from the WebSocket server
   const disconnect = useCallback(() => {
     if (socketRef.current) {
+      console.log("Closing WebSocket connection");
       socketRef.current.close();
       socketRef.current = null;
     }
     
-    if (reconnectTimeoutRef.current) {
-      window.clearTimeout(reconnectTimeoutRef.current);
+    // Clear any scheduled reconnection
+    if (reconnectTimeoutRef.current !== null) {
+      clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
     
     setIsConnected(false);
+    setIsConnecting(false);
   }, []);
 
-  // Clean up on unmount
+  // Connect to the WebSocket server when the component mounts
   useEffect(() => {
+    connect();
+    
+    // Clean up when the component unmounts
     return () => {
       disconnect();
     };
-  }, [disconnect]);
+  }, [connect, disconnect]);
+
+  // Reset state
+  const resetState = useCallback(() => {
+    setMessages([]);
+    setTranscription(null);
+    setAssistantResponse(null);
+    setSpeechAudio(null);
+  }, []);
 
   return {
-    connect,
-    disconnect,
-    sendMessage,
-    sendPing,
-    sendTestMessage,
     isConnected,
     isConnecting,
     messages,
     latency,
-    connectionAttempts
+    connect,
+    disconnect,
+    sendMessage,
+    sendTestMessage,
+    sendVoiceData,
+    sendChatRequest,
+    measureLatency,
+    transcription,
+    assistantResponse,
+    speechAudio,
+    resetState
   };
 };

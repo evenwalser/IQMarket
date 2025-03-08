@@ -1,12 +1,10 @@
-
 import { Button } from "@/components/ui/button";
 
 export const Header = () => (
-  <header className="border-b bg-white/80 backdrop-blur-sm fixed top-0 w-full z-50">
-    <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-px">
+  <header className="border-b bg-white/95 backdrop-blur-sm fixed top-0 w-full z-50">
+    <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-3">
       <div className="flex items-center">
-        <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-[84px] mr-2 rounded-lg" />
-        <span className="text-lg font-medium text-gray-900"></span>
+        <img src="/lovable-uploads/c043db32-f19c-4f34-8153-6fbc96dab40a.png" alt="Notion Capital" className="h-[3.75rem]" />
       </div>
       <nav className="space-x-6">
         <Button 

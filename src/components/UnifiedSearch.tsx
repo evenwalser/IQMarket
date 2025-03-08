@@ -1,12 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useRealtimeChat } from "@/hooks/useRealtimeChat";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
 import { FileUploadButton } from "@/components/search/FileUploadButton";
 import { ModeSelector } from "@/components/search/ModeSelector";
+import { Button } from "@/components/ui/button";
+import { Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -18,6 +22,8 @@ interface UnifiedSearchProps {
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
   latestResponse?: string;
+  threadId?: string | null;
+  onAssistantResponse?: (response: string, threadId: string, visualizations: any[]) => void;
 }
 
 export const UnifiedSearch = ({
@@ -29,7 +35,9 @@ export const UnifiedSearch = ({
   attachments,
   structuredOutput,
   setStructuredOutput,
-  latestResponse
+  latestResponse,
+  threadId,
+  onAssistantResponse
 }: UnifiedSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [voiceMode, setVoiceMode] = useState(false);
@@ -41,6 +49,176 @@ export const UnifiedSearch = ({
   const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
   const submittedQueryRef = useRef<string>("");
   
+  // Initialize the real-time chat hook
+  const {
+    isConnected: isWebSocketConnected,
+    isConnecting: isWebSocketConnecting,
+    sendVoiceData,
+    transcription,
+    assistantResponse,
+    speechAudio,
+    resetState: resetWebSocketState,
+    sendChatRequest
+  } = useRealtimeChat();
+  
+  // Initialize the voice recording hook with the enhanced version
+  const {
+    isRecording,
+    isPaused,
+    isProcessing: isProcessingAudio,
+    recordingTime,
+    audioBase64,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    cancelRecording
+  } = useVoiceRecording({
+    onRecordingComplete: (audioData) => {
+      console.log("Recording complete, audio data length:", audioData.length);
+      // Process voice recording through WebSocket if connected
+      if (isWebSocketConnected) {
+        sendVoiceData(audioData, {
+          processWithAssistant: true,
+          assistantType: selectedMode,
+          threadId: threadId || undefined,
+          structuredOutput,
+          textToSpeech: voiceMode
+        });
+      } else {
+        toast.error("WebSocket not connected. Voice processing unavailable.");
+      }
+    },
+    silenceTimeout: 2000, // 2 seconds of silence to auto-stop
+    maxDuration: 60000, // Max 1 minute recording
+  });
+  
+  // Text-to-speech hook
+  const { speakText, stopSpeaking, isSpeaking } = useTextToSpeech();
+  
+  // Stop TTS reading if active
+  const stopReading = () => {
+    if (isReadingResponse && stopSpeaking) {
+      stopSpeaking();
+      setIsReadingResponse(false);
+    }
+  };
+  
+  // Toggle voice recording
+  const handleVoiceButtonClick = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+      setOrbState("user");
+    } else {
+      startRecording();
+      setOrbState("user");
+      setVoiceInteractionComplete(false);
+      setProcessingVoiceInteraction(false);
+      
+      // Reset previous state when starting a new recording
+      resetWebSocketState();
+    }
+  }, [isRecording, startRecording, stopRecording, resetWebSocketState]);
+  
+  // File drop handler for drag and drop functionality
+  const handleFileDrop = (files: FileList) => {
+    if (!files.length) return;
+    
+    // Convert FileList to array
+    const filesArray = Array.from(files);
+    
+    // Create a synthetic event to pass to handleFileUpload
+    const event = {
+      target: {
+        files: filesArray
+      }
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    
+    handleFileUpload(event);
+  };
+  
+  // Remove attachment handler
+  const removeAttachment = (index: number) => {
+    const updatedAttachments = [...attachments];
+    updatedAttachments.splice(index, 1);
+    
+    // Need to update the parent's state
+    const event = {
+      target: {
+        files: updatedAttachments
+      }
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    handleFileUpload(event);
+  };
+  
+  // Format recording time
+  const formatTime = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(0);
+    return `${minutes}:${Number(seconds) < 10 ? '0' : ''}${seconds}`;
+  };
+  
+  // Handle transcription updates from WebSocket
+  useEffect(() => {
+    if (transcription) {
+      console.log("Received transcription:", transcription);
+      setSearchQuery(transcription);
+      
+      // In voice mode, we can show the transcription in the UI
+      if (voiceMode) {
+        toast.success(`Transcribed: "${transcription}"`, { duration: 3000 });
+      }
+    }
+  }, [transcription, voiceMode]);
+  
+  // Handle assistant responses from WebSocket
+  useEffect(() => {
+    if (assistantResponse) {
+      console.log("Received assistant response:", assistantResponse);
+      
+      // Store the response
+      setLastResponse(assistantResponse.response);
+      
+      // Call the parent callback
+      if (onAssistantResponse) {
+        onAssistantResponse(
+          assistantResponse.response,
+          assistantResponse.thread_id,
+          assistantResponse.visualizations
+        );
+      }
+      
+      // Set state to indicate voice interaction is complete
+      setVoiceInteractionComplete(true);
+      setProcessingVoiceInteraction(false);
+      
+      // Update the orb state
+      setOrbState("ai");
+      setTimeout(() => setOrbState("idle"), 2000);
+    }
+  }, [assistantResponse, onAssistantResponse]);
+  
+  // Handle speech audio from WebSocket
+  useEffect(() => {
+    if (speechAudio && voiceMode) {
+      console.log("Received speech audio, length:", speechAudio.length);
+      
+      // Play the audio
+      const audioElement = new Audio(`data:audio/mp3;base64,${speechAudio}`);
+      setIsReadingResponse(true);
+      
+      audioElement.onended = () => {
+        setIsReadingResponse(false);
+      };
+      
+      audioElement.play().catch(error => {
+        console.error("Error playing audio:", error);
+        setIsReadingResponse(false);
+        toast.error("Failed to play audio response");
+      });
+    }
+  }, [speechAudio, voiceMode]);
+
   // Handle transcription completion in voice mode with automatic submission
   const handleTranscriptionComplete = async (text: string) => {
     console.log("Transcription complete, auto submitting search:", text);
@@ -58,185 +236,265 @@ export const UnifiedSearch = ({
         await handleSearch(text);
         console.log("Search automatically submitted in voice mode");
       } catch (error) {
-        console.error("Error auto-submitting search:", error);
-        toast.error("Failed to process your request");
+        console.error("Error auto-submitting voice search:", error);
         setProcessingVoiceInteraction(false);
       }
     }
   };
-  
-  const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
-    setSearchQuery,
-    handleTranscriptionComplete
-  );
-  
-  const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
-  const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
-  // Focus input when voice mode is deactivated
+  // React to new responses in voice mode
   useEffect(() => {
-    if (!voiceMode && inputRef.current) {
-      inputRef.current.focus();
+    // Only trigger TTS in voice mode and if we have a new response
+    if (voiceMode && latestResponse && latestResponse !== lastResponse && !isReadingResponse) {
+      console.log("New response in voice mode, reading aloud:", latestResponse.substring(0, 50) + "...");
+      setLastResponse(latestResponse);
+      speakText(latestResponse);
+      setIsReadingResponse(true);
     }
-  }, [voiceMode]);
+  }, [latestResponse, lastResponse, voiceMode, isReadingResponse, speakText]);
 
-  // Set structured output based on selected mode
-  useEffect(() => {
-    setStructuredOutput(selectedMode === 'benchmarks');
-  }, [selectedMode, setStructuredOutput]);
-
-  // Update orb state based on current interaction state
-  useEffect(() => {
-    if (isRecording) {
-      setOrbState("user");  // Green - user is speaking
-    } else if (isTranscribing || isLoading) {
-      setOrbState("idle");  // Purple - processing/thinking
-    } else if (isReadingResponse) {
-      setOrbState("ai");    // Blue - AI is speaking
-    } else {
-      setOrbState("idle");  // Default state
-    }
-  }, [isRecording, isTranscribing, isLoading, isReadingResponse]);
-
-  // Update isReadingResponse based on isSpeaking
-  useEffect(() => {
-    setIsReadingResponse(isSpeaking);
-  }, [isSpeaking]);
-  
-  // Auto-read responses in voice mode - enhanced to be more reliable
-  useEffect(() => {
-    if (voiceMode && latestResponse && latestResponse !== lastResponse && !isLoading && !isRecording && !isTranscribing) {
-      // Wait a short delay to ensure UI updates first
-      const timer = setTimeout(() => {
-        console.log("Auto-reading response in voice mode:", latestResponse);
-        speakText(latestResponse);
-        setLastResponse(latestResponse); // Update last response to prevent repeated reading
-        setVoiceInteractionComplete(true); // Mark this voice interaction as complete
-        setProcessingVoiceInteraction(false); // Reset processing flag
-      }, 800);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
-
-  // When TTS completes, auto-turn off voice mode
-  useEffect(() => {
-    if (voiceInteractionComplete && !isSpeaking) {
-      // Automatically turn off voice mode after completion
-      setTimeout(() => {
-        if (voiceMode) {
-          console.log("Voice interaction complete, turning off voice mode");
-          setVoiceMode(false);
-          toast.info("Voice interaction complete");
-          // Reset states for next interaction
-          setVoiceInteractionComplete(false);
-          setProcessingVoiceInteraction(false);
-          submittedQueryRef.current = ""; // Clear submitted query reference
-        }
-      }, 1000);
-    }
-  }, [voiceInteractionComplete, isSpeaking, voiceMode]);
-
-  const onSearch = async () => {
-    if (searchQuery.trim()) {
-      try {
-        // Save what we're searching for
-        submittedQueryRef.current = searchQuery;
-        console.log("Manual search submitted with query:", searchQuery);
-        
-        await handleSearch(searchQuery);
-        // Clear the search query after sending
-        if (!voiceMode) {
-          setSearchQuery("");
-        }
-      } catch (error) {
-        console.error("Search error:", error);
-      }
-    }
-  };
-
-  const toggleVoiceMode = () => {
-    const newVoiceMode = !voiceMode;
-    setVoiceMode(newVoiceMode);
-    
-    if (newVoiceMode) {
-      toast.info("Voice mode activated");
-      // When voice mode is activated, orbState starts as idle (purple)
-      setOrbState("idle");
-      // Clear any previous search query
-      setSearchQuery("");
-      submittedQueryRef.current = "";
-      // Reset the voice interaction completion state
-      setVoiceInteractionComplete(false);
-      setProcessingVoiceInteraction(false);
-      // When voice mode is turned on, automatically start recording after a short delay
-      setTimeout(() => {
-        if (!isRecording) {
-          handleMicClick();
-        }
-      }, 500);
-    } else {
-      toast.info("Voice mode deactivated");
-      setIsReadingResponse(false);
-      stopSpeaking();
-      // Stop recording if active when turning off voice mode
-      if (isRecording) {
-        handleMicClick();
-      }
-      // Reset the voice interaction states
-      setVoiceInteractionComplete(false);
-      setProcessingVoiceInteraction(false);
-      submittedQueryRef.current = "";
-    }
-  };
-
-  const stopReading = () => {
-    stopSpeaking();
-    setIsReadingResponse(false);
-    toast.info("Stopped reading response");
-    
-    // After stopping, if we're still in voice mode, end the voice interaction
+  // Toggle voice mode
+  const toggleVoiceMode = useCallback(() => {
+    // If turning off voice mode, stop any ongoing operations
     if (voiceMode) {
-      setVoiceInteractionComplete(true);
-      setProcessingVoiceInteraction(false);
+      if (isRecording) {
+        cancelRecording();
+      }
+      
+      if (isSpeaking) {
+        stopSpeaking();
+      }
+      
+      setIsReadingResponse(false);
+      resetWebSocketState();
+    } else {
+      // When turning on voice mode, we might want to initialize WebSocket connection
+      toast.info("Voice mode enabled. Click the microphone to start recording.");
     }
+    
+    setVoiceMode(!voiceMode);
+    setVoiceInteractionComplete(false);
+  }, [voiceMode, isRecording, isSpeaking, cancelRecording, stopSpeaking, resetWebSocketState]);
+
+  // Handle text search submission
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleSearchQuery = async () => {
+    if (!searchQuery.trim() && (!attachments || attachments.length === 0)) {
+      toast.error("Please enter a query or attach a file to analyze");
+      return;
+    }
+    
+    submittedQueryRef.current = searchQuery;
+    
+    try {
+      // Check if we have file attachments and we're using the Benchmarks assistant
+      if (attachments.length > 0 && selectedMode === 'benchmarks') {
+        console.log("Handling query with file attachments for Benchmarks assistant");
+        
+        // Set the loading state
+        // handleSearch is the callback for regular text-only queries
+        // but we need special handling for file uploads
+        
+        // Shift focus from the input field
+        if (inputRef.current) {
+          inputRef.current.blur();
+        }
+        
+        // Visual feedback
+        setOrbState("user");
+        
+        // Update loading state manually since we're not calling handleSearch
+        // This would normally be done by the parent component
+        if (isWebSocketConnected) {
+          // Prepare file references
+          // In a real implementation, you would upload these files and get their paths
+          const fileRefs = attachments.map(file => ({
+            name: file.name,
+            type: file.type,
+            // These would normally be the actual upload paths
+            url: URL.createObjectURL(file), // Temporary URL for display
+            path: `chat-attachments/${file.name}` // Placeholder path
+          }));
+          
+          // Use the chat request with attachments
+          const success = await sendChatRequest(searchQuery || "Please analyze this data", {
+            assistantType: selectedMode,
+            threadId: threadId || undefined,
+            structuredOutput,
+            textToSpeech: voiceMode,
+            attachments: fileRefs
+          });
+          
+          if (success) {
+            // Clear the search query after sending
+            setSearchQuery('');
+            setTimeout(() => setOrbState("ai"), 500);
+          } else {
+            toast.error("Failed to send file attachment. Please try again.");
+            setOrbState("idle");
+          }
+        } else {
+          toast.error("WebSocket not connected. Please reload the page and try again.");
+          setOrbState("idle");
+        }
+      } else {
+        // Regular text query without file attachments
+        await handleSearch(searchQuery);
+        setSearchQuery('');
+      }
+    } catch (err) {
+      console.error('Error handling search query:', err);
+      toast.error('Failed to process your query. Please try again.');
+      setOrbState("idle");
+    }
+  };
+
+  const getPlaceholderText = () => {
+    return voiceMode ? "Say something..." : "Ask our Intelligence anything about your business and journey";
+  };
+
+  const disabled = voiceMode && isRecording;
+
+  // Track mode changes for debugging
+  useEffect(() => {
+    console.log(`UnifiedSearch component - Mode changed to: ${selectedMode}`);
+  }, [selectedMode]);
+
+  const handleModeChange = (mode: AssistantType) => {
+    console.log(`UnifiedSearch handling mode change to: ${mode}`);
+    // Clear the search query when changing modes
+    setSearchQuery("");
+    // Update the mode
+    setSelectedMode(mode);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="relative space-y-2">
-        <VoiceSearchInput
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onSearch={onSearch}
-          isLoading={isLoading}
-          isRecording={isRecording}
-          isTranscribing={isTranscribing}
-          handleMicClick={handleMicClick}
-          recordingStartTime={recordingStartTime}
-          voiceMode={voiceMode}
-          toggleVoiceMode={toggleVoiceMode}
-          isReadingResponse={isReadingResponse}
-          stopReading={stopReading}
-          orbState={orbState}
-          inputRef={inputRef}
-          handleAttachmentUpload={handleAttachmentUpload}
-          handleFileUpload={handleFileUpload}
-        />
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Voice and search controls */}
+      {isReadingResponse && stopReading()}
+      
+      <div className="flex flex-col space-y-4">
+        {/* Search input with integrated voice controls */}
+        <div className="w-full">
+          <VoiceSearchInput
+            ref={inputRef}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onSearch={async () => {
+              if (!searchQuery.trim() || isLoading) return;
+              try {
+                submittedQueryRef.current = searchQuery;
+                await handleSearch(searchQuery);
+                
+                // Shift focus from the input field
+                if (inputRef.current) {
+                  inputRef.current.blur();
+                }
+                
+                // Visual feedback
+                setOrbState("user");
+                setTimeout(() => setOrbState("ai"), 500);
+              } catch (error) {
+                console.error("Search error:", error);
+                toast.error("Failed to process your search");
+              }
+            }}
+            placeholder={voiceMode ? "Say something..." : `Ask our ${selectedMode} Intelligence about your business and journey`}
+            isLoading={isLoading}
+            isRecording={isRecording}
+            isProcessing={isProcessingAudio}
+            disabled={isLoading || (voiceMode && isRecording)}
+            orbState={orbState}
+            onFileDrop={handleFileDrop}
+            voiceMode={voiceMode}
+            onToggleVoiceMode={toggleVoiceMode}
+            onToggleRecording={handleVoiceButtonClick}
+          />
+        </div>
         
-        <FileUploadButton 
-          handleFileUpload={handleFileUpload}
-          handleAttachmentUpload={handleAttachmentUpload}
-          attachments={attachments}
-          removeAttachment={removeAttachment}
-        />
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-start gap-4">
-        <ModeSelector
-          selectedMode={selectedMode}
-          setSelectedMode={setSelectedMode}
-        />
+        {/* Centered mode selector */}
+        <div className="flex justify-center">
+          <div className="max-w-md w-full">
+            <ModeSelector
+              selectedMode={selectedMode}
+              onModeSelect={handleModeChange}
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+        
+        {/* Benchmarks mode hint - now centered below mode selector */}
+        {selectedMode === 'benchmarks' && (
+          <div className="text-sm text-muted-foreground text-center">
+            <p>Drag and drop financial and operational data files (CSV, Excel, PDF) into the search box for analysis</p>
+          </div>
+        )}
+        
+        {/* Uploaded files display */}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-1 justify-center">
+            {attachments.map((file, index) => {
+              const isImage = file.type.startsWith('image/');
+              const isSpreadsheet = file.type.includes('spreadsheet') || 
+                file.type.includes('excel') || 
+                file.name.endsWith('.xlsx') || 
+                file.name.endsWith('.csv');
+              
+              // Format file size
+              const formatFileSize = (bytes: number): string => {
+                if (bytes < 1024) return bytes + ' bytes';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+              };
+              
+              return (
+                <div 
+                  key={index} 
+                  className="flex items-center bg-gray-100 rounded-md px-2 py-1 text-sm"
+                >
+                  {isImage ? (
+                    <img 
+                      src={URL.createObjectURL(file)} 
+                      alt={file.name} 
+                      className="w-4 h-4 mr-2 object-cover rounded" 
+                    />
+                  ) : isSpreadsheet ? (
+                    <FileSpreadsheet size={14} className="mr-2 text-emerald-600" />
+                  ) : file.name.endsWith('.pdf') ? (
+                    <FileText size={14} className="mr-2 text-red-600" />
+                  ) : (
+                    <FileText size={14} className="mr-2 text-blue-600" />
+                  )}
+                  <span className="truncate max-w-[120px]" title={file.name}>
+                    {file.name}
+                  </span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({formatFileSize(file.size)})
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 ml-1 p-0 hover:bg-gray-200 rounded-full"
+                    onClick={() => removeAttachment(index)}
+                  >
+                    <X size={12} />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="text-sm text-muted-foreground flex items-center space-x-2 mt-2 justify-center">
+            <span className="animate-pulse text-destructive">● Recording</span>
+            <span>{formatTime(recordingTime)}</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,6 +105,9 @@ export const useFileAttachments = () => {
   return {
     attachments,
     handleAttachmentUpload,
-    removeAttachment
+    removeAttachment,
+    files: attachments,
+    uploadFiles: handleAttachmentUpload,
+    removeFile: removeAttachment
   };
 };

@@ -1,15 +1,13 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
 import type { ChatVisualization } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
+import { IntelligenceHeader } from "@/components/IntelligenceHeader";
 import { UnifiedSearch } from "@/components/UnifiedSearch";
 import { ConversationList } from "@/components/ConversationList";
-import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useTextToSpeech } from "@/hooks/useTextToSpeech";
+import { useFileAttachments } from "@/hooks/useFileAttachments";
 
 interface UploadedAttachment {
   id: string;
@@ -27,30 +25,25 @@ const Index = () => {
   const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
   const [isLoading, setIsLoading] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
   const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>("");
-  const [voiceMode, setVoiceMode] = useState<boolean>(false);
+  const [threadId, setThreadId] = useState<string | null>(null);
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
-  const { speakText, stopSpeaking, isSpeaking } = useTextToSpeech();
-  const isVoiceResponsePendingRef = useRef<boolean>(false);
+  
+  // Use our enhanced file attachments hook
+  const { 
+    files: attachments, 
+    uploadFiles: handleFileUpload, 
+    removeFile: handleRemoveAttachment 
+  } = useFileAttachments();
 
   useEffect(() => {
     // Initialize or retrieve session ID
     initializeSession();
-  }, []);
-
-  const handleLatestResponse = (response: string) => {
-    setLatestResponse(response);
     
-    // If we have a pending voice response request, process it
-    if (isVoiceResponsePendingRef.current && voiceMode) {
-      speakText(response);
-      isVoiceResponsePendingRef.current = false;
-    }
-  };
+    // Set structured output based on selected mode
+    setStructuredOutput(selectedMode === 'benchmarks');
+  }, [selectedMode]);
 
   const initializeSession = () => {
     // Check if session ID exists in local storage
@@ -99,424 +92,252 @@ const Index = () => {
     return viz;
   };
 
-  const loadConversations = async (sessId: string) => {
+  const loadConversations = async (sessionId: string) => {
     try {
-      // Filter conversations by current session ID
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
-        .eq('session_id', sessId)
-        .order('created_at', { ascending: false })
-        .limit(50); // Increased limit to get more messages for the thread
-      
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
-      
-      if (!data || !Array.isArray(data)) {
-        setConversations([]);
-        return;
-      }
-      
-      // Manually construct conversations list to avoid deep type issues
-      const result: Conversation[] = [];
-      
-      for (const item of data) {
-        // Process visualizations one by one to avoid deep nesting
-        const visualizationList: ChatVisualization[] = [];
-        
-        if (Array.isArray(item.visualizations)) {
-          for (const vizData of item.visualizations) {
-            visualizationList.push(safeMapVisualization(vizData));
+
+      const conversationsWithParsedVisualizations = data.map(conv => {
+        // Parse visualizations if they exist
+        if (conv.visualizations) {
+          try {
+            // Handle different types of visualization storage
+            if (typeof conv.visualizations === 'string') {
+              const parsedViz = JSON.parse(conv.visualizations);
+              conv.visualizations = Array.isArray(parsedViz) 
+                ? parsedViz.map(safeMapVisualization) 
+                : [safeMapVisualization(parsedViz)];
+            } else if (Array.isArray(conv.visualizations)) {
+              conv.visualizations = conv.visualizations.map(safeMapVisualization);
+            }
+          } catch (e) {
+            console.error('Error parsing visualizations:', e);
+            conv.visualizations = [];
           }
+        } else {
+          conv.visualizations = [];
         }
-        
-        // Build the conversation object with explicit property assignments
-        const conversation: Conversation = {
-          id: item.id,
-          created_at: item.created_at,
-          query: item.query,
-          response: item.response,
-          assistant_type: item.assistant_type as AssistantType,
-          thread_id: item.thread_id,
-          session_id: item.session_id || sessId, // Use session ID or fallback to current
-          assistant_id: item.assistant_id
-        };
-        
-        // Only add visualizations if there are any
-        if (visualizationList.length > 0) {
-          conversation.visualizations = visualizationList;
-        }
-        
-        result.push(conversation);
-      }
-      
-      // Set thread ID to the most recent thread if available
-      if (result.length > 0) {
-        setThreadId(result[0].thread_id);
-      }
-      
-      setConversations(result);
+        return conv;
+      });
+
+      setConversations(conversationsWithParsedVisualizations);
     } catch (error) {
       console.error('Error loading conversations:', error);
-      toast.error('Failed to load conversation history');
+      toast.error('Failed to load conversations');
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      console.log("Starting file upload process...");
-      for (const file of Array.from(files)) {
-        console.log("Processing file:", {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          lastModified: new Date(file.lastModified).toISOString()
-        });
-
-        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
-        console.log("Generated file path:", filePath);
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('chat-attachments')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("Storage upload error:", uploadError);
-          throw uploadError;
-        }
-
-        console.log("File uploaded to storage successfully:", uploadData);
-
-        const { data, error: insertError } = await supabase
-          .from('chat_attachments')
-          .insert({
-            file_path: filePath,
-            file_name: file.name,
-            content_type: file.type,
-            size: file.size
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("Database insert error:", insertError);
-          throw insertError;
-        }
-
-        console.log("File metadata saved to database:", data);
-
-        if (data) {
-          setAttachments(prev => [...prev, file]);
-          setUploadedAttachments(prev => [...prev, data as UploadedAttachment]);
-          toast.success(`File ${file.name} uploaded successfully`);
-        }
-      }
-    } catch (error) {
-      console.error('Error in file upload process:', error);
-      toast.error('Failed to upload file: ' + (error as Error).message);
-    }
-  };
-
-  const clearAttachments = () => {
-    setAttachments([]);
-    setUploadedAttachments([]);
-  };
-
-  const processAssistantResponse = (data: any): JsonObject[] => {
-    // Set thread ID for conversation continuity
-    if (data.thread_id) {
-      setThreadId(data.thread_id);
-    }
-
-    // Early return for invalid data
-    if (!data.visualizations || !Array.isArray(data.visualizations)) {
-      return [];
-    }
+  const handleSearch = useCallback(async (query: string) => {
+    if (!query.trim()) return;
     
-    // Convert visualizations to simple JSON objects
-    return data.visualizations.map((viz: any): JsonObject => {
-      const result: JsonObject = {};
-      
-      // Only include properties that exist and are valid
-      if (viz?.type) result.type = viz.type;
-      if (Array.isArray(viz?.data)) result.data = viz.data;
-      if (viz?.headers) result.headers = viz.headers;
-      if (viz?.chartType) result.chartType = viz.chartType;
-      if (viz?.xKey) result.xKey = viz.xKey;
-      if (Array.isArray(viz?.yKeys)) result.yKeys = viz.yKeys;
-      if (typeof viz?.height === 'number') result.height = viz.height;
-      
-      return result;
-    });
-  };
-
-  const handleSearch = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      toast.error("Please enter a question");
-      return;
-    }
     setIsLoading(true);
     
-    // If in voice mode, flag that we're expecting a response to speak
-    if (voiceMode) {
-      isVoiceResponsePendingRef.current = true;
-      
-      // Stop any currently playing audio
-      if (isSpeaking) {
-        stopSpeaking();
-      }
-    }
-    
     try {
-      let formattedAttachments = [];
+      // Process file attachments if any
+      let attachmentUrls: string[] = [];
       
-      if (uploadedAttachments.length > 0) {
-        console.log("Processing attachments for search:", uploadedAttachments);
-        formattedAttachments = uploadedAttachments.map(att => {
-          const publicUrl = supabase.storage
-            .from('chat-attachments')
-            .getPublicUrl(att.file_path)
-            .data.publicUrl;
-
-          return {
-            url: publicUrl,
-            file_path: att.file_path,
-            file_name: att.file_name,
-            content_type: att.content_type
-          };
-        });
+      if (attachments.length > 0) {
+        toast.info(`Processing ${attachments.length} attachments...`);
+        
+        // Upload each attachment to storage
+        for (const file of attachments) {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(`${sessionId}/${file.name}`, file);
+            
+          if (uploadError) throw uploadError;
+          
+          if (uploadData?.path) {
+            // Get public URL for the file
+            const { data: urlData } = supabase.storage
+              .from('attachments')
+              .getPublicUrl(uploadData.path);
+              
+            if (urlData?.publicUrl) {
+              attachmentUrls.push(urlData.publicUrl);
+            }
+          }
+        }
       }
-
-      console.log("Sending request to chat-with-assistant function:", {
-        message: searchQuery,
-        assistantType: selectedMode,
-        attachments: formattedAttachments,
-        structuredOutput: structuredOutput
-      });
-
+      
+      // Call the backend API with the query and mode
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
-          message: searchQuery,
+          message: query,
           assistantType: selectedMode,
-          attachments: formattedAttachments,
-          structuredOutput: structuredOutput,
-          threadId: threadId
-        }
-      });
-      
-      if (error) {
-        console.error("Edge function error:", error);
-        throw error;
-      }
-
-      console.log("Received response from edge function:", data);
-
-      if (!data || !data.response) {
-        console.error("No response data received");
-        throw new Error('No response received from assistant');
-      }
-      
-      const visualizations = processAssistantResponse(data);
-
-      const { error: dbError } = await supabase
-        .from('conversations')
-        .insert({
-          query: searchQuery,
-          response: data.response,
-          assistant_type: selectedMode,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          session_id: sessionId
-        });
-
-      if (dbError) {
-        console.error('Error storing conversation:', dbError);
-        toast.error('Failed to save conversation');
-      } else {
-        await loadConversations(sessionId);
-        clearAttachments();
-        
-        // Store latest response for possible TTS
-        setLatestResponse(data.response);
-        
-        // If in voice mode, immediately speak the response
-        if (voiceMode && isVoiceResponsePendingRef.current) {
-          speakText(data.response);
-          isVoiceResponsePendingRef.current = false;
-        }
-        
-        toast.success("Response received!");
-      }
-    } catch (error) {
-      console.error("Full error details:", error);
-      toast.error("Failed to get response. Please try again.");
-      
-      // Clear the pending voice response flag if there's an error
-      isVoiceResponsePendingRef.current = false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleReply = async (threadId: string, message: string, assistantType: string) => {
-    if (!message.trim()) return;
-    
-    try {
-      console.log(`Sending reply to thread ${threadId}:`, {
-        message,
-        assistantType,
-        structuredOutput
-      });
-      
-      // If in voice mode, flag that we're expecting a response to speak
-      if (voiceMode) {
-        isVoiceResponsePendingRef.current = true;
-        
-        // Stop any currently playing audio
-        if (isSpeaking) {
-          stopSpeaking();
-        }
-      }
-      
-      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {
-          message,
-          assistantType,
           threadId,
           structuredOutput
         }
       });
       
-      if (error) {
-        console.error("Edge function error:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      if (!data || !data.response) {
-        console.error("No response data received");
-        throw new Error('No response received from assistant');
-      }
+      const { response, thread_id, visualizations = [] } = data;
       
-      const visualizations = processAssistantResponse(data);
+      // Store the thread ID for future use
+      setThreadId(thread_id);
       
-      const { error: dbError } = await supabase
+      // Store the response
+      setLatestResponse(response);
+      
+      // Save the conversation to database
+      const { data: savedConversation, error: saveError } = await supabase
         .from('conversations')
         .insert({
-          query: message,
-          response: data.response,
-          assistant_type: assistantType,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          session_id: sessionId
-        });
+          query,
+          response,
+          assistant_type: selectedMode,
+          thread_id,
+          session_id: sessionId,
+          visualizations: visualizations.length > 0 ? visualizations : null
+        })
+        .select()
+        .single();
       
-      if (dbError) {
-        console.error('Error storing conversation:', dbError);
-        throw dbError;
-      }
+      if (saveError) throw saveError;
       
-      await loadConversations(sessionId);
+      // Update the local conversation list with the new conversation
+      setConversations(prev => [
+        {
+          ...savedConversation,
+          visualizations: visualizations.map(safeMapVisualization)
+        },
+        ...prev
+      ]);
       
-      // Store latest response for possible TTS
-      setLatestResponse(data.response);
-      
-      // If in voice mode, immediately speak the response
-      if (voiceMode && isVoiceResponsePendingRef.current) {
-        speakText(data.response);
-        isVoiceResponsePendingRef.current = false;
-      }
-      
-      toast.success("Reply sent!");
+      toast.success('Response received!');
     } catch (error) {
-      console.error("Error sending reply:", error);
-      toast.error("Failed to send reply. Please try again.");
-      // Clear the pending voice response flag if there's an error
-      isVoiceResponsePendingRef.current = false;
+      console.error('Error in search:', error);
+      toast.error('Search failed: ' + (error as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedMode, threadId, sessionId, structuredOutput, attachments]);
+
+  // Handle assistant responses from WebSocket
+  const handleAssistantResponse = useCallback((response: string, thread_id: string, visualizations: any[]) => {
+    // Store the thread ID for future use
+    setThreadId(thread_id);
+    
+    // Store the response
+    setLatestResponse(response);
+    
+    // Save the conversation to database
+    supabase
+      .from('conversations')
+      .insert({
+        query: "Voice request",
+        response,
+        assistant_type: selectedMode,
+        thread_id,
+        session_id: sessionId,
+        visualizations: visualizations.length > 0 ? visualizations : null
+      })
+      .select()
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Error saving voice conversation:', error);
+          return;
+        }
+        
+        // Update the local conversation list with the new conversation
+        setConversations(prev => [
+          {
+            ...data,
+            visualizations: visualizations.map(safeMapVisualization)
+          },
+          ...prev
+        ]);
+      });
+  }, [selectedMode, sessionId]);
+
+  // Choose a conversation thread and optionally send a message
+  const chooseConversation = (threadId: string, message?: string) => {
+    setThreadId(threadId);
+    
+    // If a message is provided, send it immediately
+    if (message && message.trim()) {
+      // Use the existing handleSearch function to send the message
+      handleSearch(message);
+    } else {
+      toast.info('Conversation thread selected');
     }
   };
 
-  const startNewSession = () => {
-    // Generate new session ID
-    const newSessionId = crypto.randomUUID();
-    
-    // Update localStorage and state
-    localStorage.setItem("conversation_session_id", newSessionId);
-    setSessionId(newSessionId);
-    
-    // Clear thread ID to start a new conversation thread
+  // Start a new conversation
+  const startNewConversation = () => {
     setThreadId(null);
-    
-    // Clear conversations list
-    setConversations([]);
-    
-    toast.success("Started a new conversation session");
+    toast.info('Starting new conversation');
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
+      
+      <main className="flex-1 container mx-auto pt-20 pb-12 px-4">
+        {/* Intelligence Header with sparkles */}
+        <IntelligenceHeader />
 
-      <main className="pt-0">
-        <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
-          animate-gradient-background backdrop-blur-sm pb-24">
-          <div className="max-w-[1600px] mx-auto px-4 pt-20 bg-[#f2f2f2]">
-            <div className="text-center mb-8 relative">
-              <div className="inline-flex items-center gap-3 group">
-                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
-                <div className="flex items-center gap-2">
-                  <img 
-                    src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
-                    alt="Notion" 
-                    className="w-32 h-auto object-cover"
-                  />
-                  <h1 className="font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight text-4xl">
-                    Intelligence
-                  </h1>
-                </div>
-                <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
+        {/* Search Area */}
+        <div className="max-w-3xl mx-auto mb-12">
+          <UnifiedSearch 
+            handleSearch={handleSearch}
+            isLoading={isLoading}
+            selectedMode={selectedMode}
+            setSelectedMode={setSelectedMode}
+            handleFileUpload={handleFileUpload}
+            attachments={attachments}
+            structuredOutput={structuredOutput}
+            setStructuredOutput={setStructuredOutput}
+            latestResponse={latestResponse}
+            threadId={threadId}
+            onAssistantResponse={handleAssistantResponse}
+          />
+        </div>
+
+        {/* Conversations Area */}
+        <div className="max-w-3xl mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Your Conversation</h2>
+            <button 
+              onClick={startNewConversation}
+              className="px-4 py-2 bg-white rounded-lg border shadow-sm text-sm font-medium"
+            >
+              Start New Conversation
+            </button>
+          </div>
+
+          {/* Conversations list or empty state */}
+          <div className="bg-white rounded-lg border p-8">
+            {conversations.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-700 mb-2">No conversations yet</p>
+                <p className="text-gray-500 text-sm">Start by asking a question above</p>
               </div>
-            </div>
-
-            <div className="space-y-8">
-              <UnifiedSearch 
-                handleSearch={handleSearch}
-                isLoading={isLoading}
-                selectedMode={selectedMode}
-                setSelectedMode={setSelectedMode}
-                handleFileUpload={handleFileUpload}
-                attachments={attachments}
-                structuredOutput={structuredOutput}
-                setStructuredOutput={setStructuredOutput}
-                latestResponse={latestResponse || undefined}
-              />
-
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-800">Your Conversation</h2>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={startNewSession}
-                >
-                  Start New Conversation
-                </Button>
-              </div>
-
+            ) : (
               <ConversationList 
                 conversations={conversations} 
-                onReply={handleReply}
-                voiceMode={voiceMode}
-                onLatestResponse={handleLatestResponse}
+                activeThreadId={threadId}
+                onSelectThread={chooseConversation}
+                onStartNewThread={startNewConversation}
               />
-            </div>
+            )}
           </div>
+        </div>
+        
+        {/* Remove or hide the sidebar info panel on mobile */}
+        <div className="hidden lg:block">
+          {/* Sidebar content */}
         </div>
       </main>
     </div>
   );
-};
+}
 
 export default Index;
