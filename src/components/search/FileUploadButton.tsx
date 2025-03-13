@@ -1,4 +1,5 @@
-import { Upload, X, FileSpreadsheet, FileImage, FileText } from "lucide-react";
+
+import { Upload, X, FileSpreadsheet, FileImage, FileText, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,13 +9,15 @@ interface FileUploadButtonProps {
   attachments?: File[];
   disabled?: boolean;
   onRemoveAttachment?: (index: number) => void;
+  inline?: boolean;
 }
 
 export const FileUploadButton = ({
   onFileUpload,
   attachments = [],
   disabled = false,
-  onRemoveAttachment
+  onRemoveAttachment,
+  inline = false
 }: FileUploadButtonProps) => {
   // Format file size
   const formatFileSize = (bytes: number): string => {
@@ -36,38 +39,38 @@ export const FileUploadButton = ({
   };
 
   return (
-    <div className="relative">
+    <div className={inline ? "" : "relative"}>
       {/* File Upload Button */}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               disabled={disabled}
-              className="h-10 w-10 relative hover:bg-gray-100"
-              title="Upload files"
+              className={`h-8 w-8 p-0 ${inline ? 'text-primary hover:bg-primary/10' : 'hover:bg-gray-100'}`}
+              aria-label="Upload files"
             >
-              <Upload size={18} />
+              {inline ? <Paperclip size={16} /> : <Upload size={18} />}
               <input
                 type="file"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={onFileUpload}
                 multiple
                 disabled={disabled}
-                title="Upload files"
+                aria-label="Upload files"
                 accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.json,image/*,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom">
+          <TooltipContent side={inline ? "bottom" : "bottom"}>
             <p>Upload documents, spreadsheets, PDFs or images</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
       
-      {/* Attachment badges */}
-      {attachments.length > 0 && (
+      {/* Attachment badges - only show if not inline mode */}
+      {!inline && attachments.length > 0 && (
         <div className="absolute top-full left-0 mt-2 flex flex-wrap gap-2 w-60 z-10">
           {attachments.map((file, index) => (
             <Badge 

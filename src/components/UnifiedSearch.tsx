@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -6,11 +7,9 @@ import { useRealtimeChat } from "@/hooks/useRealtimeChat";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
-import { FileUploadButton } from "@/components/search/FileUploadButton";
 import { ModeSelector } from "@/components/search/ModeSelector";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -48,6 +47,7 @@ export const UnifiedSearch = ({
   const [voiceInteractionComplete, setVoiceInteractionComplete] = useState(false);
   const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
   const submittedQueryRef = useRef<string>("");
+  const prevSelectedModeRef = useRef<AssistantType>(selectedMode);
   
   // Initialize the real-time chat hook
   const {
@@ -96,6 +96,23 @@ export const UnifiedSearch = ({
   // Text-to-speech hook
   const { speakText, stopSpeaking, isSpeaking } = useTextToSpeech();
   
+  // Clear attachments when changing modes from benchmarks to something else
+  useEffect(() => {
+    if (prevSelectedModeRef.current === 'benchmarks' && selectedMode !== 'benchmarks' && attachments.length > 0) {
+      // Create an empty event to clear attachments
+      const emptyEvent = {
+        target: {
+          files: []
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(emptyEvent);
+      toast.info("Attachments cleared when changing mode");
+    }
+    
+    prevSelectedModeRef.current = selectedMode;
+  }, [selectedMode, attachments, handleFileUpload]);
+  
   // Stop TTS reading if active
   const stopReading = () => {
     if (isReadingResponse && stopSpeaking) {
@@ -123,6 +140,12 @@ export const UnifiedSearch = ({
   // File drop handler for drag and drop functionality
   const handleFileDrop = (files: FileList) => {
     if (!files.length) return;
+    
+    // Only allow file uploads in benchmarks mode
+    if (selectedMode !== 'benchmarks') {
+      toast.error("File uploads are only available in Benchmarks mode");
+      return;
+    }
     
     // Convert FileList to array
     const filesArray = Array.from(files);
@@ -195,8 +218,22 @@ export const UnifiedSearch = ({
       // Update the orb state
       setOrbState("ai");
       setTimeout(() => setOrbState("idle"), 2000);
+      
+      // If we had file attachments in Benchmarks mode, clear them after successful response
+      if (selectedMode === 'benchmarks' && attachments.length > 0) {
+        // Clear attachments after a delay to ensure they were processed
+        setTimeout(() => {
+          const emptyEvent = {
+            target: {
+              files: []
+            }
+          } as unknown as React.ChangeEvent<HTMLInputElement>;
+          
+          handleFileUpload(emptyEvent);
+        }, 1000);
+      }
     }
-  }, [assistantResponse, onAssistantResponse]);
+  }, [assistantResponse, onAssistantResponse, selectedMode, attachments, handleFileUpload]);
   
   // Handle speech audio from WebSocket
   useEffect(() => {
@@ -353,23 +390,14 @@ export const UnifiedSearch = ({
   };
 
   const getPlaceholderText = () => {
-    return voiceMode ? "Say something..." : "Ask our Intelligence anything about your business and journey";
+    return voiceMode 
+      ? "Say something..." 
+      : selectedMode === 'benchmarks'
+        ? "Ask about data or drag & drop files here for analysis"
+        : `Ask our ${selectedMode} Intelligence about your business and journey`;
   };
 
   const disabled = voiceMode && isRecording;
-
-  // Track mode changes for debugging
-  useEffect(() => {
-    console.log(`UnifiedSearch component - Mode changed to: ${selectedMode}`);
-  }, [selectedMode]);
-
-  const handleModeChange = (mode: AssistantType) => {
-    console.log(`UnifiedSearch handling mode change to: ${mode}`);
-    // Clear the search query when changing modes
-    setSearchQuery("");
-    // Update the mode
-    setSelectedMode(mode);
-  };
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -377,32 +405,14 @@ export const UnifiedSearch = ({
       {isReadingResponse && stopReading()}
       
       <div className="flex flex-col space-y-4">
-        {/* Search input with integrated voice controls */}
+        {/* Search input with integrated voice controls and file upload */}
         <div className="w-full">
           <VoiceSearchInput
             ref={inputRef}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onSearch={async () => {
-              if (!searchQuery.trim() || isLoading) return;
-              try {
-                submittedQueryRef.current = searchQuery;
-                await handleSearch(searchQuery);
-                
-                // Shift focus from the input field
-                if (inputRef.current) {
-                  inputRef.current.blur();
-                }
-                
-                // Visual feedback
-                setOrbState("user");
-                setTimeout(() => setOrbState("ai"), 500);
-              } catch (error) {
-                console.error("Search error:", error);
-                toast.error("Failed to process your search");
-              }
-            }}
-            placeholder={voiceMode ? "Say something..." : `Ask our ${selectedMode} Intelligence about your business and journey`}
+            onChange={handleSearchInputChange}
+            onSearch={handleSearchQuery}
+            placeholder={getPlaceholderText()}
             isLoading={isLoading}
             isRecording={isRecording}
             isProcessing={isProcessingAudio}
@@ -412,6 +422,11 @@ export const UnifiedSearch = ({
             voiceMode={voiceMode}
             onToggleVoiceMode={toggleVoiceMode}
             onToggleRecording={handleVoiceButtonClick}
+            // Show file upload only in benchmarks mode
+            showFileUpload={selectedMode === 'benchmarks'}
+            onFileUpload={handleFileUpload}
+            attachments={attachments}
+            onRemoveAttachment={removeAttachment}
           />
         </div>
         
@@ -420,7 +435,7 @@ export const UnifiedSearch = ({
           <div className="max-w-md w-full">
             <ModeSelector
               selectedMode={selectedMode}
-              onModeSelect={handleModeChange}
+              onModeSelect={setSelectedMode}
               disabled={isLoading}
             />
           </div>
@@ -430,61 +445,6 @@ export const UnifiedSearch = ({
         {selectedMode === 'benchmarks' && (
           <div className="text-sm text-muted-foreground text-center">
             <p>Drag and drop financial and operational data files (CSV, Excel, PDF) into the search box for analysis</p>
-          </div>
-        )}
-        
-        {/* Uploaded files display */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-1 justify-center">
-            {attachments.map((file, index) => {
-              const isImage = file.type.startsWith('image/');
-              const isSpreadsheet = file.type.includes('spreadsheet') || 
-                file.type.includes('excel') || 
-                file.name.endsWith('.xlsx') || 
-                file.name.endsWith('.csv');
-              
-              // Format file size
-              const formatFileSize = (bytes: number): string => {
-                if (bytes < 1024) return bytes + ' bytes';
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-              };
-              
-              return (
-                <div 
-                  key={index} 
-                  className="flex items-center bg-gray-100 rounded-md px-2 py-1 text-sm"
-                >
-                  {isImage ? (
-                    <img 
-                      src={URL.createObjectURL(file)} 
-                      alt={file.name} 
-                      className="w-4 h-4 mr-2 object-cover rounded" 
-                    />
-                  ) : isSpreadsheet ? (
-                    <FileSpreadsheet size={14} className="mr-2 text-emerald-600" />
-                  ) : file.name.endsWith('.pdf') ? (
-                    <FileText size={14} className="mr-2 text-red-600" />
-                  ) : (
-                    <FileText size={14} className="mr-2 text-blue-600" />
-                  )}
-                  <span className="truncate max-w-[120px]" title={file.name}>
-                    {file.name}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({formatFileSize(file.size)})
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 ml-1 p-0 hover:bg-gray-200 rounded-full"
-                    onClick={() => removeAttachment(index)}
-                  >
-                    <X size={12} />
-                  </Button>
-                </div>
-              );
-            })}
           </div>
         )}
         
