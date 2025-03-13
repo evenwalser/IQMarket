@@ -156,20 +156,15 @@ async function processAttachments(openAIApiKey, attachments) {
 async function addMessageToThread(openAIApiKey, threadId, message, fileIds = []) {
   console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
   
-  // Prepare the message data according to OpenAI API requirements
-  const messageData = {
-    role: 'user',
-    content: message
-  };
-  
-  // Add file IDs if any were processed successfully
-  if (fileIds.length > 0) {
-    messageData.file_ids = fileIds;
-  }
-  
-  console.log("Message data being sent:", JSON.stringify(messageData));
-  
   try {
+    // First, create the message without file_ids
+    const messageData = {
+      role: 'user',
+      content: message
+    };
+    
+    console.log("Initial message data being sent:", JSON.stringify(messageData));
+    
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
       headers: {
@@ -186,8 +181,44 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
       throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
     }
     
-    const responseData = await messageResponse.json();
-    console.log("Message added to thread successfully:", responseData.id);
+    const messageResponseData = await messageResponse.json();
+    const messageId = messageResponseData.id;
+    console.log("Message added to thread successfully:", messageId);
+    
+    // If we have file IDs, attach them to the message in a separate request
+    if (fileIds.length > 0) {
+      console.log(`Attaching ${fileIds.length} files to message ${messageId}`);
+      
+      // For each file ID, we need to make a separate request to attach it to the message
+      for (const fileId of fileIds) {
+        try {
+          const attachResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages/${messageId}/attachments`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+              'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({
+              file_id: fileId
+            })
+          });
+          
+          if (!attachResponse.ok) {
+            const errorData = await attachResponse.json();
+            console.error(`Failed to attach file ${fileId} to message ${messageId}:`, errorData);
+            // Continue with other files even if one fails
+          } else {
+            const attachData = await attachResponse.json();
+            console.log(`File ${fileId} attached successfully:`, attachData.id);
+          }
+        } catch (attachError) {
+          console.error(`Error attaching file ${fileId} to message ${messageId}:`, attachError);
+          // Continue with other files even if one fails
+        }
+      }
+    }
+    
     return true;
   } catch (error) {
     console.error("Error adding message to thread:", error);
