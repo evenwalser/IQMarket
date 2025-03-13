@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
@@ -73,8 +72,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (handleAttachmentUpload && handleFileUpload) {
-      // Only call one of these functions to prevent duplicate uploads
+    if (handleFileUpload) {
       handleFileUpload(e);
       
       e.target.value = '';
@@ -189,9 +187,8 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           
           <Button
             type="button"
-            variant="default"
             size="sm"
-            className="rounded-full h-10 py-0 text-white flex items-center gap-2 px-4"
+            className="rounded-full h-10 py-0 text-white flex items-center gap-2 px-4 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 border-0"
             onClick={onSearch}
             disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
           >

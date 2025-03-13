@@ -38,6 +38,11 @@ export const UnifiedSearch = ({
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
+  const [localAttachments, setLocalAttachments] = useState<File[]>([]);
+
+  useEffect(() => {
+    setLocalAttachments(attachments);
+  }, [attachments]);
 
   function handleTranscriptionComplete(transcribedText: string) {
     if (transcribedText && transcribedText.trim()) {
@@ -139,13 +144,16 @@ export const UnifiedSearch = ({
   };
 
   const removeAttachment = (index: number) => {
-    if (index >= 0 && index < attachments.length) {
-      const updatedAttachments = [...attachments];
+    if (index >= 0 && index < localAttachments.length) {
+      const updatedAttachments = [...localAttachments];
       updatedAttachments.splice(index, 1);
+      setLocalAttachments(updatedAttachments);
+      
       const event = new CustomEvent('attachmentRemoved', { 
         detail: { index, updatedAttachments } 
       });
       window.dispatchEvent(event);
+      
       toast.success("File removed");
     } else {
       console.error("Invalid attachment index:", index);
@@ -171,14 +179,13 @@ export const UnifiedSearch = ({
           stopReading={stopReading}
           orbState={orbState}
           inputRef={inputRef}
-          handleAttachmentUpload={handleFileUpload}
           handleFileUpload={handleFileUpload}
         />
         
-        {attachments.length > 0 && (
+        {localAttachments.length > 0 && (
           <div className="mt-2">
             <div className="flex flex-wrap gap-2">
-              {attachments.map((file, index) => (
+              {localAttachments.map((file, index) => (
                 <div key={index} className="relative group">
                   <div className="w-20 h-20 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
                     {file.type.startsWith('image/') ? (
