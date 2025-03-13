@@ -38,6 +38,12 @@ export const UnifiedSearch = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   
+  function handleTranscriptionComplete(transcribedText: string) {
+    if (transcribedText && transcribedText.trim()) {
+      handleSearch(transcribedText);
+    }
+  }
+  
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
     setSearchQuery,
     handleTranscriptionComplete
