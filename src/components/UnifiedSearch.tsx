@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -36,7 +35,7 @@ export const UnifiedSearch = ({
   const [voiceMode, setVoiceMode] = useState(false);
   const [isReadingResponse, setIsReadingResponse] = useState(false);
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<any>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   
   function handleTranscriptionComplete(transcribedText: string) {
@@ -139,6 +138,13 @@ export const UnifiedSearch = ({
     }
   };
 
+  useEffect(() => {
+    if (inputRef.current && !voiceMode) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = Math.min(200, inputRef.current.scrollHeight) + 'px';
+    }
+  }, [searchQuery, voiceMode]);
+
   return (
     <div className="space-y-4">
       <div className="relative space-y-2">
@@ -161,9 +167,6 @@ export const UnifiedSearch = ({
           handleFileUpload={handleFileUpload}
         />
         
-        {/* Removed FileUploadButton component */}
-        
-        {/* Display attachments if any */}
         {attachments.length > 0 && (
           <div className="mt-2">
             <div className="flex flex-wrap gap-2">

@@ -73,6 +73,36 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     }
   };
 
+  // Use a textarea instead of an input for better text wrapping
+  const renderTextArea = () => (
+    <textarea
+      ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+      placeholder={getStatusText()} 
+      className={`w-full px-5 py-4 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900
+        placeholder:text-gray-500 text-center resize-none overflow-hidden
+        ${voiceMode ? 'bg-gray-50' : ''}`}
+      value={searchQuery} 
+      onChange={e => {
+        setSearchQuery(e.target.value);
+        // Auto-adjust height based on content
+        e.target.style.height = 'auto';
+        e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          onSearch();
+        }
+      }}
+      readOnly={voiceMode}
+      disabled={voiceMode || isLoading}
+      style={{ 
+        minHeight: '56px',
+        height: searchQuery ? 'auto' : '56px'
+      }}
+    />
+  );
+
   return (
     <div className="relative flex items-center">
       <div className="mr-4">
@@ -124,25 +154,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       </div>
       
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
-        <Input 
-          ref={inputRef}
-          type="text" 
-          placeholder={getStatusText()} 
-          className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center overflow-visible whitespace-normal min-h-[56px] ${voiceMode ? 'bg-gray-50' : ''}`}
-          value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              onSearch();
-            }
-          }}
-          readOnly={voiceMode}
-          disabled={voiceMode || isLoading}
-          style={{ 
-            textOverflow: 'ellipsis',
-            height: 'auto'
-          }}
-        />
+        {renderTextArea()}
         
         {voiceMode && (
           <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
