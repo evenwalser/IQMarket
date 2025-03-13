@@ -56,7 +56,7 @@ export const sendMessage = async (message: string, threadId: string | null, atta
         body: {
           message,
           threadId,
-          assistantType: 'benchmarks', // Adding this as it was missing in the request
+          assistantType: 'benchmarks',
           attachments: formattedAttachments
         },
       });

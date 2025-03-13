@@ -17,7 +17,14 @@ Deno.serve(async (req) => {
     // Get request body
     const { message, assistantType, attachments = [], structuredOutput = false, threadId } = await req.json();
 
-    console.log("Request received:", { message, assistantType, attachmentsCount: attachments.length, structuredOutput, threadId });
+    console.log("Request received:", { 
+      message, 
+      assistantType, 
+      attachmentsCount: attachments.length, 
+      attachments: attachments.map(a => ({ url: a.url, name: a.file_name })),
+      structuredOutput, 
+      threadId 
+    });
 
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -56,7 +63,7 @@ Deno.serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2'  // Update to v2
+          'OpenAI-Beta': 'assistants=v2'
         },
         body: JSON.stringify({})
       });
@@ -72,18 +79,88 @@ Deno.serve(async (req) => {
     
     console.log("Using thread ID:", threadId2);
     
-    // Add message to thread with v2 API
-    console.log("Adding message to thread");
+    // Process attachments for OpenAI
+    let messageContent = [];
+    
+    // Add the text message
+    messageContent.push({
+      type: 'text',
+      text: message
+    });
+    
+    // Add file attachments if present
+    if (attachments && attachments.length > 0) {
+      console.log(`Processing ${attachments.length} attachments for OpenAI`);
+      
+      // First upload the files to OpenAI
+      const fileIds = [];
+      
+      for (const attachment of attachments) {
+        try {
+          // Get the file from the public URL
+          console.log(`Fetching file from URL: ${attachment.url}`);
+          const fileResponse = await fetch(attachment.url);
+          
+          if (!fileResponse.ok) {
+            console.error(`Failed to fetch file from URL: ${attachment.url}, status: ${fileResponse.status}`);
+            continue;
+          }
+          
+          // Get the file as blob
+          const fileBlob = await fileResponse.blob();
+          
+          // Create a FormData object for the file upload
+          const formData = new FormData();
+          formData.append('purpose', 'assistants');
+          formData.append('file', fileBlob, attachment.file_name || 'attachment');
+          
+          // Upload file to OpenAI
+          console.log(`Uploading file to OpenAI: ${attachment.file_name}`);
+          const uploadResponse = await fetch('https://api.openai.com/v1/files', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`
+            },
+            body: formData
+          });
+          
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            console.error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
+            continue;
+          }
+          
+          const uploadData = await uploadResponse.json();
+          console.log(`File uploaded to OpenAI successfully with ID: ${uploadData.id}`);
+          
+          // Add the file ID to our list
+          fileIds.push(uploadData.id);
+          
+          // Also include the file attachment in the message content
+          messageContent.push({
+            type: 'file_attachment',
+            file_id: uploadData.id
+          });
+        } catch (fileError) {
+          console.error(`Error processing attachment: ${fileError.message}`);
+        }
+      }
+      
+      console.log(`Successfully processed ${fileIds.length} files for OpenAI`);
+    }
+    
+    // Add message to thread with v2 API - now using the messageContent array
+    console.log("Adding message to thread with content:", JSON.stringify(messageContent));
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId2}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'  // Update to v2
+        'OpenAI-Beta': 'assistants=v2'
       },
       body: JSON.stringify({
         role: 'user',
-        content: message
+        content: messageContent
       })
     });
     
@@ -99,7 +176,7 @@ Deno.serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'  // Update to v2
+        'OpenAI-Beta': 'assistants=v2'
       },
       body: JSON.stringify({
         assistant_id: assistantId,
@@ -129,7 +206,7 @@ Deno.serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2'  // Update to v2
+          'OpenAI-Beta': 'assistants=v2'
         }
       });
       
@@ -154,7 +231,7 @@ Deno.serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'  // Update to v2
+        'OpenAI-Beta': 'assistants=v2'
       }
     });
     
