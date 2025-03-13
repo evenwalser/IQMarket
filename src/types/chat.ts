@@ -1,3 +1,4 @@
+
 export interface ChatAttachment {
   type: 'image' | 'file';
   url: string;
@@ -9,7 +10,7 @@ export interface ChatVisualization {
   type: 'table' | 'chart';
   data: Record<string, any>[];
   headers?: string[];  // For tables
-  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed' | 'image';  // For charts
+  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed' | 'image';  // Updated to include 'image'
   xKey?: string;  // For charts
   yKeys?: string[];  // For charts
   height?: number;  // For charts

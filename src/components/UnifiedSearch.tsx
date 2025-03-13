@@ -8,8 +8,6 @@ import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
 import { ModeSelector } from "@/components/search/ModeSelector";
-import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -20,7 +18,7 @@ interface UnifiedSearchProps {
   attachments: File[];
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
-  latestResponse?: string;
+  latestResponse?: string | null;
   threadId?: string | null;
   onAssistantResponse?: (response: string, threadId: string, visualizations: any[]) => void;
 }
@@ -402,7 +400,9 @@ export const UnifiedSearch = ({
   return (
     <div className="w-full max-w-4xl mx-auto">
       {/* Voice and search controls */}
-      {isReadingResponse && stopReading()}
+      {isReadingResponse && stopSpeaking && (
+        <div className="hidden">{stopReading()}</div>
+      )}
       
       <div className="flex flex-col space-y-4">
         {/* Search input with integrated voice controls and file upload */}

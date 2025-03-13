@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 
@@ -162,6 +163,12 @@ export const useRealtimeChat = () => {
       pingTimestampRef.current = Date.now();
       sendMessage({ type: "ping" });
     }
+  }, [sendMessage]);
+
+  // Send a ping message to the server for latency measurement
+  const sendPing = useCallback(() => {
+    pingTimestampRef.current = Date.now();
+    return sendMessage({ type: "ping" });
   }, [sendMessage]);
 
   // Send a test message
@@ -371,12 +378,14 @@ export const useRealtimeChat = () => {
     isConnecting,
     messages,
     latency,
+    connectionAttempts, // Exposing connectionAttempts for UI feedback
     connect,
     disconnect,
     sendMessage,
     sendTestMessage,
     sendVoiceData,
     sendChatRequest,
+    sendPing, // Adding the sendPing method
     measureLatency,
     transcription,
     assistantResponse,

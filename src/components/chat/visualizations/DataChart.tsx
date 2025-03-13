@@ -46,7 +46,7 @@ interface DataChartProps {
 }
 
 interface ChartSettings {
-  chartType: 'line' | 'bar' | 'radar' | 'area' | 'composed';
+  chartType: 'line' | 'bar' | 'radar' | 'area' | 'composed' | 'image';
   xKey: string;
   yKeys: string[];
   colorScheme: 'default' | 'purple' | 'blue' | 'green';

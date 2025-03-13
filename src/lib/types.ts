@@ -36,3 +36,6 @@ export interface ChatConversation {
   last_message_at: string;
   messages: ChatMessage[];
 }
+
+// Define JSON compatible type for Supabase data
+export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];

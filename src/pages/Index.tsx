@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import type { AssistantType, Conversation } from "@/lib/types";
+import type { AssistantType, Conversation, Json } from "@/lib/types";
 import type { ChatVisualization } from "@/types/chat";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -17,9 +18,6 @@ interface UploadedAttachment {
   size: number;
   created_at: string;
 }
-
-// Use type alias for JSON-compatible objects
-type JsonObject = Record<string, any>;
 
 const Index = () => {
   const [selectedMode, setSelectedMode] = useState<AssistantType>("knowledge");
@@ -122,7 +120,17 @@ const Index = () => {
         } else {
           conv.visualizations = [];
         }
-        return conv;
+        
+        // Ensure assistant_type is valid by converting it to AssistantType
+        const assistant_type = conv.assistant_type as string;
+        conv.assistant_type = (
+          assistant_type === 'knowledge' || 
+          assistant_type === 'frameworks' || 
+          assistant_type === 'benchmarks' || 
+          assistant_type === 'assistant'
+        ) ? assistant_type as AssistantType : 'knowledge';
+        
+        return conv as Conversation;
       });
 
       setConversations(conversationsWithParsedVisualizations);
@@ -204,7 +212,7 @@ const Index = () => {
       // Update the local conversation list with the new conversation
       setConversations(prev => [
         {
-          ...savedConversation,
+          ...savedConversation as Conversation,
           visualizations: visualizations.map(safeMapVisualization)
         },
         ...prev
@@ -249,7 +257,8 @@ const Index = () => {
         // Update the local conversation list with the new conversation
         setConversations(prev => [
           {
-            ...data,
+            ...data as Conversation,
+            assistant_type: selectedMode,
             visualizations: visualizations.map(safeMapVisualization)
           },
           ...prev
