@@ -48,6 +48,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       });
     }
     
+    // Handle custom citation styling
+    const citations = document.querySelectorAll('.citation');
+    if (citations.length > 0) {
+      citations.forEach((citation) => {
+        citation.classList.add('text-xs');
+      });
+    }
+    
     // Handle math equations if needed
     const mathElements = document.querySelectorAll('.math-block, .math-inline');
     if (mathElements.length > 0 && typeof window !== 'undefined') {
@@ -59,7 +67,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <ReactMarkdown
       className={cn("prose prose-sm max-w-none dark:prose-invert", className)}
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw]}
+      rehypePlugins={[rehypeRaw]} // This is critical to allow HTML in markdown content
       components={{
         // Heading components with data attributes to avoid Tailwind circular dependencies
         h1: ({ node, ...props }) => <h1 data-heading="1" className="text-xl font-bold my-4 text-gray-900" {...props} />,
@@ -146,9 +154,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         td: ({ node, ...props }) => <td className="px-4 py-3 text-sm text-gray-700" {...props} />,
         
         // Superscript with styling for citations
-        sup: ({ node, ...props }) => (
-          <sup className="text-xs text-blue-600" {...props} />
-        ),
+        sup: ({ node, className, ...props }) => {
+          if (className?.includes('citation')) {
+            return <sup className="text-xs text-blue-600 ml-0.5" {...props} />;
+          }
+          return <sup className="text-xs" {...props} />;
+        },
         
         // Handle divs for special components like mermaid diagrams
         div: ({ node, className, ...props }) => {

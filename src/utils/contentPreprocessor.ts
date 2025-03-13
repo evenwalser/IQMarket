@@ -72,8 +72,9 @@ export const preprocessContent = (content: string): {
   
   // Clean up citation markers with a more markdown-friendly format
   // The format is 【n:m†source】 where n and m are numbers
+  // Converting to HTML directly since markdown doesn't have great citation support
   processedContent = processedContent.replace(
-    /【(\d+):(\d+)†([\w\s]+)】/g, 
+    /【(\d+):(\d+)†([^】]+)】/g, 
     '<sup class="citation">[<a href="#citation-$1-$2" title="Source: $3" class="citation-link">$1.$2</a>]</sup>'
   );
   
