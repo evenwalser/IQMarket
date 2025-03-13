@@ -8,6 +8,9 @@ export interface ChatVisualization {
   xKey?: string;
   yKeys?: string[];
   height?: number;
+  title?: string;
+  subTitle?: string;
+  colorScheme?: 'default' | 'financial' | 'retention' | 'performance' | 'operational';
 }
 
 export interface ChatMessage {

@@ -1,3 +1,4 @@
+
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -213,25 +214,25 @@ If you need to include tables directly in the text, still use standard markdown 
       enhancedInstructions += ` ${structuredOutput ? "Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
 \`\`\`json
 {
-  \"type\": \"table\",
-  \"title\": \"Key Metrics\",
-  \"data\": [
-    {\"Metric\": \"Value 1\", \"Result\": \"42\"},
-    {\"Metric\": \"Value 2\", \"Result\": \"73\"}
+  \\\"type\\\": \\\"table\\\",
+  \\\"title\\\": \\\"Key Metrics\\\",
+  \\\"data\\\": [
+    {\\\"Metric\\\": \\\"Value 1\\\", \\\"Result\\\": \\\"42\\\"},
+    {\\\"Metric\\\": \\\"Value 2\\\", \\\"Result\\\": \\\"73\\\"}
   ]
 }
 \`\`\`
 or
 \`\`\`json
 {
-  \"type\": \"chart\",
-  \"chartType\": \"bar\",
-  \"title\": \"Monthly Trend\",
-  \"xKey\": \"Month\",
-  \"yKeys\": [\"Value\"],
-  \"data\": [
-    {\"Month\": \"Jan\", \"Value\": 42},
-    {\"Month\": \"Feb\", \"Value\": 73}
+  \\\"type\\\": \\\"chart\\\",
+  \\\"chartType\\\": \\\"bar\\\",
+  \\\"title\\\": \\\"Monthly Trend\\\",
+  \\\"xKey\\\": \\\"Month\\\",
+  \\\"yKeys\\\": [\\\"Value\\\"],
+  \\\"data\\\": [
+    {\\\"Month\\\": \\\"Jan\\\", \\\"Value\\\": 42},
+    {\\\"Month\\\": \\\"Feb\\\", \\\"Value\\\": 73}
   ]
 }
 \`\`\`" : ""}`;

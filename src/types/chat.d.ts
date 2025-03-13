@@ -6,6 +6,7 @@ export interface ChatAttachment {
 }
 
 export interface ChatVisualization {
+  id?: string;
   type: 'table' | 'chart';
   data: Record<string, any>[];
   headers?: string[];  // For tables
@@ -15,7 +16,7 @@ export interface ChatVisualization {
   height?: number;  // For charts
   title?: string;  // Title for either
   subTitle?: string;  // Subtitle for chart
-  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red';  // Color scheme for chart or table
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red' | 'financial' | 'retention' | 'performance' | 'operational';  // Color scheme for chart or table
   compact?: boolean;  // For tables
 }
 
