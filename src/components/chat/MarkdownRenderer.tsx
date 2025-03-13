@@ -40,9 +40,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         strong: ({ node, ...props }) => <strong className="font-semibold text-gray-900" {...props} />,
         
         // Code blocks with syntax highlighting
-        code: ({ node, inline, className, children, ...props }) => {
+        code: ({ node, className, children, ...props }) => {
           const match = /language-(\w+)/.exec(className || '');
-          return !inline && match ? (
+          // Check if this is a code block (with language) or an inline code element
+          return match ? (
             <SyntaxHighlighter
               style={atomDark}
               language={match[1]}
