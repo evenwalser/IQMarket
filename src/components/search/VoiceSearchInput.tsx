@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
@@ -13,6 +14,7 @@ interface VoiceSearchInputProps {
   isRecording: boolean;
   isTranscribing: boolean;
   handleMicClick: () => void;
+  recordingStartTime: number | null;
   voiceMode: boolean;
   toggleVoiceMode: () => void;
   isReadingResponse: boolean;
@@ -31,6 +33,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   isRecording,
   isTranscribing,
   handleMicClick,
+  recordingStartTime,
   voiceMode,
   toggleVoiceMode,
   isReadingResponse,

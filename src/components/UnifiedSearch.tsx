@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -157,7 +158,7 @@ export const UnifiedSearch = ({
           stopReading={stopReading}
           orbState={orbState}
           inputRef={inputRef}
-          handleAttachmentUpload={handleAttachmentUpload}
+          handleAttachmentUpload={handleFileUpload}
           handleFileUpload={handleFileUpload}
         />
         
