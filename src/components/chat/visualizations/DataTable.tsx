@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowUpDown, ChevronDown, ChevronUp, Settings, Check, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ interface DataTableProps {
   visualizationId?: string;
   conversationId?: string;
   allowCustomization?: boolean;
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red';
 }
 
 interface TableSettings {
@@ -41,7 +41,8 @@ export const DataTable = ({
   compact = false,
   visualizationId,
   conversationId,
-  allowCustomization = false
+  allowCustomization = false,
+  colorScheme
 }: DataTableProps) => {
   // Determine initial headers
   const initialHeaders = headers || (data.length > 0 ? Object.keys(data[0]) : []);
