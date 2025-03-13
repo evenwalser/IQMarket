@@ -103,9 +103,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         assistant_id: assistantId,
-        instructions: structuredOutput 
-          ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers."
-          : undefined
+        instructions: `IMPORTANT: You must ONLY provide information that is available in your vector database. Do not generate or provide information from your general knowledge. If the answer is not in your vector database, explicitly state that the information is not available in your knowledge base. ${structuredOutput ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers." : ""}`
       })
     });
     
