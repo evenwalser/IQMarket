@@ -15,7 +15,7 @@ export interface ChatVisualization {
   height?: number;  // For charts
   title?: string;  // Title for either
   subTitle?: string;  // Subtitle for chart
-  colorScheme?: 'default' | 'purple' | 'blue' | 'green';  // Color scheme for chart
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red';  // Color scheme for chart or table
   compact?: boolean;  // For tables
 }
 

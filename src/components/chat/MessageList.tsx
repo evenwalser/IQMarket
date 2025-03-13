@@ -32,6 +32,8 @@ export const MessageList = ({ messages }: MessageListProps) => {
               title={visualization.title}
               sortable={true}
               compact={visualization.compact}
+              // Pass color scheme
+              colorScheme={visualization.colorScheme}
             />
           </div>
         );
@@ -89,7 +91,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
               }`}
             >
               {msg.role === 'user' ? (
-                <div className="whitespace-pre-wrap text-white">{processedContent}</div>
+                <MarkdownRenderer content={processedContent} isUserMessage={true} />
               ) : (
                 <MarkdownRenderer content={processedContent} />
               )}
