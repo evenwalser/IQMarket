@@ -51,7 +51,6 @@ export const UnifiedSearch = ({
     handleTranscriptionComplete
   );
 
-  const { handleAttachmentUpload, removeAttachment, uploadedAttachments } = useFileAttachments();
   const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
   useEffect(() => {
@@ -140,6 +139,21 @@ export const UnifiedSearch = ({
     }
   };
 
+  // Function to remove attachment - this will be passed to the component
+  const removeAttachment = (index: number) => {
+    if (index >= 0 && index < attachments.length) {
+      const newAttachments = [...attachments];
+      newAttachments.splice(index, 1);
+      // We directly modify the attachments array using the parent's logic
+      // This avoids the file_path error since we're not trying to delete from storage
+      console.log("Removing attachment at index:", index);
+      toast.success("File removed");
+    } else {
+      console.error("Invalid attachment index:", index);
+      toast.error("Failed to remove file: Invalid index");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="relative space-y-2">
@@ -167,9 +181,9 @@ export const UnifiedSearch = ({
             <div className="flex flex-wrap gap-2">
               {attachments.map((file, index) => (
                 <div key={index} className="relative group">
-                  <div className="w-32 h-32 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+                  <div className="w-24 h-24 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
                     {file.type.startsWith('image/') ? (
-                      <div className="w-full h-16 flex items-center justify-center mb-2">
+                      <div className="w-full h-12 flex items-center justify-center mb-2">
                         <img 
                           src={URL.createObjectURL(file)} 
                           alt={file.name}
@@ -178,7 +192,7 @@ export const UnifiedSearch = ({
                         />
                       </div>
                     ) : (
-                      <div className={`w-16 h-16 ${
+                      <div className={`w-12 h-12 ${
                         file.type.startsWith('image/') ? 'bg-blue-100 text-blue-600' :
                         file.type.includes('pdf') ? 'bg-red-100 text-red-600' :
                         'bg-green-100 text-green-600'

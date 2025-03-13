@@ -34,11 +34,11 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
-      return <ImageIcon className="h-5 w-5" />;
+      return <ImageIcon className="h-4 w-4" />;
     } else if (fileType.includes('pdf')) {
-      return <FileText className="h-5 w-5" />;
+      return <FileText className="h-4 w-4" />;
     } else {
-      return <File className="h-5 w-5" />;
+      return <File className="h-4 w-4" />;
     }
   };
 
@@ -60,11 +60,11 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
             key={index} 
             className="relative group"
           >
-            {/* Square with rounded edges */}
-            <div className="w-32 h-32 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+            {/* Smaller squares with rounded edges */}
+            <div className="w-24 h-24 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
               {/* Preview for images, icons for other files */}
               {previews[index] ? (
-                <div className="w-full h-16 flex items-center justify-center mb-2">
+                <div className="w-full h-12 flex items-center justify-center mb-2">
                   <img 
                     src={previews[index]!} 
                     alt={file.name}
@@ -72,7 +72,7 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
                   />
                 </div>
               ) : (
-                <div className={`w-16 h-16 ${getFileColorClass(file.type)} rounded-lg flex items-center justify-center mb-2`}>
+                <div className={`w-12 h-12 ${getFileColorClass(file.type)} rounded-lg flex items-center justify-center mb-2`}>
                   {getFileIcon(file.type)}
                 </div>
               )}

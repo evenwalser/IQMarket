@@ -74,7 +74,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (handleAttachmentUpload && handleFileUpload) {
-      handleAttachmentUpload(e);
+      // Only call one of these functions to prevent duplicate uploads
       handleFileUpload(e);
       
       e.target.value = '';
@@ -191,7 +191,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             variant="default"
             size="sm"
-            className="rounded-full h-10 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2 px-4"
+            className="rounded-full h-10 py-0 text-white flex items-center gap-2 px-4"
             onClick={onSearch}
             disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
           >
@@ -207,11 +207,11 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-full h-10 w-10 flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 hover:from-purple-700 hover:to-indigo-700"
+            className="rounded-full h-10 w-10 flex items-center justify-center"
             disabled={voiceMode}
             onClick={() => document.getElementById('file-upload-button')?.click()}
           >
-            <Upload className="h-4 w-4 text-white" />
+            <Upload className="h-4 w-4" />
             <input
               id="file-upload-button"
               type="file"
