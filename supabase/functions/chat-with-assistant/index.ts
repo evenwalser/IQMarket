@@ -163,7 +163,12 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   
   // Add file IDs if any were processed successfully
   if (fileIds.length > 0) {
-    messageData.file_ids = fileIds;
+    // Fix: The correct property name is 'file_ids' for assistant API v1 but should be different for v2
+    // Update to use the correct parameter name for assistants=v2
+    messageData.attachments = fileIds.map(fileId => ({
+      file_id: fileId,
+      type: "file"
+    }));
   }
   
   const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
@@ -178,6 +183,7 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   
   if (!messageResponse.ok) {
     const errorData = await messageResponse.json();
+    console.error(`Failed message data:`, JSON.stringify(messageData));
     throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
   }
   
