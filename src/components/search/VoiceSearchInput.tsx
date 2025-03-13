@@ -128,7 +128,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           ref={inputRef}
           type="text" 
           placeholder={getStatusText()} 
-          className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
+          className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center overflow-visible whitespace-normal min-h-[56px] ${voiceMode ? 'bg-gray-50' : ''}`}
           value={searchQuery} 
           onChange={e => setSearchQuery(e.target.value)}
           onKeyDown={e => {
@@ -138,6 +138,10 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           }}
           readOnly={voiceMode}
           disabled={voiceMode || isLoading}
+          style={{ 
+            textOverflow: 'ellipsis',
+            height: 'auto'
+          }}
         />
         
         {voiceMode && (
