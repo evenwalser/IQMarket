@@ -154,8 +154,9 @@ async function processAttachments(openAIApiKey, attachments) {
  * Add a message to the thread
  */
 async function addMessageToThread(openAIApiKey, threadId, message, fileIds = []) {
-  console.log(`Adding message to thread with file IDs:`, fileIds);
+  console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
   
+  // Prepare the message data according to OpenAI API requirements
   const messageData = {
     role: 'user',
     content: message
@@ -163,31 +164,35 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   
   // Add file IDs if any were processed successfully
   if (fileIds.length > 0) {
-    // FIX: Use the correct parameter name for files in the message
-    // According to OpenAI Assistants API v2, it should be 'file_ids', not 'attachments' or 'file_ids'
     messageData.file_ids = fileIds;
   }
   
   console.log("Message data being sent:", JSON.stringify(messageData));
   
-  const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-      'OpenAI-Beta': 'assistants=v2'
-    },
-    body: JSON.stringify(messageData)
-  });
-  
-  if (!messageResponse.ok) {
-    const errorData = await messageResponse.json();
-    console.error(`Failed message data:`, JSON.stringify(messageData));
-    throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
+  try {
+    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2'
+      },
+      body: JSON.stringify(messageData)
+    });
+    
+    if (!messageResponse.ok) {
+      const errorData = await messageResponse.json();
+      console.error(`Failed message data:`, JSON.stringify(messageData));
+      throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
+    }
+    
+    const responseData = await messageResponse.json();
+    console.log("Message added to thread successfully:", responseData.id);
+    return true;
+  } catch (error) {
+    console.error("Error adding message to thread:", error);
+    throw error;
   }
-  
-  console.log("Message added to thread successfully");
-  return true;
 }
 
 /**
