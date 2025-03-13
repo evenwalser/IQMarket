@@ -8,6 +8,7 @@ import { AttachmentList } from "./chat/AttachmentList";
 import { MessageInput } from "./chat/MessageInput";
 import { sendMessage } from "@/services/chatService";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
+import { preprocessContent } from "@/utils/contentPreprocessor";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
@@ -43,11 +44,20 @@ export const ChatInterface = () => {
         setThreadId(data.thread_id);
       }
 
+      // Process the assistant's response content
+      const { processedContent, extractedVisualizations } = preprocessContent(data.response);
+
+      // Combine extracted visualizations with any that came directly from the API
+      const allVisualizations = [
+        ...(data.visualizations || []),
+        ...extractedVisualizations
+      ];
+
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: data.response,
-        visualizations: data.visualizations || [] 
+        content: processedContent,
+        visualizations: allVisualizations.length > 0 ? allVisualizations : undefined
       }]);
 
     } catch (error) {

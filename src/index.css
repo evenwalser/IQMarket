@@ -80,35 +80,3 @@
   background-size: 200% 200%;
   animation: gradient-background 15s ease infinite;
 }
-
-/* Message formatting custom styles */
-.prose-sm strong {
-  @apply font-semibold text-gray-900;
-}
-
-.prose-sm li {
-  @apply my-1;
-}
-
-.prose-sm ul, .prose-sm ol {
-  @apply my-3 pl-2;
-}
-
-.prose-sm h1, .prose-sm h2, .prose-sm h3 {
-  @apply text-gray-900 font-bold mb-3 mt-4;
-}
-
-.prose-sm p + ul, .prose-sm p + ol {
-  @apply mt-2;
-}
-
-/* Additional formatting for numbered lists with bold headers */
-.prose-sm div.flex {
-  @apply items-start;
-}
-
-/* Solve the circular dependency by using a different selector approach */
-.prose-sm div[data-heading] {
-  color: rgb(17, 24, 39); /* text-gray-900 equivalent */
-  font-weight: 700; /* font-bold equivalent */
-}
