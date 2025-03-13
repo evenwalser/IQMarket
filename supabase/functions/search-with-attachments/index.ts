@@ -22,32 +22,57 @@ serve(async (req) => {
     }
 
     console.log('Processing search query:', query)
-    console.log('With attachments:', attachments?.length || 0)
+    console.log('Attachments received:', attachments?.length || 0)
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    // Configure Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase credentials')
+    }
 
-    const attachmentUrls = []
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Get public URLs for all attachments
+    // Process attachment information
+    const attachmentFiles = []
+    
     if (attachments && attachments.length > 0) {
+      console.log('Processing attachments:', JSON.stringify(attachments.map(a => ({
+        file_path: a.file_path,
+        file_name: a.file_name,
+        content_type: a.content_type
+      }))))
+      
       for (const attachment of attachments) {
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('chat-attachments')
-          .getPublicUrl(attachment.file_path)
-        
-        attachmentUrls.push({
-          url: publicUrl,
-          type: attachment.content_type,
-          name: attachment.file_name
-        })
+        try {
+          // Ensure we have the necessary attachment data
+          if (!attachment.file_path || !attachment.file_name) {
+            console.warn('Skipping attachment with missing data:', attachment)
+            continue
+          }
+          
+          // Get public URL for the attachment
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('chat-attachments')
+            .getPublicUrl(attachment.file_path)
+            
+          console.log(`Generated public URL for ${attachment.file_name}:`, publicUrl)
+          
+          attachmentFiles.push({
+            url: publicUrl,
+            type: attachment.content_type || 'application/octet-stream',
+            name: attachment.file_name
+          })
+        } catch (error) {
+          console.error(`Error processing attachment ${attachment.file_name}:`, error)
+          // Continue with other attachments instead of failing the entire request
+        }
       }
     }
 
-    console.log('Processed attachment URLs:', attachmentUrls)
+    console.log('Successfully processed attachment URLs:', attachmentFiles.length)
 
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -61,45 +86,67 @@ serve(async (req) => {
     })
     const openai = new OpenAIApi(configuration)
 
-    let response
-    if (attachmentUrls.length > 0) {
+    let response = ''
+    
+    if (attachmentFiles.length > 0) {
       console.log('Querying OpenAI with attachments')
-      // For now, we'll just send a basic query with the URLs as text
-      // In a more advanced implementation, you would process different file types differently
-      const messages = [{
-        role: 'system',
-        content: 'You are a helpful assistant that can answer questions based on the provided context and attachments. Analyze any attachments carefully to provide accurate information.'
-      }, {
-        role: 'user',
-        content: `Query: ${query}\nAttachments: ${attachmentUrls.map(a => `${a.name} (${a.type}): ${a.url}`).join('\n')}`
-      }]
+      
+      // Create a detailed system prompt for handling attachments
+      const systemPrompt = `You are a helpful assistant that analyzes documents and answers questions.
+You have been provided with the following attachments:
+${attachmentFiles.map(a => `- ${a.name} (${a.type}): ${a.url}`).join('\n')}
 
-      const completion = await openai.createChatCompletion({
-        model: 'gpt-4',
-        messages,
+For each attachment, first analyze its content based on the URL, then use that information to answer the user's query.
+If you cannot access or process an attachment, please mention this specifically in your response.
+Be detailed and thorough in your answers.`
+      
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query }
+      ]
+
+      console.log('Sending to OpenAI:', {
+        model: 'gpt-4o',
+        messages: messages.map(m => ({ role: m.role, contentPreview: m.content.substring(0, 50) + '...' }))
       })
 
-      response = completion.data.choices[0].message?.content || 'No response generated'
+      try {
+        const completion = await openai.createChatCompletion({
+          model: 'gpt-4o',
+          messages,
+        })
+
+        response = completion.data.choices[0].message?.content || 'No response generated'
+        console.log('OpenAI response received, length:', response.length)
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError)
+        throw new Error(`Error from OpenAI API: ${openaiError.message || 'Unknown error'}`)
+      }
     } else {
       console.log('Querying OpenAI without attachments')
-      const completion = await openai.createChatCompletion({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: query }
-        ],
-      })
+      
+      try {
+        const completion = await openai.createChatCompletion({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            { role: 'user', content: query }
+          ],
+        })
 
-      response = completion.data.choices[0].message?.content || 'No response generated'
+        response = completion.data.choices[0].message?.content || 'No response generated'
+        console.log('OpenAI response received, length:', response.length)
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError)
+        throw new Error(`Error from OpenAI API: ${openaiError.message || 'Unknown error'}`)
+      }
     }
-
-    console.log('Generated response:', response.substring(0, 100) + '...')
 
     return new Response(
       JSON.stringify({ 
         message: response,
         query,
-        attachments: attachmentUrls
+        attachments: attachmentFiles
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

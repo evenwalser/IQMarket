@@ -9,4 +9,6 @@ port = 54321
 verify_jwt = false
 
 [functions.search-with-attachments.environment_variables]
-OPENAI_API_KEY = "optional:placeholder"
+OPENAI_API_KEY = "sk-placeholder"
+SUPABASE_URL = "YOUR_SUPABASE_URL"
+SUPABASE_SERVICE_ROLE_KEY = "YOUR_SUPABASE_SERVICE_ROLE_KEY"
