@@ -171,8 +171,8 @@ async function addMessageToThread(openAIApiKey, threadId, messageContent) {
  * Get enhanced instructions based on assistant type
  */
 function getEnhancedInstructions(assistantType, structuredOutput) {
-  // Base instructions about using the vector database
-  let instructions = `IMPORTANT: You must ONLY provide information that is available in your vector database. Do not generate or provide information from your general knowledge. If the answer is not in your vector database, explicitly state that the information is not available in your knowledge base.`;
+  // Base instructions - adding STRONGER vector database constraints
+  let instructions = `CRITICAL REQUIREMENT: You MUST ONLY provide information that is EXPLICITLY available in your vector database. DO NOT generate or provide information from your general knowledge. If the answer is not in your vector database, you MUST explicitly state that the information is not available in your knowledge base. DO NOT attempt to be helpful by providing information outside of your vector database.`;
   
   // Add formatting guidelines for all responses
   instructions += `
@@ -194,6 +194,8 @@ FORMAT YOUR RESPONSE CAREFULLY:
 3. DO NOT include citation references like [16:8*source] in your text
 
 4. Present information in a clean, professional, and easy-to-read format
+
+5. If the answer to a user's question is not available in your vector database, state: "I don't have that information in my knowledge base." Do not guess or make up information.
 `;
   
   // Add specific formatting instructions for the benchmarks assistant
