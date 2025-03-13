@@ -79,75 +79,93 @@ async function getOrCreateThread(openAIApiKey, threadId) {
 /**
  * Upload a file to OpenAI
  */
-async function uploadFileToOpenAI(openAIApiKey, fileBlob, fileName) {
-  const formData = new FormData();
-  formData.append('purpose', 'assistants');
-  formData.append('file', fileBlob, fileName || 'attachment');
+async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
+  console.log(`Downloading file from URL: ${fileUrl}`);
   
-  console.log(`Uploading file to OpenAI: ${fileName}`);
-  const uploadResponse = await fetch('https://api.openai.com/v1/files', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`
-    },
-    body: formData
-  });
-  
-  if (!uploadResponse.ok) {
-    const errorData = await uploadResponse.json();
-    throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
+  try {
+    // First, download the file from our Supabase storage URL
+    const fileResponse = await fetch(fileUrl);
+    
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to download file from URL: ${fileUrl}, status: ${fileResponse.status}`);
+    }
+    
+    // Convert the downloaded file to a blob
+    const fileBlob = await fileResponse.blob();
+    
+    // Prepare form data for OpenAI upload
+    const formData = new FormData();
+    formData.append('purpose', 'assistants');
+    formData.append('file', fileBlob, fileName || 'attachment');
+    
+    console.log(`Uploading file to OpenAI: ${fileName || 'attachment'}`);
+    const uploadResponse = await fetch('https://api.openai.com/v1/files', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`
+      },
+      body: formData
+    });
+    
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json();
+      throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
+    }
+    
+    const uploadData = await uploadResponse.json();
+    console.log(`File uploaded to OpenAI successfully with ID: ${uploadData.id}`);
+    return uploadData.id;
+  } catch (error) {
+    console.error(`Error processing file from URL ${fileUrl}:`, error);
+    throw new Error(`Error processing file: ${error.message}`);
   }
-  
-  const uploadData = await uploadResponse.json();
-  console.log(`File uploaded to OpenAI successfully with ID: ${uploadData.id}`);
-  return uploadData.id;
 }
 
 /**
  * Process attachments for the message
  */
-async function processAttachments(openAIApiKey, attachments, messageContent) {
+async function processAttachments(openAIApiKey, attachments) {
   if (!attachments || attachments.length === 0) {
-    return messageContent;
+    return [];
   }
 
   console.log(`Processing ${attachments.length} attachments for OpenAI`);
+  const openAIFileIds = [];
   
   for (const attachment of attachments) {
     try {
-      // Get the file from the public URL
-      console.log(`Fetching file from URL: ${attachment.url}`);
-      const fileResponse = await fetch(attachment.url);
-      
-      if (!fileResponse.ok) {
-        console.error(`Failed to fetch file from URL: ${attachment.url}, status: ${fileResponse.status}`);
+      if (!attachment.url || !attachment.file_name) {
+        console.warn(`Skipping attachment with missing data:`, attachment);
         continue;
       }
       
-      // Get the file as blob
-      const fileBlob = await fileResponse.blob();
-      
-      // Upload file to OpenAI
-      const fileId = await uploadFileToOpenAI(openAIApiKey, fileBlob, attachment.file_name);
-      
-      // Add the file attachment to the message content
-      messageContent.push({
-        type: 'file_attachment',
-        file_id: fileId
-      });
+      // Upload file to OpenAI and get the file ID
+      const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name);
+      openAIFileIds.push(fileId);
     } catch (fileError) {
       console.error(`Error processing attachment: ${fileError.message}`);
     }
   }
   
-  return messageContent;
+  return openAIFileIds;
 }
 
 /**
  * Add a message to the thread
  */
-async function addMessageToThread(openAIApiKey, threadId, messageContent) {
-  console.log("Adding message to thread with content:", JSON.stringify(messageContent));
+async function addMessageToThread(openAIApiKey, threadId, message, fileIds = []) {
+  console.log(`Adding message to thread with file IDs:`, fileIds);
+  
+  const messageData = {
+    role: 'user',
+    content: message
+  };
+  
+  // Add file IDs if any were processed successfully
+  if (fileIds.length > 0) {
+    messageData.file_ids = fileIds;
+  }
+  
   const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
     method: 'POST',
     headers: {
@@ -155,16 +173,16 @@ async function addMessageToThread(openAIApiKey, threadId, messageContent) {
       'Content-Type': 'application/json',
       'OpenAI-Beta': 'assistants=v2'
     },
-    body: JSON.stringify({
-      role: 'user',
-      content: messageContent
-    })
+    body: JSON.stringify(messageData)
   });
   
   if (!messageResponse.ok) {
     const errorData = await messageResponse.json();
     throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
   }
+  
+  console.log("Message added to thread successfully");
+  return true;
 }
 
 /**
@@ -504,19 +522,15 @@ Deno.serve(async (req) => {
     // Create or retrieve thread
     const threadId2 = await getOrCreateThread(openAIApiKey, threadId);
     
-    // Process message content
-    let messageContent = [{
-      type: 'text',
-      text: message
-    }];
-    
     // Process attachments if present
+    let fileIds = [];
     if (attachments && attachments.length > 0) {
-      messageContent = await processAttachments(openAIApiKey, attachments, messageContent);
+      fileIds = await processAttachments(openAIApiKey, attachments);
+      console.log(`Processed ${fileIds.length} file IDs for OpenAI:`, fileIds);
     }
     
-    // Add message to thread
-    await addMessageToThread(openAIApiKey, threadId2, messageContent);
+    // Add message to thread with file IDs
+    await addMessageToThread(openAIApiKey, threadId2, message, fileIds);
     
     // Get enhanced instructions
     const enhancedInstructions = getEnhancedInstructions(assistantType, structuredOutput);
@@ -539,7 +553,8 @@ Deno.serve(async (req) => {
         thread_id: threadId2,
         assistant_id: assistantId,
         response: responseText,
-        visualizations: visualizations.length > 0 ? visualizations : []
+        visualizations: visualizations.length > 0 ? visualizations : [],
+        run_id: runId
       }),
       {
         headers: {
