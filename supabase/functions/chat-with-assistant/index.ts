@@ -1,3 +1,4 @@
+
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -162,10 +163,12 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   
   // Add file IDs if any were processed successfully
   if (fileIds.length > 0) {
-    // NOTE: Updated format for file attachments in assistants=v2
-    // The correct format ONLY contains file_id, no type or tools parameters
+    // FIX: Use the correct parameter name for files in the message
+    // According to OpenAI Assistants API v2, it should be 'file_ids', not 'attachments' or 'file_ids'
     messageData.file_ids = fileIds;
   }
+  
+  console.log("Message data being sent:", JSON.stringify(messageData));
   
   const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
     method: 'POST',
