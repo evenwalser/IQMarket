@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation, Json } from "@/lib/types";
@@ -28,7 +27,6 @@ const Index = () => {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
   
-  // Use our enhanced file attachments hook
   const { 
     files: attachments, 
     uploadFiles: handleFileUpload, 
@@ -36,18 +34,14 @@ const Index = () => {
   } = useFileAttachments();
 
   useEffect(() => {
-    // Initialize or retrieve session ID
     initializeSession();
     
-    // Set structured output based on selected mode
     setStructuredOutput(selectedMode === 'benchmarks');
   }, [selectedMode]);
 
   const initializeSession = () => {
-    // Check if session ID exists in local storage
     let existingSessionId = localStorage.getItem("conversation_session_id");
     
-    // If no session ID exists, create a new one
     if (!existingSessionId) {
       existingSessionId = crypto.randomUUID();
       localStorage.setItem("conversation_session_id", existingSessionId);
@@ -55,26 +49,21 @@ const Index = () => {
     
     setSessionId(existingSessionId);
     
-    // Load conversations for this session
     loadConversations(existingSessionId);
   };
 
   const safeMapVisualization = (vizData: any): ChatVisualization => {
-    // Default visualization if input is invalid
     if (!vizData || typeof vizData !== 'object') {
       return { type: 'table', data: [] };
     }
     
-    // Explicitly type each field to avoid deep inference issues
     const type = typeof vizData.type === 'string' ? 
       (vizData.type === 'chart' ? 'chart' : 'table') : 'table';
     
     const data = Array.isArray(vizData.data) ? vizData.data : [];
     
-    // Create the base visualization object
     const viz: ChatVisualization = { type, data };
     
-    // Only add optional properties if they exist and are valid
     if (Array.isArray(vizData.headers)) viz.headers = vizData.headers;
     
     if (typeof vizData.chartType === 'string') {
@@ -101,12 +90,10 @@ const Index = () => {
       if (error) throw error;
 
       const conversationsWithParsedVisualizations = data.map(conv => {
-        // Parse visualizations if they exist
         let parsedVisualizations: ChatVisualization[] = [];
         
         if (conv.visualizations) {
           try {
-            // Handle different types of visualization storage
             if (typeof conv.visualizations === 'string') {
               const parsedViz = JSON.parse(conv.visualizations);
               parsedVisualizations = Array.isArray(parsedViz) 
@@ -121,7 +108,6 @@ const Index = () => {
           }
         }
         
-        // Ensure assistant_type is valid by converting it to AssistantType
         const assistant_type = conv.assistant_type as string;
         const validAssistantType = (
           assistant_type === 'knowledge' || 
@@ -130,12 +116,11 @@ const Index = () => {
           assistant_type === 'assistant'
         ) ? assistant_type as AssistantType : 'knowledge';
         
-        // Create a properly typed Conversation object
         return {
           ...conv,
           assistant_type: validAssistantType,
-          visualizations: parsedVisualizations
-        } as unknown as Conversation;
+          visualizations: parsedVisualizations as ReadonlyArray<ChatVisualization>
+        } as Conversation;
       });
 
       setConversations(conversationsWithParsedVisualizations);
@@ -151,13 +136,11 @@ const Index = () => {
     setIsLoading(true);
     
     try {
-      // Process file attachments if any
       let attachmentUrls: string[] = [];
       
       if (attachments.length > 0) {
         toast.info(`Processing ${attachments.length} attachments...`);
         
-        // Upload each attachment to storage
         for (const file of attachments) {
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('attachments')
@@ -166,7 +149,6 @@ const Index = () => {
           if (uploadError) throw uploadError;
           
           if (uploadData?.path) {
-            // Get public URL for the file
             const { data: urlData } = supabase.storage
               .from('attachments')
               .getPublicUrl(uploadData.path);
@@ -178,7 +160,6 @@ const Index = () => {
         }
       }
       
-      // Call the backend API with the query and mode
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: query,
@@ -192,13 +173,10 @@ const Index = () => {
       
       const { response, thread_id, visualizations = [] } = data;
       
-      // Store the thread ID for future use
       setThreadId(thread_id);
       
-      // Store the response
       setLatestResponse(response);
       
-      // Save the conversation to database
       const { data: savedConversation, error: saveError } = await supabase
         .from('conversations')
         .insert({
@@ -214,12 +192,12 @@ const Index = () => {
       
       if (saveError) throw saveError;
       
-      // Update the local conversation list with the new conversation
       setConversations(prev => [
         {
-          ...savedConversation as Conversation,
-          visualizations: visualizations.map(safeMapVisualization)
-        },
+          ...savedConversation,
+          assistant_type: selectedMode,
+          visualizations: visualizations.map(safeMapVisualization) as ReadonlyArray<ChatVisualization>
+        } as Conversation,
         ...prev
       ]);
       
@@ -232,15 +210,11 @@ const Index = () => {
     }
   }, [selectedMode, threadId, sessionId, structuredOutput, attachments]);
 
-  // Handle assistant responses from WebSocket
   const handleAssistantResponse = useCallback((response: string, thread_id: string, visualizations: any[]) => {
-    // Store the thread ID for future use
     setThreadId(thread_id);
     
-    // Store the response
     setLatestResponse(response);
     
-    // Save the conversation to database
     supabase
       .from('conversations')
       .insert({
@@ -259,32 +233,27 @@ const Index = () => {
           return;
         }
         
-        // Update the local conversation list with the new conversation
         setConversations(prev => [
           {
             ...data,
             assistant_type: selectedMode,
-            visualizations: visualizations.map(safeMapVisualization)
-          } as unknown as Conversation,
+            visualizations: visualizations.map(safeMapVisualization) as ReadonlyArray<ChatVisualization>
+          } as Conversation,
           ...prev
         ]);
       });
   }, [selectedMode, sessionId]);
 
-  // Choose a conversation thread and optionally send a message
   const chooseConversation = (threadId: string, message?: string) => {
     setThreadId(threadId);
     
-    // If a message is provided, send it immediately
     if (message && message.trim()) {
-      // Use the existing handleSearch function to send the message
       handleSearch(message);
     } else {
       toast.info('Conversation thread selected');
     }
   };
 
-  // Start a new conversation
   const startNewConversation = () => {
     setThreadId(null);
     toast.info('Starting new conversation');
@@ -295,10 +264,8 @@ const Index = () => {
       <Header />
       
       <main className="flex-1 container mx-auto pt-20 pb-12 px-4">
-        {/* Intelligence Header with sparkles */}
         <IntelligenceHeader />
-
-        {/* Search Area */}
+        
         <div className="max-w-3xl mx-auto mb-12">
           <UnifiedSearch 
             handleSearch={handleSearch}
@@ -315,7 +282,6 @@ const Index = () => {
           />
         </div>
 
-        {/* Conversations Area */}
         <div className="max-w-3xl mx-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Your Conversation</h2>
@@ -327,7 +293,6 @@ const Index = () => {
             </button>
           </div>
 
-          {/* Conversations list or empty state */}
           <div className="bg-white rounded-lg border p-8">
             {conversations.length === 0 ? (
               <div className="text-center py-12">
@@ -345,7 +310,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Remove or hide the sidebar info panel on mobile */}
         <div className="hidden lg:block">
           {/* Sidebar content */}
         </div>

@@ -17,26 +17,30 @@ export const useAttachmentManager = ({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // File drop handler for drag and drop functionality
-  const handleFileDrop = (files: FileList) => {
-    if (!files.length) return;
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
     
-    // Only allow file uploads in benchmarks mode
-    if (selectedMode !== 'benchmarks') {
-      toast.error("File uploads are only available in Benchmarks mode");
-      return;
-    }
-    
-    // Convert FileList to array
-    const filesArray = Array.from(files);
-    
-    // Create a synthetic event to pass to handleFileUpload
-    const event = {
-      target: {
-        files: filesArray
+    if (e.dataTransfer.files.length > 0) {
+      // Only allow file uploads in benchmarks mode
+      if (selectedMode !== 'benchmarks') {
+        toast.error("File uploads are only available in Benchmarks mode");
+        return;
       }
-    } as unknown as React.ChangeEvent<HTMLInputElement>;
-    
-    handleFileUpload(event);
+      
+      // Convert FileList to array
+      const filesArray = Array.from(e.dataTransfer.files);
+      
+      // Create a synthetic event to pass to handleFileUpload
+      const event = {
+        target: {
+          files: filesArray
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(event);
+    }
   };
   
   // Remove attachment handler
@@ -65,16 +69,6 @@ export const useAttachmentManager = ({
     setIsDraggingOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(false);
-    
-    if (e.dataTransfer.files.length > 0) {
-      handleFileDrop(e.dataTransfer.files);
-    }
-  };
-
   // Clear attachments
   const clearAttachments = () => {
     const emptyEvent = {
@@ -90,7 +84,7 @@ export const useAttachmentManager = ({
     isDraggingOver,
     handleDragOver,
     handleDragLeave,
-    handleDrop,
+    handleDrop: handleFileDrop,
     removeAttachment,
     clearAttachments
   };
