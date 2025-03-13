@@ -44,7 +44,11 @@ export const ChatInterface = () => {
       }
 
       // Add assistant's response to chat
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.response,
+        visualizations: data.visualizations || [] 
+      }]);
 
     } catch (error) {
       console.error("Error sending message:", error);

@@ -51,22 +51,25 @@ export const MessageList = ({ messages }: MessageListProps) => {
   const formatMessageContent = (content: string) => {
     if (!content) return "";
 
-    // Fix for the bold text (**text**) pattern - ensuring they're properly converted to HTML
+    // Updated regex patterns to better handle all cases of bold text formatting
     let formattedContent = content
       // Convert citation markers
       .replace(/【(\d+):(\d+)†source】/g, '<span class="text-blue-600 text-xs font-medium ml-1 cursor-pointer hover:underline">[Source $1.$2]</span>')
       
-      // Convert numbered points with bold headers (like "1. **Title**:") - special case
-      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*:/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2:</span></div>')
+      // Handle numbered points with specific patterns like "1. **Title**:"
+      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*:/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2:</span></div>')
       
-      // Convert numbered points with bold titles not followed by colon
-      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2</span></div>')
+      // Handle numbered points with bold titles like "1. **Title**"
+      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2</span></div>')
       
-      // Process regular bold text
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      // Handle patterns like "**Topic**:" at the beginning of paragraphs
+      .replace(/^\*\*([^*]+?)\*\*:/gm, '<div class="font-bold mb-1">$1:</div>')
+      
+      // Process regular bold text - more aggressive pattern to capture all instances
+      .replace(/\*\*([^*]+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
       
       // Process italic text
-      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+      .replace(/\*([^*]+?)\*/g, '<em class="italic">$1</em>')
       
       // Process bullet lists
       .replace(/^- (.+)$/gm, '<li class="ml-1 pl-2">$1</li>')

@@ -101,3 +101,12 @@
 .prose-sm p + ul, .prose-sm p + ol {
   @apply mt-2;
 }
+
+/* Additional formatting for numbered lists with bold headers */
+.prose-sm div.flex {
+  @apply items-start;
+}
+
+.prose-sm div.font-bold {
+  @apply text-gray-900;
+}
