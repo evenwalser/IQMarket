@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
@@ -8,7 +7,7 @@ import { AttachmentList } from "./chat/AttachmentList";
 import { MessageInput } from "./chat/MessageInput";
 import { sendMessage } from "@/services/chatService";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
-import { preprocessContent } from "@/utils/contentPreprocessor";
+import { preprocessContent } from "@/utils/content/preprocessor";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");

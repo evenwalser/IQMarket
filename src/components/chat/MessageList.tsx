@@ -1,10 +1,9 @@
-
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
 import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
-import { preprocessContent } from "@/utils/contentPreprocessor";
+import { preprocessContent } from "@/utils/content/preprocessor";
 
 interface MessageListProps {
   messages: ChatMessage[];
