@@ -1,4 +1,3 @@
-
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -174,15 +173,68 @@ Deno.serve(async (req) => {
     
     // Add specific formatting instructions for the benchmarks assistant
     if (assistantType === 'benchmarks') {
-      enhancedInstructions += ` Format your response with proper markdown tables for data. For benchmark comparisons, ALWAYS present data in markdown tables using | format. For example:
-      
-| Category | Metric | Company Value | Industry Benchmark |
-|----------|--------|--------------|-------------------|
-| Revenue | ARR | $1.5M | $2.1M |
-      
-Follow this exact format for tables. When presenting metrics that can be compared (like financial metrics, retention rates, etc.), include a section with markdown tables. Also include a title for each table using markdown headers (###).`;
+      enhancedInstructions += `
+Format your response as follows:
+1. First, provide a brief introduction to the requested benchmark data.
+2. For each key benchmark or metric:
+   - Present the data in one of two formats:
+     a. For COMPARATIVE data (company vs benchmark), use structured JSON blocks like this:
+        \`\`\`json
+        {
+          "type": "table",
+          "title": "Revenue Comparison",
+          "data": [
+            {"Metric": "ARR", "Company": "$1.5M", "Industry Benchmark": "$2.1M"},
+            {"Metric": "Growth Rate", "Company": "15%", "Industry Benchmark": "22%"}
+          ]
+        }
+        \`\`\`
+     b. For TREND data, use chart visualizations like this:
+        \`\`\`json
+        {
+          "type": "chart",
+          "chartType": "bar",
+          "title": "Monthly Active Users",
+          "xKey": "Month",
+          "yKeys": ["Users"],
+          "data": [
+            {"Month": "Jan", "Users": 1500},
+            {"Month": "Feb", "Users": 1720},
+            {"Month": "Mar", "Users": 2100}
+          ]
+        }
+        \`\`\`
+3. After each visualization, provide a brief analysis of what the data means.
+4. Conclude with overall insights and recommendations.
+
+If you need to include tables directly in the text, still use standard markdown formatting.
+`;
     } else {
-      enhancedInstructions += ` ${structuredOutput ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers." : ""}`;
+      enhancedInstructions += ` ${structuredOutput ? "Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
+\`\`\`json
+{
+  \"type\": \"table\",
+  \"title\": \"Key Metrics\",
+  \"data\": [
+    {\"Metric\": \"Value 1\", \"Result\": \"42\"},
+    {\"Metric\": \"Value 2\", \"Result\": \"73\"}
+  ]
+}
+\`\`\`
+or
+\`\`\`json
+{
+  \"type\": \"chart\",
+  \"chartType\": \"bar\",
+  \"title\": \"Monthly Trend\",
+  \"xKey\": \"Month\",
+  \"yKeys\": [\"Value\"],
+  \"data\": [
+    {\"Month\": \"Jan\", \"Value\": 42},
+    {\"Month\": \"Feb\", \"Value\": 73}
+  ]
+}
+\`\`\`" : ""}`;
     }
     
     // Run the assistant with v2 API
