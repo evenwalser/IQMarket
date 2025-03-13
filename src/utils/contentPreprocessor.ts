@@ -20,6 +20,19 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   let processedContent = content;
   const extractedVisualizations: ChatVisualization[] = [];
 
+  // Clean up citation references [XX:XX*source]
+  processedContent = processedContent.replace(/\[\d+:\d+\*source\]/g, '');
+  
+  // Fix markdown headings that aren't properly formatted
+  // Replace ### Heading with # Heading (proper markdown)
+  processedContent = processedContent.replace(/###\s+([^\n]+)/g, '## $1');
+  
+  // Replace ## Heading with ## Heading (proper markdown)
+  processedContent = processedContent.replace(/##\s+([^\n]+)/g, '## $1');
+  
+  // Replace # Heading with # Heading (proper markdown)
+  processedContent = processedContent.replace(/#\s+([^\n]+)/g, '# $1');
+
   // Extract JSON visualizations
   const jsonRegex = /```json\n([\s\S]*?)\n```/g;
   processedContent = processedContent.replace(jsonRegex, (match, jsonContent) => {

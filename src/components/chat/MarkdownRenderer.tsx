@@ -20,6 +20,20 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   className,
   isUserMessage = false
 }) => {
+  // Fix markdown formatting issues before rendering
+  const cleanContent = React.useMemo(() => {
+    // Replace incorrectly formatted headings (e.g., "### Title" without a space or newline)
+    let cleanedContent = content.replace(/^(#{1,6})(?!\s)(.*?)$/gm, '$1 $2');
+    
+    // Remove citation references like [16:8*source]
+    cleanedContent = cleanedContent.replace(/\[\d+:\d+\*source\]/g, '');
+    
+    // Fix lists that don't have proper spacing
+    cleanedContent = cleanedContent.replace(/^(\d+\.|[*-])(?!\s)(.*?)$/gm, '$1 $2');
+    
+    return cleanedContent;
+  }, [content]);
+
   // Effect to handle mermaid diagrams if any
   useEffect(() => {
     const diagrams = document.querySelectorAll('.mermaid-diagram');
@@ -63,7 +77,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (mathElements.length > 0 && typeof window !== 'undefined') {
       // You can integrate with KaTeX or MathJax if needed
     }
-  }, [content]);
+  }, [cleanContent]);
 
   // Custom styling based on isUserMessage
   const textClassName = isUserMessage 
@@ -200,7 +214,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         }
       }}
     >
-      {content}
+      {cleanContent}
     </ReactMarkdown>
   );
 };

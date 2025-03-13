@@ -171,7 +171,30 @@ async function addMessageToThread(openAIApiKey, threadId, messageContent) {
  * Get enhanced instructions based on assistant type
  */
 function getEnhancedInstructions(assistantType, structuredOutput) {
+  // Base instructions about using the vector database
   let instructions = `IMPORTANT: You must ONLY provide information that is available in your vector database. Do not generate or provide information from your general knowledge. If the answer is not in your vector database, explicitly state that the information is not available in your knowledge base.`;
+  
+  // Add formatting guidelines for all responses
+  instructions += `
+  
+FORMAT YOUR RESPONSE CAREFULLY:
+1. Use proper markdown formatting with appropriate spacing:
+   - Use "# " for main headings (note the space after #)
+   - Use "## " for subheadings (note the space after ##)
+   - Use "### " for section headings (note the space after ###)
+   - Use proper list formatting with spaces after bullets or numbers
+   - Ensure paragraphs have a blank line between them
+
+2. Structure your response clearly:
+   - Start with a concise introduction
+   - Use clear section headings
+   - Present key points in organized lists or paragraphs 
+   - End with a brief conclusion or summary
+
+3. DO NOT include citation references like [16:8*source] in your text
+
+4. Present information in a clean, professional, and easy-to-read format
+`;
   
   // Add specific formatting instructions for the benchmarks assistant
   if (assistantType === 'benchmarks') {
@@ -216,9 +239,9 @@ If you need to include tables directly in the text, still use standard markdown 
 Format your response as follows:
 1. Provide a brief introduction to the requested framework or strategic approach.
 2. For key components of the framework:
-   - Use clear headings and structured sections
+   - Use clear headings with proper markdown syntax (e.g., "## Strategy Components")
    - Present the core elements in a systematic way
-   - Use markdown formatting for better readability
+   - Use proper markdown formatting for better readability
    - Where relevant, use diagrams or structured JSON blocks like this:
       \`\`\`json
       {
@@ -237,7 +260,7 @@ Use examples from the knowledge base whenever possible to illustrate how the fra
   } else {
     // Template for JSON visualization
     const jsonTemplate = structuredOutput ? `Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
-\\\`\\\`\\\`json
+\`\`\`json
 {
   "type": "table",
   "title": "Key Metrics",
@@ -246,9 +269,9 @@ Use examples from the knowledge base whenever possible to illustrate how the fra
     {"Metric": "Value 2", "Result": "73"}
   ]
 }
-\\\`\\\`\\\`
+\`\`\`
 or
-\\\`\\\`\\\`json
+\`\`\`json
 {
   "type": "chart",
   "chartType": "bar",
@@ -260,7 +283,7 @@ or
     {"Month": "Feb", "Value": 73}
   ]
 }
-\\\`\\\`\\\``: "";
+\`\`\``: "";
 
     instructions += ` ${jsonTemplate}`;
   }
@@ -420,6 +443,14 @@ function processAssistantResponse(latestMessage) {
   
   // Clean up the response
   responseText = responseText.replace(jsonRegex, '');
+  
+  // Remove any citation markers
+  responseText = responseText.replace(/\[\d+:\d+\*source\]/g, '');
+  
+  // Fix markdown headings
+  responseText = responseText.replace(/^###(?!\s)/gm, '### ');
+  responseText = responseText.replace(/^##(?!\s)/gm, '## ');
+  responseText = responseText.replace(/^#(?!\s)/gm, '# ');
   
   console.log("Successfully processed response with visualizations:", visualizations.length);
   
