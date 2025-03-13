@@ -1,4 +1,11 @@
 
+// Version 1.0.0 - BASELINE STABLE VERSION
+// Features working correctly:
+// - File upload and attachment handling
+// - OpenAI integration with GPT-4o
+// - Processing of attachments in search queries
+// - CORS support and error handling
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { Configuration, OpenAIApi } from 'https://esm.sh/openai@3.2.1'
