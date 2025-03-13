@@ -136,7 +136,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           ref={inputRef}
           placeholder={getStatusText()} 
           className={`w-full px-5 py-4 rounded-xl border-0 focus:ring-0 transition-colors 
-                      text-gray-900 placeholder:text-gray-500 text-center min-h-[56px] max-h-[200px] 
+                      text-gray-900 placeholder:text-gray-500 text-center min-h-[56px] max-h-[160px] 
                       resize-none overflow-hidden ${voiceMode ? 'bg-gray-50' : ''}`}
           value={searchQuery} 
           onChange={e => {
