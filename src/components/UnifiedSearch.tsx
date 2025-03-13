@@ -8,7 +8,6 @@ import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
 import { FileUploadButton } from "@/components/search/FileUploadButton";
 import { ModeSelector } from "@/components/search/ModeSelector";
-import { ConversationalVoiceMode } from "@/components/ConversationalVoiceMode";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -19,7 +18,7 @@ interface UnifiedSearchProps {
   attachments: File[];
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
-  latestResponse?: string;
+  latestResponse?: string; // Add latest response prop to read aloud
 }
 
 export const UnifiedSearch = ({
@@ -39,11 +38,19 @@ export const UnifiedSearch = ({
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
-  const [voiceInteractionComplete, setVoiceInteractionComplete] = useState(false);
-  const [processingVoiceInteraction, setProcessingVoiceInteraction] = useState(false);
-  const submittedQueryRef = useRef<string>("");
   
-  // For legacy voice mode - we'll transition to the new mode
+  // Handle transcription completion in voice mode with automatic submission
+  const handleTranscriptionComplete = (text: string) => {
+    console.log("Transcription complete, auto submitting search:", text);
+    if (voiceMode && text.trim()) {
+      // Automatically submit the query when in voice mode with a small delay
+      // to allow the UI to update with the transcribed text first
+      setTimeout(() => {
+        handleSearch(text);
+      }, 500);
+    }
+  };
+  
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
     setSearchQuery,
     handleTranscriptionComplete
@@ -51,30 +58,6 @@ export const UnifiedSearch = ({
   
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
   const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
-
-  // Handle transcription completion in legacy voice mode with automatic submission
-  function handleTranscriptionComplete(text: string) {
-    console.log("Transcription complete, auto submitting search:", text);
-    
-    if (voiceMode && text.trim()) {
-      try {
-        setProcessingVoiceInteraction(true); // Prevent multiple submissions
-        
-        // Set the search query explicitly and track what we're submitting
-        setSearchQuery(text);
-        submittedQueryRef.current = text;
-        
-        console.log("About to submit search with query:", text);
-        // Submit the query immediately in voice mode
-        handleSearch(text);
-        console.log("Search automatically submitted in voice mode");
-      } catch (error) {
-        console.error("Error auto-submitting search:", error);
-        toast.error("Failed to process your request");
-        setProcessingVoiceInteraction(false);
-      }
-    }
-  }
 
   // Focus input when voice mode is deactivated
   useEffect(() => {
@@ -106,7 +89,7 @@ export const UnifiedSearch = ({
     setIsReadingResponse(isSpeaking);
   }, [isSpeaking]);
   
-  // Auto-read responses in voice mode - enhanced to be more reliable
+  // Auto-read responses in voice mode
   useEffect(() => {
     if (voiceMode && latestResponse && latestResponse !== lastResponse && !isLoading && !isRecording && !isTranscribing) {
       // Wait a short delay to ensure UI updates first
@@ -114,40 +97,15 @@ export const UnifiedSearch = ({
         console.log("Auto-reading response in voice mode:", latestResponse);
         speakText(latestResponse);
         setLastResponse(latestResponse); // Update last response to prevent repeated reading
-        setVoiceInteractionComplete(true); // Mark this voice interaction as complete
-        setProcessingVoiceInteraction(false); // Reset processing flag
       }, 800);
       
       return () => clearTimeout(timer);
     }
   }, [voiceMode, latestResponse, lastResponse, isLoading, isRecording, isTranscribing, speakText]);
 
-  // When TTS completes, auto-turn off voice mode
-  useEffect(() => {
-    if (voiceInteractionComplete && !isSpeaking) {
-      // Automatically turn off voice mode after completion
-      setTimeout(() => {
-        if (voiceMode) {
-          console.log("Voice interaction complete, turning off voice mode");
-          setVoiceMode(false);
-          toast.info("Voice interaction complete");
-          // Reset states for next interaction
-          setVoiceInteractionComplete(false);
-          setProcessingVoiceInteraction(false);
-          submittedQueryRef.current = ""; // Clear submitted query reference
-        }
-      }, 1000);
-    }
-  }, [voiceInteractionComplete, isSpeaking, voiceMode]);
-
-  // Handle search submission
   const onSearch = async () => {
     if (searchQuery.trim()) {
       try {
-        // Save what we're searching for
-        submittedQueryRef.current = searchQuery;
-        console.log("Manual search submitted with query:", searchQuery);
-        
         await handleSearch(searchQuery);
         // Clear the search query after sending
         if (!voiceMode) {
@@ -159,7 +117,6 @@ export const UnifiedSearch = ({
     }
   };
 
-  // Handle voice mode toggle
   const toggleVoiceMode = () => {
     const newVoiceMode = !voiceMode;
     setVoiceMode(newVoiceMode);
@@ -170,10 +127,6 @@ export const UnifiedSearch = ({
       setOrbState("idle");
       // Clear any previous search query
       setSearchQuery("");
-      submittedQueryRef.current = "";
-      // Reset the voice interaction completion state
-      setVoiceInteractionComplete(false);
-      setProcessingVoiceInteraction(false);
       // When voice mode is turned on, automatically start recording after a short delay
       setTimeout(() => {
         if (!isRecording) {
@@ -188,48 +141,25 @@ export const UnifiedSearch = ({
       if (isRecording) {
         handleMicClick();
       }
-      // Reset the voice interaction states
-      setVoiceInteractionComplete(false);
-      setProcessingVoiceInteraction(false);
-      submittedQueryRef.current = "";
     }
   };
 
-  // Stop TTS reading
   const stopReading = () => {
     stopSpeaking();
     setIsReadingResponse(false);
     toast.info("Stopped reading response");
     
-    // After stopping, if we're still in voice mode, end the voice interaction
-    if (voiceMode) {
-      setVoiceInteractionComplete(true);
-      setProcessingVoiceInteraction(false);
-    }
-  };
-  
-  // Handler for messages from the new conversational voice assistant
-  const handleVoiceMessage = (message: { role: 'user' | 'assistant', content: string }) => {
-    if (message.role === 'user') {
-      // User messages should trigger search
-      console.log("Voice assistant user message:", message.content);
-      handleSearch(message.content);
+    // After stopping, if we're still in voice mode, restart listening
+    if (voiceMode && !isRecording && !isTranscribing) {
+      setTimeout(() => {
+        handleMicClick();
+      }, 1000);
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="relative space-y-2">
-        {/* New conversational voice mode component */}
-        <div className="absolute -left-16 top-1/2 -translate-y-1/2 z-10">
-          <ConversationalVoiceMode 
-            isActive={voiceMode}
-            onToggle={toggleVoiceMode}
-            onMessage={handleVoiceMessage}
-            assistantType={selectedMode}
-          />
-        </div>
-        
         <VoiceSearchInput
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -265,4 +195,4 @@ export const UnifiedSearch = ({
       </div>
     </div>
   );
-}
+};

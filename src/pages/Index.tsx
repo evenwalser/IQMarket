@@ -34,8 +34,7 @@ const Index = () => {
   const [sessionId, setSessionId] = useState<string>("");
   const [voiceMode, setVoiceMode] = useState<boolean>(false);
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
-  const { speakText, stopSpeaking, isSpeaking } = useTextToSpeech();
-  const isVoiceResponsePendingRef = useRef<boolean>(false);
+  const { speakText } = useTextToSpeech();
 
   useEffect(() => {
     // Initialize or retrieve session ID
@@ -44,12 +43,6 @@ const Index = () => {
 
   const handleLatestResponse = (response: string) => {
     setLatestResponse(response);
-    
-    // If we have a pending voice response request, process it
-    if (isVoiceResponsePendingRef.current && voiceMode) {
-      speakText(response);
-      isVoiceResponsePendingRef.current = false;
-    }
   };
 
   const initializeSession = () => {
@@ -258,17 +251,6 @@ const Index = () => {
       return;
     }
     setIsLoading(true);
-    
-    // If in voice mode, flag that we're expecting a response to speak
-    if (voiceMode) {
-      isVoiceResponsePendingRef.current = true;
-      
-      // Stop any currently playing audio
-      if (isSpeaking) {
-        stopSpeaking();
-      }
-    }
-    
     try {
       let formattedAttachments = [];
       
@@ -342,20 +324,11 @@ const Index = () => {
         // Store latest response for possible TTS
         setLatestResponse(data.response);
         
-        // If in voice mode, immediately speak the response
-        if (voiceMode && isVoiceResponsePendingRef.current) {
-          speakText(data.response);
-          isVoiceResponsePendingRef.current = false;
-        }
-        
         toast.success("Response received!");
       }
     } catch (error) {
       console.error("Full error details:", error);
       toast.error("Failed to get response. Please try again.");
-      
-      // Clear the pending voice response flag if there's an error
-      isVoiceResponsePendingRef.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -370,16 +343,6 @@ const Index = () => {
         assistantType,
         structuredOutput
       });
-      
-      // If in voice mode, flag that we're expecting a response to speak
-      if (voiceMode) {
-        isVoiceResponsePendingRef.current = true;
-        
-        // Stop any currently playing audio
-        if (isSpeaking) {
-          stopSpeaking();
-        }
-      }
       
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
@@ -424,18 +387,16 @@ const Index = () => {
       // Store latest response for possible TTS
       setLatestResponse(data.response);
       
-      // If in voice mode, immediately speak the response
-      if (voiceMode && isVoiceResponsePendingRef.current) {
+      // If in voice mode, automatically read out the response
+      if (voiceMode) {
         speakText(data.response);
-        isVoiceResponsePendingRef.current = false;
       }
       
       toast.success("Reply sent!");
     } catch (error) {
       console.error("Error sending reply:", error);
       toast.error("Failed to send reply. Please try again.");
-      // Clear the pending voice response flag if there's an error
-      isVoiceResponsePendingRef.current = false;
+      throw error;
     }
   };
 

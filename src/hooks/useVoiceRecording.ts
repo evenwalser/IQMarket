@@ -17,12 +17,6 @@ export const useVoiceRecording = (
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const silenceDetectionActiveRef = useRef<boolean>(false);
   const audioLevelCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const consecutiveSilenceCountRef = useRef<number>(0);
-  const minRecordingDurationRef = useRef<number>(1500); // Minimum 1.5s recording
-  const recordingTooShortRef = useRef<boolean>(false);
-  const silenceThresholdRef = useRef<number>(5); // Configurable silence threshold
-  const lastTranscriptionRef = useRef<string>('');
 
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -39,8 +33,8 @@ export const useVoiceRecording = (
     };
   }, []);
 
-  const detectSilence = (stream: MediaStream, silenceDuration = 2000) => {
-    console.log("Setting up silence detection with threshold:", silenceThresholdRef.current, "and duration:", silenceDuration);
+  const detectSilence = (stream: MediaStream, silenceThreshold = 10, silenceDuration = 2000) => {
+    console.log("Setting up silence detection with threshold:", silenceThreshold, "and duration:", silenceDuration);
     
     // Create audio context if it doesn't exist
     if (!audioContextRef.current) {
@@ -63,7 +57,7 @@ export const useVoiceRecording = (
       }
     }
     
-    // Use interval for more consistent checking
+    // Instead of recursive requestAnimationFrame, use interval for more consistent checking
     if (audioLevelCheckIntervalRef.current) {
       clearInterval(audioLevelCheckIntervalRef.current);
     }
@@ -73,43 +67,24 @@ export const useVoiceRecording = (
         return;
       }
       
-      // Don't trigger silence detection if we haven't recorded long enough
-      const currentDuration = recordingStartTime ? Date.now() - recordingStartTime : 0;
-      if (currentDuration < minRecordingDurationRef.current) {
-        return;
-      }
-      
       analyserRef.current.getByteFrequencyData(dataArrayRef.current);
       
       // Calculate average volume level
       const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / 
                      dataArrayRef.current.length;
       
-      // Log less frequently to avoid console spam
-      if (Math.random() < 0.05) {  // Only log ~5% of audio readings
-        console.log(`Current audio level: ${average.toFixed(2)}`);
-      }
+      console.log(`Current audio level: ${average.toFixed(2)}`);
       
-      if (average < silenceThresholdRef.current) {
-        consecutiveSilenceCountRef.current += 1;
-        if (consecutiveSilenceCountRef.current % 3 === 0) {
-          console.log(`Silence count: ${consecutiveSilenceCountRef.current}`);
-        }
-        
-        // More sensitive silence detection: stop after fewer consecutive silent readings
-        if (consecutiveSilenceCountRef.current >= 4) {  // Reduced from 5 to 4
-          if (!silenceTimeoutRef.current) {
-            console.log(`Consistent silence detected (avg: ${average}), stopping recording in ${silenceDuration}ms`);
-            silenceTimeoutRef.current = setTimeout(() => {
-              console.log("Silence timeout triggered, stopping recording");
-              stopRecording();
-            }, silenceDuration);
-          }
+      if (average < silenceThreshold) {
+        // If silence, set timeout to stop recording after silenceDuration
+        if (!silenceTimeoutRef.current) {
+          console.log(`Silence detected (avg: ${average}), setting timer to stop recording in ${silenceDuration}ms`);
+          silenceTimeoutRef.current = setTimeout(() => {
+            console.log("Silence timeout triggered, stopping recording");
+            stopRecording();
+          }, silenceDuration);
         }
       } else {
-        // Reset silence counter if we hear sound
-        consecutiveSilenceCountRef.current = 0;
-        
         // If sound detected, clear the timeout
         if (silenceTimeoutRef.current) {
           console.log(`Sound detected (avg: ${average}), clearing silence timer`);
@@ -117,7 +92,7 @@ export const useVoiceRecording = (
           silenceTimeoutRef.current = null;
         }
       }
-    }, 250); // Check more frequently (250ms instead of 300ms)
+    }, 300); // Check every 300ms
   };
 
   const startRecording = async () => {
@@ -146,20 +121,86 @@ export const useVoiceRecording = (
       }
       
       silenceDetectionActiveRef.current = false;
-      audioChunksRef.current = []; // Reset audio chunks
-      consecutiveSilenceCountRef.current = 0;
-      recordingTooShortRef.current = false;
-      lastTranscriptionRef.current = ''; // Reset last transcription
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const audioChunks: Blob[] = [];
 
       recorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        audioChunks.push(event.data);
       };
 
       recorder.onstop = async () => {
-        processRecording();
+        toast.loading('Converting speech to text...', { id: 'transcription' });
+        setIsTranscribing(true);
+        silenceDetectionActiveRef.current = false;
+        
+        // Clean up audio monitoring
+        if (audioLevelCheckIntervalRef.current) {
+          clearInterval(audioLevelCheckIntervalRef.current);
+          audioLevelCheckIntervalRef.current = null;
+        }
+        
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        
+        // Skip empty recordings
+        if (audioBlob.size < 1000) { // Less than 1KB is probably empty
+          console.log("Recording too small, ignoring empty audio");
+          setIsTranscribing(false);
+          toast.error("No speech detected, please try again", { id: 'transcription' });
+          return;
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          
+          try {
+            console.log('Sending audio to OpenAI Whisper API...');
+            const { data, error } = await supabase.functions.invoke('voice-to-text', {
+              body: { audio: base64Audio }
+            });
+
+            if (error) throw error;
+            if (!data?.text) throw new Error('No transcription received');
+
+            // Set the query text first
+            setSearchQuery(data.text);
+            
+            // Calculate duration
+            const recordingDuration = recordingStartTime 
+              ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
+              : 'unknown';
+            
+            toast.success(`Transcribed ${recordingDuration}s audio: "${data.text}"`, { 
+              id: 'transcription',
+              duration: 4000 
+            });
+            console.log('Transcription received:', data.text);
+            
+            // Call the callback after transcription is complete
+            if (onTranscriptionComplete && data.text.trim()) {
+              onTranscriptionComplete(data.text);
+            }
+          } catch (error) {
+            console.error('Transcription error:', error);
+            toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
+          } finally {
+            setIsTranscribing(false);
+            setRecordingStartTime(null);
+            
+            // Clean up audio context
+            if (audioContextRef.current) {
+              audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
+              audioContextRef.current = null;
+              analyserRef.current = null;
+              dataArrayRef.current = null;
+            }
+          }
+        };
+
+        reader.readAsDataURL(audioBlob);
       };
 
       setMediaRecorder(recorder);
@@ -168,102 +209,15 @@ export const useVoiceRecording = (
       setRecordingStartTime(Date.now());
       toast.success('Listening... Speak now and pause when done', { id: 'recording' });
       
-      // Set silence threshold based on device (mobile vs desktop)
-      const isMobile = window.innerWidth <= 768;
-      silenceThresholdRef.current = isMobile ? 7 : 5; // Higher threshold for mobile devices
-      
       // Start silence detection after a short delay to avoid initial setup noise
       setTimeout(() => {
         silenceDetectionActiveRef.current = true;
-        detectSilence(stream, 2000); // 2-second pause detection
+        detectSilence(stream, 8, 2000); // Lower threshold (8) for better detection, 2s pause
       }, 500);
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
     }
-  };
-
-  const processRecording = async () => {
-    toast.loading('Converting speech to text...', { id: 'transcription' });
-    setIsTranscribing(true);
-    silenceDetectionActiveRef.current = false;
-    
-    // Clean up audio monitoring
-    if (audioLevelCheckIntervalRef.current) {
-      clearInterval(audioLevelCheckIntervalRef.current);
-      audioLevelCheckIntervalRef.current = null;
-    }
-    
-    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-    
-    // Skip empty recordings
-    if (audioBlob.size < 1000) { // Less than 1KB is probably empty
-      console.log("Recording too small, ignoring empty audio");
-      setIsTranscribing(false);
-      toast.error("No speech detected, please try again", { id: 'transcription' });
-      return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = async () => {
-      const base64Audio = (reader.result as string).split(',')[1];
-      
-      try {
-        console.log('Sending audio to OpenAI Whisper API...');
-        const { data, error } = await supabase.functions.invoke('voice-to-text', {
-          body: { audio: base64Audio }
-        });
-
-        if (error) throw error;
-        if (!data?.text) throw new Error('No transcription received');
-
-        // Store the transcribed text for comparison
-        const transcribedText = data.text;
-        lastTranscriptionRef.current = transcribedText;
-        
-        // Set the query text first - make sure this happens
-        console.log('Setting search query with transcribed text:', transcribedText);
-        setSearchQuery(transcribedText);
-        
-        // Calculate duration
-        const recordingDuration = recordingStartTime 
-          ? ((Date.now() - recordingStartTime) / 1000).toFixed(1) 
-          : 'unknown';
-        
-        toast.success(`Transcribed ${recordingDuration}s audio: "${transcribedText}"`, { 
-          id: 'transcription',
-          duration: 4000 
-        });
-        console.log('Transcription received:', transcribedText);
-        
-        // Add a slight delay before calling the callback to ensure state has updated
-        setTimeout(() => {
-          // Call the callback after transcription is complete
-          if (onTranscriptionComplete && transcribedText.trim()) {
-            console.log('Calling onTranscriptionComplete with:', transcribedText);
-            onTranscriptionComplete(transcribedText);
-          }
-        }, 300);
-        
-      } catch (error) {
-        console.error('Transcription error:', error);
-        toast.error('Failed to transcribe: ' + (error as Error).message, { id: 'transcription' });
-      } finally {
-        setIsTranscribing(false);
-        setRecordingStartTime(null);
-        
-        // Clean up audio context
-        if (audioContextRef.current) {
-          audioContextRef.current.close().catch(err => console.error("Error closing audio context:", err));
-          audioContextRef.current = null;
-          analyserRef.current = null;
-          dataArrayRef.current = null;
-        }
-      }
-    };
-
-    reader.readAsDataURL(audioBlob);
   };
 
   const stopRecording = () => {
@@ -304,7 +258,6 @@ export const useVoiceRecording = (
     isRecording,
     isTranscribing,
     handleMicClick,
-    recordingStartTime,
-    lastTranscription: lastTranscriptionRef.current // Expose the last transcription
+    recordingStartTime
   };
 };

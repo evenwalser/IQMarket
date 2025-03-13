@@ -11,8 +11,8 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 interface ConversationListProps {
   conversations: Conversation[];
   onReply: (threadId: string, message: string, assistantType: string) => Promise<void>;
-  voiceMode?: boolean; 
-  onLatestResponse?: (response: string) => void;
+  voiceMode?: boolean; // Add voiceMode prop
+  onLatestResponse?: (response: string) => void; // Callback to inform parent of latest response
 }
 
 export const ConversationList = ({ 

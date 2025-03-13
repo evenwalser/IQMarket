@@ -1,43 +1,28 @@
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// Efficient base64 encoding for binary data
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { text, voice = 'nova' } = await req.json();
-    
-    if (!text || typeof text !== 'string') {
-      console.error('Invalid or missing text parameter');
-      throw new Error('Text is required and must be a string');
+    const { text, voice = 'alloy' } = await req.json();
+
+    if (!text) {
+      throw new Error('Text is required');
     }
 
-    // Truncate very long inputs to prevent memory issues
-    const truncatedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
-    const wasTruncated = text.length > 4000;
-    
-    console.log(`Generating speech for: "${truncatedText.substring(0, 100)}${truncatedText.length > 100 ? '...' : ''}" with voice: ${voice}`);
-    
-    // Use streaming mode for OpenAI TTS
+    console.log(`Converting to speech: "${text.substring(0, 100)}..." using voice ${voice}`);
+
+    // Generate speech from text using OpenAI API
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -46,42 +31,38 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'tts-1',
-        input: truncatedText,
-        voice: voice,
+        input: text.length > 4000 ? text.substring(0, 4000) : text, // OpenAI TTS has a 4096 character limit
+        voice: voice, // Options: alloy, echo, fable, onyx, nova, shimmer
         response_format: 'mp3',
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(errorData.error?.message || `OpenAI API error: ${response.status}`);
+      const error = await response.json();
+      console.error('OpenAI TTS API error:', error);
+      throw new Error(error.error?.message || 'Failed to generate speech');
     }
 
-    // Get audio binary data
-    const audioArrayBuffer = await response.arrayBuffer();
-    
-    // Use the safe base64 conversion function
-    const base64Audio = arrayBufferToBase64(audioArrayBuffer);
-    
-    const audioSizeKB = Math.round(base64Audio.length / 1024);
-    console.log(`Successfully generated audio, size: ${audioSizeKB}KB`);
-    
+    // Convert audio buffer to base64
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Audio = btoa(
+      String.fromCharCode(...new Uint8Array(arrayBuffer))
+    );
+
     return new Response(
-      JSON.stringify({ 
-        audioContent: base64Audio,
-        wasTruncated: wasTruncated
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ audioContent: base64Audio }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     );
   } catch (error) {
-    console.error('Error in text-to-speech function:', error);
+    console.error('Text-to-speech error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ error: error.message }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
     );
   }
 });
