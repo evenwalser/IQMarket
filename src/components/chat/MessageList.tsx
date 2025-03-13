@@ -1,3 +1,4 @@
+
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
@@ -50,24 +51,48 @@ export const MessageList = ({ messages }: MessageListProps) => {
   const formatMessageContent = (content: string) => {
     if (!content) return "";
 
+    // Fix for the bold text (**text**) pattern - ensuring they're properly converted to HTML
     let formattedContent = content
+      // Convert citation markers
       .replace(/【(\d+):(\d+)†source】/g, '<span class="text-blue-600 text-xs font-medium ml-1 cursor-pointer hover:underline">[Source $1.$2]</span>')
+      
+      // Convert numbered points with bold headers (like "1. **Title**:") - special case
+      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*:/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2:</span></div>')
+      
+      // Convert numbered points with bold titles not followed by colon
+      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2</span></div>')
+      
+      // Process regular bold text
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      
+      // Process italic text
+      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+      
+      // Process bullet lists
       .replace(/^- (.+)$/gm, '<li class="ml-1 pl-2">$1</li>')
       .replace(/^\* (.+)$/gm, '<li class="ml-1 pl-2">$1</li>')
+      
+      // Process numbered lists (that weren't already processed as special headers)
       .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-1 pl-2 flex"><span class="font-semibold mr-2">$1.</span><span>$2</span></li>')
+      
+      // Group lists
       .replace(/(<li class="ml-1 pl-2">(.+)<\/li>)+/g, '<ul class="my-2 space-y-1">$&</ul>')
       .replace(/(<li class="ml-1 pl-2 flex">(.+)<\/li>)+/g, '<ol class="my-2 space-y-1">$&</ol>')
+      
+      // Process headings
       .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold my-3 text-gray-800">$1</h3>')
       .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold my-3 text-gray-800">$1</h2>')
       .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold my-4 text-gray-900">$1</h1>')
-      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*/gm, '$1. <strong>$2</strong>')
+      
+      // Process paragraphs and line breaks
       .replace(/\n\n/g, '</p><p class="my-2">')
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
       .replace(/\n/g, '<br class="my-1"/>')
+      
+      // Clean up source references
       .replace(/\.\s+(【\d+:\d+†source】)/g, '.$1')
       .replace(/\s+(【\d+:\d+†source】)/g, ' $1');
 
+    // Wrap in paragraph tags if not already wrapped
     if (!formattedContent.startsWith('<')) {
       formattedContent = `<p class="my-2">${formattedContent}</p>`;
     }
