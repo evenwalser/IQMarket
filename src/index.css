@@ -107,7 +107,8 @@
   @apply items-start;
 }
 
-/* Fix circular dependency by not using @apply with font-bold class */
-.prose-sm div.font-bold {
+/* Solve the circular dependency by using a different selector approach */
+.prose-sm div[data-heading] {
   color: rgb(17, 24, 39); /* text-gray-900 equivalent */
+  font-weight: 700; /* font-bold equivalent */
 }

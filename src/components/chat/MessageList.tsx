@@ -57,13 +57,13 @@ export const MessageList = ({ messages }: MessageListProps) => {
       .replace(/【(\d+):(\d+)†source】/g, '<span class="text-blue-600 text-xs font-medium ml-1 cursor-pointer hover:underline">[Source $1.$2]</span>')
       
       // Handle numbered points with specific patterns like "1. **Title**:"
-      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*:/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2:</span></div>')
+      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*:/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><div data-heading class="font-bold">$2:</div></div>')
       
       // Handle numbered points with bold titles like "1. **Title**"
-      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><span class="font-bold">$2</span></div>')
+      .replace(/^(\d+)\.\s+\*\*([^*]+?)\*\*/gm, '<div class="flex gap-2 mb-1 mt-3"><span class="font-bold">$1.</span><div data-heading class="font-bold">$2</div></div>')
       
       // Handle patterns like "**Topic**:" at the beginning of paragraphs
-      .replace(/^\*\*([^*]+?)\*\*:/gm, '<div class="font-bold mb-1">$1:</div>')
+      .replace(/^\*\*([^*]+?)\*\*:/gm, '<div data-heading class="font-bold mb-1">$1:</div>')
       
       // Process regular bold text - more aggressive pattern to capture all instances
       .replace(/\*\*([^*]+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
