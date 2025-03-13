@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -188,42 +189,37 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             </div>
           )}
           
-          <div className="relative inline-flex items-center">
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="rounded-full h-10 min-w-28 pr-3 pl-4 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-between"
-              onClick={onSearch}
-              disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
-            >
-              <span className="flex items-center gap-1">
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 text-white animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-                <span className="ml-1">Search</span>
-              </span>
-              
-              <span className="h-6 w-px bg-purple-400 mx-2"></span>
-              
-              <label className="cursor-pointer relative inline-flex items-center">
-                <input
-                  type="file"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-                  multiple
-                  onClick={e => e.stopPropagation()}
-                  disabled={voiceMode}
-                />
-                <Upload className="h-4 w-4 text-white" />
-              </label>
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="rounded-full h-10 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2 pr-2 pl-4"
+            onClick={onSearch}
+            disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 text-white animate-spin mr-1" />
+            ) : (
+              <Search className="h-4 w-4 mr-1" />
+            )}
+            <span>Search</span>
+            
+            <label className="ml-2 cursor-pointer">
+              <input
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                onChange={handleFileChange}
+                accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                multiple
+                onClick={e => e.stopPropagation()}
+                disabled={voiceMode}
+              />
+              <Upload className="h-4 w-4 text-white" />
+            </label>
+          </Button>
         </div>
       </div>
     </div>
   );
 };
+
