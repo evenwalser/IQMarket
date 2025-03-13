@@ -1,4 +1,3 @@
-
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
@@ -9,6 +8,12 @@ interface MessageListProps {
 }
 
 export const MessageList = ({ messages }: MessageListProps) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const renderVisualization = (visualization: any) => {
     if (!visualization) return null;
 
@@ -42,34 +47,29 @@ export const MessageList = ({ messages }: MessageListProps) => {
     }
   };
 
-  // Format the message content with proper spacing and formatting
   const formatMessageContent = (content: string) => {
     if (!content) return "";
 
-    // Replace markdown-style bullets with proper HTML
     let formattedContent = content
-      // Convert markdown bullet points
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/^\* (.+)$/gm, '<li>$1</li>')
-      // Convert markdown numbered lists
-      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-      // Wrap bullet points in ul tags
-      .replace(/<li>(.+)<\/li>(\n<li>(.+)<\/li>)+/g, '<ul>$&</ul>')
-      // Handle headers
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      // Convert double line breaks to paragraph breaks
-      .replace(/\n\n/g, '</p><p>')
-      // Bold and italic formatting
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      // Convert single line breaks within paragraphs
-      .replace(/\n/g, '<br/>');
+      .replace(/【(\d+):(\d+)†source】/g, '<span class="text-blue-600 text-xs font-medium ml-1 cursor-pointer hover:underline">[Source $1.$2]</span>')
+      .replace(/^- (.+)$/gm, '<li class="ml-1 pl-2">$1</li>')
+      .replace(/^\* (.+)$/gm, '<li class="ml-1 pl-2">$1</li>')
+      .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-1 pl-2 flex"><span class="font-semibold mr-2">$1.</span><span>$2</span></li>')
+      .replace(/(<li class="ml-1 pl-2">(.+)<\/li>)+/g, '<ul class="my-2 space-y-1">$&</ul>')
+      .replace(/(<li class="ml-1 pl-2 flex">(.+)<\/li>)+/g, '<ol class="my-2 space-y-1">$&</ol>')
+      .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold my-3 text-gray-800">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold my-3 text-gray-800">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold my-4 text-gray-900">$1</h1>')
+      .replace(/^(\d+)\.\s+\*\*(.+?)\*\*/gm, '$1. <strong>$2</strong>')
+      .replace(/\n\n/g, '</p><p class="my-2">')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+      .replace(/\n/g, '<br class="my-1"/>')
+      .replace(/\.\s+(【\d+:\d+†source】)/g, '.$1')
+      .replace(/\s+(【\d+:\d+†source】)/g, ' $1');
 
-    // Ensure content is wrapped in paragraphs
     if (!formattedContent.startsWith('<')) {
-      formattedContent = `<p>${formattedContent}</p>`;
+      formattedContent = `<p class="my-2">${formattedContent}</p>`;
     }
 
     return formattedContent;
@@ -88,30 +88,32 @@ export const MessageList = ({ messages }: MessageListProps) => {
       {messages.map((msg, index) => (
         <div
           key={index}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
+          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
         >
           <div
-            className={`max-w-[80%] px-4 py-2 rounded-lg ${
+            className={`max-w-[85%] px-5 py-3 rounded-lg shadow-sm ${
               msg.role === 'user'
                 ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-900'
+                : 'bg-white border border-gray-200 text-gray-900'
             }`}
           >
             {msg.role === 'user' ? (
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              <div className="whitespace-pre-wrap text-white">{msg.content}</div>
             ) : (
               <div 
-                className="prose prose-sm max-w-none"
+                className="prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900 
+                  prose-p:text-gray-700 prose-p:my-2 prose-li:my-0.5 prose-li:text-gray-700 
+                  prose-strong:text-gray-900 prose-strong:font-semibold"
                 dangerouslySetInnerHTML={{ __html: formatMessageContent(msg.content) }} 
               />
             )}
             {msg.visualizations?.map((viz, i) => (
-              <div key={i}>
+              <div key={i} className="mt-4 border-t border-gray-100 pt-3">
                 {renderVisualization(viz)}
               </div>
             ))}
             {msg.attachments?.map((attachment, i) => (
-              <div key={i} className="mt-2">
+              <div key={i} className="mt-3 border-t border-gray-100 pt-3">
                 {attachment.type === 'image' ? (
                   <img 
                     src={attachment.url} 
@@ -123,7 +125,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
                     href={attachment.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm underline"
+                    className="text-sm underline text-blue-600 hover:text-blue-800"
                   >
                     {attachment.name}
                   </a>
@@ -133,6 +135,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
           </div>
         </div>
       ))}
+      <div ref={messagesEndRef} />
     </>
   );
 };
