@@ -1,13 +1,13 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
 import { ModeSelector } from "@/components/search/ModeSelector";
+import { Button } from "@/components/ui/button";
 
 interface UnifiedSearchProps {
   handleSearch: (query: string) => Promise<void>;
@@ -18,7 +18,7 @@ interface UnifiedSearchProps {
   attachments: File[];
   structuredOutput: boolean;
   setStructuredOutput: (value: boolean) => void;
-  latestResponse?: string; // Add latest response prop to read aloud
+  latestResponse?: string;
 }
 
 export const UnifiedSearch = ({
@@ -38,18 +38,18 @@ export const UnifiedSearch = ({
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
-  
+
   function handleTranscriptionComplete(transcribedText: string) {
     if (transcribedText && transcribedText.trim()) {
       handleSearch(transcribedText);
     }
   }
-  
+
   const { isRecording, isTranscribing, handleMicClick, recordingStartTime } = useVoiceRecording(
     setSearchQuery,
     handleTranscriptionComplete
   );
-  
+
   const { handleAttachmentUpload, removeAttachment, uploadedAttachments } = useFileAttachments();
   const { isSpeaking, speakText, stopSpeaking } = useTextToSpeech();
 
@@ -161,19 +161,49 @@ export const UnifiedSearch = ({
           handleFileUpload={handleFileUpload}
         />
         
-        {/* Display attachments if any */}
         {attachments.length > 0 && (
           <div className="mt-2">
             <div className="flex flex-wrap gap-2">
               {attachments.map((file, index) => (
-                <div key={index} className="flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded-full text-xs">
-                  <span className="truncate max-w-[200px]">{file.name}</span>
-                  <button 
-                    onClick={() => removeAttachment && removeAttachment(index)}
-                    className="text-purple-500 hover:text-purple-700"
+                <div key={index} className="relative group">
+                  <div className="w-32 h-32 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+                    {file.type.startsWith('image/') ? (
+                      <div className="w-full h-16 flex items-center justify-center mb-2">
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt={file.name}
+                          className="max-w-full max-h-full object-contain"
+                          onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                        />
+                      </div>
+                    ) : (
+                      <div className={`w-16 h-16 ${
+                        file.type.startsWith('image/') ? 'bg-blue-100 text-blue-600' :
+                        file.type.includes('pdf') ? 'bg-red-100 text-red-600' :
+                        'bg-green-100 text-green-600'
+                      } rounded-lg flex items-center justify-center mb-2`}>
+                        {file.type.startsWith('image/') ? 
+                          <Upload className="h-5 w-5" /> : 
+                          <Upload className="h-5 w-5" />
+                        }
+                      </div>
+                    )}
+                    
+                    <div className="w-full px-2">
+                      <p className="text-xs font-medium text-gray-700 text-center truncate">
+                        {file.name}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-6 w-6 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeAttachment(index)}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ))}
             </div>

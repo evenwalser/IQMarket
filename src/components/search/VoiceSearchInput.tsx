@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
@@ -14,7 +13,6 @@ interface VoiceSearchInputProps {
   isRecording: boolean;
   isTranscribing: boolean;
   handleMicClick: () => void;
-  recordingStartTime: number | null;
   voiceMode: boolean;
   toggleVoiceMode: () => void;
   isReadingResponse: boolean;
@@ -56,7 +54,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     }
   }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
 
-  // Auto-adjust textarea height based on content
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
@@ -154,22 +151,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           style={{ lineHeight: '1.5' }}
         />
         
-        {voiceMode && (
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
-            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-              isRecording ? 'bg-green-100 text-green-700' : 
-              isTranscribing ? 'bg-amber-100 text-amber-700' :
-              isReadingResponse ? 'bg-blue-100 text-blue-700' :
-              'bg-purple-100 text-purple-700'
-            }`}>
-              {isRecording ? 'Listening...' : 
-               isTranscribing ? 'Processing...' :
-               isReadingResponse ? 'AI Speaking...' :
-               'Voice Mode Active'}
-            </div>
-          </div>
-        )}
-        
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
           {searchQuery && !voiceMode && (
             <Button
@@ -223,11 +204,11 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-full h-10 w-10 flex items-center justify-center border-purple-200 hover:bg-purple-50"
+            className="rounded-full h-10 w-10 flex items-center justify-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 hover:from-purple-700 hover:to-indigo-700"
             disabled={voiceMode}
             onClick={() => document.getElementById('file-upload-button')?.click()}
           >
-            <Upload className="h-4 w-4 text-purple-600" />
+            <Upload className="h-4 w-4 text-white" />
             <input
               id="file-upload-button"
               type="file"

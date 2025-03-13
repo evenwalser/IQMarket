@@ -34,7 +34,7 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
           type="button"
           variant="outline"
           size="sm"
-          className="hidden md:flex items-center gap-2 rounded-full"
+          className="hidden md:flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 hover:from-purple-700 hover:to-indigo-700"
           onClick={() => document.getElementById('file-upload-separate')?.click()}
         >
           <Upload className="h-4 w-4" />
