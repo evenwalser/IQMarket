@@ -32,8 +32,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
               title={visualization.title}
               sortable={true}
               compact={visualization.compact}
-              // Pass color scheme
-              colorScheme={visualization.colorScheme}
+              colorScheme={visualization.colorScheme || 'default'}
             />
           </div>
         );

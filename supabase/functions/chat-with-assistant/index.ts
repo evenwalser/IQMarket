@@ -169,8 +169,24 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
     }
     
+    // Enhanced instructions based on assistant type
+    let enhancedInstructions = `IMPORTANT: You must ONLY provide information that is available in your vector database. Do not generate or provide information from your general knowledge. If the answer is not in your vector database, explicitly state that the information is not available in your knowledge base.`;
+    
+    // Add specific formatting instructions for the benchmarks assistant
+    if (assistantType === 'benchmarks') {
+      enhancedInstructions += ` Format your response with proper markdown tables for data. For benchmark comparisons, ALWAYS present data in markdown tables using | format. For example:
+      
+| Category | Metric | Company Value | Industry Benchmark |
+|----------|--------|--------------|-------------------|
+| Revenue | ARR | $1.5M | $2.1M |
+      
+Follow this exact format for tables. When presenting metrics that can be compared (like financial metrics, retention rates, etc.), include a section with markdown tables. Also include a title for each table using markdown headers (###).`;
+    } else {
+      enhancedInstructions += ` ${structuredOutput ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers." : ""}`;
+    }
+    
     // Run the assistant with v2 API
-    console.log("Running assistant");
+    console.log("Running assistant with enhanced instructions");
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId2}/runs`, {
       method: 'POST',
       headers: {
@@ -180,7 +196,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         assistant_id: assistantId,
-        instructions: `IMPORTANT: You must ONLY provide information that is available in your vector database. Do not generate or provide information from your general knowledge. If the answer is not in your vector database, explicitly state that the information is not available in your knowledge base. ${structuredOutput ? "Please provide structured data for visualization when relevant. Format data as clean arrays of objects for tables and charts. Include clear, descriptive headers." : ""}`
+        instructions: enhancedInstructions
       })
     });
     
