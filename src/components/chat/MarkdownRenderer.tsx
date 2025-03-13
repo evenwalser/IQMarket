@@ -6,6 +6,8 @@ import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from "@/lib/utils";
+// Import mermaid as a type only import to prevent runtime issues
+import type { default as Mermaid } from 'mermaid';
 
 interface MarkdownRendererProps {
   content: string;
@@ -21,8 +23,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     const diagrams = document.querySelectorAll('.mermaid-diagram');
     if (diagrams.length > 0 && typeof window !== 'undefined') {
       // Dynamically import mermaid if needed
-      import('mermaid').then((mermaid) => {
-        mermaid.default.initialize({
+      import('mermaid').then((mermaidModule) => {
+        const mermaid = mermaidModule.default;
+        mermaid.initialize({
           startOnLoad: true,
           theme: 'neutral',
           securityLevel: 'loose'
@@ -33,7 +36,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           const diagramContent = decodeURIComponent(diagram.getAttribute('data-diagram-content') || '');
           
           try {
-            mermaid.default.render(diagramId || 'mermaid', diagramContent).then(({ svg }) => {
+            mermaid.render(diagramId || 'mermaid', diagramContent).then(({ svg }) => {
               diagram.innerHTML = svg;
             });
           } catch (error) {
