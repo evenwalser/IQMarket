@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { cn } from "@/lib/utils";
-import { cleanMarkdownContent } from '@/utils/markdownUtils';
+import { cleanMarkdownContent, enhanceMarkdownTables, formatMarkdownLinks, convertHtmlToMarkdown } from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
 
@@ -21,7 +21,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   // Fix markdown formatting issues before rendering
   const cleanContent = React.useMemo(() => {
-    return cleanMarkdownContent(content);
+    // Apply the enhanced cleaning pipeline
+    let processedContent = cleanMarkdownContent(content);
+    
+    // Apply table enhancements
+    processedContent = enhanceMarkdownTables(processedContent);
+    
+    // Format links consistently
+    processedContent = formatMarkdownLinks(processedContent);
+    
+    // Convert any HTML elements to markdown
+    processedContent = convertHtmlToMarkdown(processedContent);
+    
+    return processedContent;
   }, [content]);
 
   // Get markdown components

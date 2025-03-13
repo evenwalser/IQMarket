@@ -1,7 +1,11 @@
 
 import { ChatVisualization } from "@/types/chat";
 import { ProcessedContentResult } from "./types";
-import { cleanCitationReferences, fixMarkdownHeadings } from "./formatUtils";
+import { 
+  cleanMarkdownContent, 
+  formatMarkdownLinks, 
+  enhanceMarkdownTables 
+} from "../markdownUtils";
 import { extractJsonVisualizations } from "./visualizationExtractor";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
 
@@ -16,11 +20,14 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
     };
   }
 
-  // Clean up citation references [XX:XX*source]
-  let processedContent = cleanCitationReferences(content);
+  // Apply comprehensive markdown cleaning
+  let processedContent = cleanMarkdownContent(content);
   
-  // Fix markdown headings that aren't properly formatted
-  processedContent = fixMarkdownHeadings(processedContent);
+  // Enhance markdown tables in the content
+  processedContent = enhanceMarkdownTables(processedContent);
+  
+  // Format markdown links consistently
+  processedContent = formatMarkdownLinks(processedContent);
 
   // Extract JSON visualizations
   const jsonResult = extractJsonVisualizations(processedContent);
