@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -139,14 +138,14 @@ export const UnifiedSearch = ({
     }
   };
 
-  // Function to remove attachment - this will be passed to the component
   const removeAttachment = (index: number) => {
     if (index >= 0 && index < attachments.length) {
-      const newAttachments = [...attachments];
-      newAttachments.splice(index, 1);
-      // We directly modify the attachments array using the parent's logic
-      // This avoids the file_path error since we're not trying to delete from storage
-      console.log("Removing attachment at index:", index);
+      const updatedAttachments = [...attachments];
+      updatedAttachments.splice(index, 1);
+      const event = new CustomEvent('attachmentRemoved', { 
+        detail: { index, updatedAttachments } 
+      });
+      window.dispatchEvent(event);
       toast.success("File removed");
     } else {
       console.error("Invalid attachment index:", index);
@@ -181,9 +180,9 @@ export const UnifiedSearch = ({
             <div className="flex flex-wrap gap-2">
               {attachments.map((file, index) => (
                 <div key={index} className="relative group">
-                  <div className="w-24 h-24 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+                  <div className="w-20 h-20 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
                     {file.type.startsWith('image/') ? (
-                      <div className="w-full h-12 flex items-center justify-center mb-2">
+                      <div className="w-full h-10 flex items-center justify-center mb-1">
                         <img 
                           src={URL.createObjectURL(file)} 
                           alt={file.name}
@@ -192,19 +191,19 @@ export const UnifiedSearch = ({
                         />
                       </div>
                     ) : (
-                      <div className={`w-12 h-12 ${
+                      <div className={`w-10 h-10 ${
                         file.type.startsWith('image/') ? 'bg-blue-100 text-blue-600' :
                         file.type.includes('pdf') ? 'bg-red-100 text-red-600' :
                         'bg-green-100 text-green-600'
-                      } rounded-lg flex items-center justify-center mb-2`}>
+                      } rounded-lg flex items-center justify-center mb-1`}>
                         {file.type.startsWith('image/') ? 
-                          <Upload className="h-5 w-5" /> : 
-                          <Upload className="h-5 w-5" />
+                          <Upload className="h-4 w-4" /> : 
+                          <Upload className="h-4 w-4" />
                         }
                       </div>
                     )}
                     
-                    <div className="w-full px-2">
+                    <div className="w-full px-1">
                       <p className="text-xs font-medium text-gray-700 text-center truncate">
                         {file.name}
                       </p>
@@ -214,10 +213,10 @@ export const UnifiedSearch = ({
                   <Button
                     variant="destructive"
                     size="icon"
-                    className="h-6 w-6 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-5 w-5 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removeAttachment(index)}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3 w-3" />
                   </Button>
                 </div>
               ))}

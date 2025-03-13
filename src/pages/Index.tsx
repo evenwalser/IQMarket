@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import type { AssistantType, Conversation } from "@/lib/types";
@@ -40,7 +39,25 @@ const Index = () => {
   useEffect(() => {
     // Initialize or retrieve session ID
     initializeSession();
-  }, []);
+
+    // Add event listener for attachment removal
+    const handleAttachmentRemoved = (event: CustomEvent) => {
+      const { index, updatedAttachments } = event.detail;
+      setAttachments(updatedAttachments);
+      
+      // Also update the uploadedAttachments state
+      const newUploadedAttachments = [...uploadedAttachments];
+      newUploadedAttachments.splice(index, 1);
+      setUploadedAttachments(newUploadedAttachments);
+    };
+
+    // Cast Event to CustomEvent to satisfy TypeScript
+    window.addEventListener('attachmentRemoved', handleAttachmentRemoved as EventListener);
+    
+    return () => {
+      window.removeEventListener('attachmentRemoved', handleAttachmentRemoved as EventListener);
+    };
+  }, [uploadedAttachments]); // Add uploadedAttachments as a dependency
 
   const handleLatestResponse = (response: string) => {
     setLatestResponse(response);

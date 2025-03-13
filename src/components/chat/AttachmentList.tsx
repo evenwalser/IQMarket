@@ -61,10 +61,10 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
             className="relative group"
           >
             {/* Smaller squares with rounded edges */}
-            <div className="w-24 h-24 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+            <div className="w-20 h-20 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
               {/* Preview for images, icons for other files */}
               {previews[index] ? (
-                <div className="w-full h-12 flex items-center justify-center mb-2">
+                <div className="w-full h-10 flex items-center justify-center mb-1">
                   <img 
                     src={previews[index]!} 
                     alt={file.name}
@@ -72,13 +72,13 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
                   />
                 </div>
               ) : (
-                <div className={`w-12 h-12 ${getFileColorClass(file.type)} rounded-lg flex items-center justify-center mb-2`}>
+                <div className={`w-10 h-10 ${getFileColorClass(file.type)} rounded-lg flex items-center justify-center mb-1`}>
                   {getFileIcon(file.type)}
                 </div>
               )}
               
               {/* File name */}
-              <div className="w-full px-2">
+              <div className="w-full px-1">
                 <p className="text-xs font-medium text-gray-700 text-center truncate">
                   {file.name}
                 </p>
@@ -89,10 +89,10 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
             <Button
               variant="destructive"
               size="icon"
-              className="h-6 w-6 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-5 w-5 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => onRemove(index)}
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </Button>
           </div>
         ))}
