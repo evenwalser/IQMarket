@@ -156,7 +156,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           </div>
         )}
         
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
           {searchQuery && !voiceMode && (
             <Button
               variant="ghost"
@@ -193,33 +193,38 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             type="button"
             variant="default"
             size="sm"
-            className="rounded-full h-10 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2 pr-2 pl-4"
+            className="rounded-full h-10 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center gap-2 px-4"
             onClick={onSearch}
             disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 text-white animate-spin mr-1" />
+              <Loader2 className="h-4 w-4 text-white animate-spin" />
             ) : (
-              <Search className="h-4 w-4 mr-1" />
+              <Search className="h-4 w-4" />
             )}
             <span>Search</span>
-            
-            <label className="ml-2 cursor-pointer">
-              <input
-                type="file"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                onChange={handleFileChange}
-                accept=".pdf,.doc,.docx,.txt,.csv,image/*"
-                multiple
-                onClick={e => e.stopPropagation()}
-                disabled={voiceMode}
-              />
-              <Upload className="h-4 w-4 text-white" />
-            </label>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full h-10 w-10 flex items-center justify-center border-purple-200 hover:bg-purple-50"
+            disabled={voiceMode}
+            onClick={() => document.getElementById('file-upload-button')?.click()}
+          >
+            <Upload className="h-4 w-4 text-purple-600" />
+            <input
+              id="file-upload-button"
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+              multiple
+            />
           </Button>
         </div>
       </div>
     </div>
   );
 };
-

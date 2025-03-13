@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
@@ -5,7 +6,6 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { toast } from "sonner";
 import type { AssistantType } from "@/lib/types";
 import { VoiceSearchInput } from "@/components/search/VoiceSearchInput";
-import { FileUploadButton } from "@/components/search/FileUploadButton";
 import { ModeSelector } from "@/components/search/ModeSelector";
 
 interface UnifiedSearchProps {
@@ -160,12 +160,26 @@ export const UnifiedSearch = ({
           handleFileUpload={handleFileUpload}
         />
         
-        <FileUploadButton 
-          handleFileUpload={handleFileUpload}
-          handleAttachmentUpload={handleAttachmentUpload}
-          attachments={attachments}
-          removeAttachment={removeAttachment}
-        />
+        {/* Removed FileUploadButton component */}
+        
+        {/* Display attachments if any */}
+        {attachments.length > 0 && (
+          <div className="mt-2">
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((file, index) => (
+                <div key={index} className="flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded-full text-xs">
+                  <span className="truncate max-w-[200px]">{file.name}</span>
+                  <button 
+                    onClick={() => removeAttachment && removeAttachment(index)}
+                    className="text-purple-500 hover:text-purple-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start gap-4">
