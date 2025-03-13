@@ -96,8 +96,8 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
           visualization.height = 300;
         }
         
-        // Add color scheme
-        visualization.colorScheme = colorScheme;
+        // Add color scheme - ensure it's one of the allowed values
+        visualization.colorScheme = colorScheme as 'default' | 'financial' | 'retention' | 'performance' | 'operational';
         
         extractedVisualizations.push(visualization);
         return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;
@@ -159,7 +159,7 @@ const determineIfChartable = (headers: string[], data: Record<string, string>[])
 /**
  * Determines the color scheme based on the table title and headers.
  */
-const determineColorScheme = (title: string | undefined, headers: string[]): string => {
+const determineColorScheme = (title: string | undefined, headers: string[]): 'default' | 'financial' | 'retention' | 'performance' | 'operational' => {
   if (!title) {
     title = headers.join(' ');
   }
@@ -179,7 +179,7 @@ const determineColorScheme = (title: string | undefined, headers: string[]): str
   for (const [category, terms] of Object.entries(metricCategories)) {
     if (terms.some(term => lowerTitle.includes(term)) || 
         lowerHeaders.some(header => terms.some(term => header.includes(term)))) {
-      return category;
+      return category as 'financial' | 'retention' | 'performance' | 'operational';
     }
   }
   

@@ -211,31 +211,34 @@ Format your response as follows:
 If you need to include tables directly in the text, still use standard markdown formatting.
 `;
     } else {
-      enhancedInstructions += ` ${structuredOutput ? "Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
-\`\`\`json
+      // The backslashes here are the problem - need to escape properly for Deno
+      const jsonTemplate = structuredOutput ? `Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
+\\\`\\\`\\\`json
 {
-  \\\"type\\\": \\\"table\\\",
-  \\\"title\\\": \\\"Key Metrics\\\",
-  \\\"data\\\": [
-    {\\\"Metric\\\": \\\"Value 1\\\", \\\"Result\\\": \\\"42\\\"},
-    {\\\"Metric\\\": \\\"Value 2\\\", \\\"Result\\\": \\\"73\\\"}
+  "type": "table",
+  "title": "Key Metrics",
+  "data": [
+    {"Metric": "Value 1", "Result": "42"},
+    {"Metric": "Value 2", "Result": "73"}
   ]
 }
-\`\`\`
+\\\`\\\`\\\`
 or
-\`\`\`json
+\\\`\\\`\\\`json
 {
-  \\\"type\\\": \\\"chart\\\",
-  \\\"chartType\\\": \\\"bar\\\",
-  \\\"title\\\": \\\"Monthly Trend\\\",
-  \\\"xKey\\\": \\\"Month\\\",
-  \\\"yKeys\\\": [\\\"Value\\\"],
-  \\\"data\\\": [
-    {\\\"Month\\\": \\\"Jan\\\", \\\"Value\\\": 42},
-    {\\\"Month\\\": \\\"Feb\\\", \\\"Value\\\": 73}
+  "type": "chart",
+  "chartType": "bar",
+  "title": "Monthly Trend",
+  "xKey": "Month",
+  "yKeys": ["Value"],
+  "data": [
+    {"Month": "Jan", "Value": 42},
+    {"Month": "Feb", "Value": 73}
   ]
 }
-\`\`\`" : ""}`;
+\\\`\\\`\\\``: "";
+
+      enhancedInstructions += ` ${jsonTemplate}`;
     }
     
     // Run the assistant with v2 API
