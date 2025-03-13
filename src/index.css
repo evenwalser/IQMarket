@@ -107,6 +107,7 @@
   @apply items-start;
 }
 
+/* Fix circular dependency by not using @apply with font-bold class */
 .prose-sm div.font-bold {
-  @apply text-gray-900;
+  color: rgb(17, 24, 39); /* text-gray-900 equivalent */
 }
