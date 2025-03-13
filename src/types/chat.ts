@@ -19,6 +19,7 @@ export interface ChatVisualization {
   userSettings?: Record<string, any>;  // For storing user customizations
   originalSettings?: Record<string, any>;  // For storing original settings
   imageData?: string; // Base64 encoded image data for image charts
+  [key: string]: any; // Index signature to make it compatible with Json type
 }
 
 export interface ChatMessage {

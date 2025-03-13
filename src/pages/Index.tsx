@@ -102,35 +102,40 @@ const Index = () => {
 
       const conversationsWithParsedVisualizations = data.map(conv => {
         // Parse visualizations if they exist
+        let parsedVisualizations: ChatVisualization[] = [];
+        
         if (conv.visualizations) {
           try {
             // Handle different types of visualization storage
             if (typeof conv.visualizations === 'string') {
               const parsedViz = JSON.parse(conv.visualizations);
-              conv.visualizations = Array.isArray(parsedViz) 
+              parsedVisualizations = Array.isArray(parsedViz) 
                 ? parsedViz.map(safeMapVisualization) 
                 : [safeMapVisualization(parsedViz)];
             } else if (Array.isArray(conv.visualizations)) {
-              conv.visualizations = conv.visualizations.map(safeMapVisualization);
+              parsedVisualizations = conv.visualizations.map(safeMapVisualization);
             }
           } catch (e) {
             console.error('Error parsing visualizations:', e);
-            conv.visualizations = [];
+            parsedVisualizations = [];
           }
-        } else {
-          conv.visualizations = [];
         }
         
         // Ensure assistant_type is valid by converting it to AssistantType
         const assistant_type = conv.assistant_type as string;
-        conv.assistant_type = (
+        const validAssistantType = (
           assistant_type === 'knowledge' || 
           assistant_type === 'frameworks' || 
           assistant_type === 'benchmarks' || 
           assistant_type === 'assistant'
         ) ? assistant_type as AssistantType : 'knowledge';
         
-        return conv as Conversation;
+        // Create a properly typed Conversation object
+        return {
+          ...conv,
+          assistant_type: validAssistantType,
+          visualizations: parsedVisualizations
+        } as unknown as Conversation;
       });
 
       setConversations(conversationsWithParsedVisualizations);
@@ -257,10 +262,10 @@ const Index = () => {
         // Update the local conversation list with the new conversation
         setConversations(prev => [
           {
-            ...data as Conversation,
+            ...data,
             assistant_type: selectedMode,
             visualizations: visualizations.map(safeMapVisualization)
-          },
+          } as unknown as Conversation,
           ...prev
         ]);
       });

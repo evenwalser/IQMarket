@@ -38,4 +38,4 @@ export interface ChatConversation {
 }
 
 // Define JSON compatible type for Supabase data
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json } | Json[] | ChatVisualization;

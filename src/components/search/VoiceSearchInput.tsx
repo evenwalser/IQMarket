@@ -24,6 +24,9 @@ interface VoiceSearchInputProps {
   onFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   attachments?: File[];
   onRemoveAttachment?: (index: number) => void;
+  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (e: React.DragEvent<HTMLDivElement>) => void;
+  isDraggingOver?: boolean;
 }
 
 export const VoiceSearchInput = forwardRef<HTMLInputElement, VoiceSearchInputProps>(({
@@ -43,9 +46,11 @@ export const VoiceSearchInput = forwardRef<HTMLInputElement, VoiceSearchInputPro
   showFileUpload = false,
   onFileUpload,
   attachments = [],
-  onRemoveAttachment
+  onRemoveAttachment,
+  onDragOver,
+  onDragLeave,
+  isDraggingOver = false
 }, ref) => {
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isLoading && !disabled) {
@@ -53,22 +58,9 @@ export const VoiceSearchInput = forwardRef<HTMLInputElement, VoiceSearchInputPro
     }
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(false);
-  };
-
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDraggingOver(false);
     
     if (onFileDrop && e.dataTransfer.files.length > 0) {
       onFileDrop(e.dataTransfer.files);
@@ -79,8 +71,8 @@ export const VoiceSearchInput = forwardRef<HTMLInputElement, VoiceSearchInputPro
     <div className="w-full flex flex-col gap-2">
       <div 
         className={`relative flex items-center w-full ${isDraggingOver ? 'ring-2 ring-primary rounded-full' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
         onDrop={handleDrop}
       >
         {/* Search box with orb animation */}
