@@ -1,4 +1,3 @@
-
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -163,12 +162,9 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   
   // Add file IDs if any were processed successfully
   if (fileIds.length > 0) {
-    // Fixed: The correct format for file attachments in assistants=v2
-    messageData.attachments = fileIds.map(fileId => ({
-      file_id: fileId,
-      type: "file_search",
-      tools: [{ type: "retrieval" }]  // Add the required tools parameter
-    }));
+    // NOTE: Updated format for file attachments in assistants=v2
+    // The correct format ONLY contains file_id, no type or tools parameters
+    messageData.file_ids = fileIds;
   }
   
   const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
