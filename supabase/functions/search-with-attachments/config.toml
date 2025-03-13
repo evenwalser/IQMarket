@@ -1,0 +1,12 @@
+
+project_id = "lovable-dev-project"
+app_version = "0.1.0"
+
+[api.config]
+port = 54321
+
+[functions.search-with-attachments]
+verify_jwt = false
+
+[functions.search-with-attachments.environment_variables]
+OPENAI_API_KEY = "optional:placeholder"

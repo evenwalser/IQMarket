@@ -16,10 +16,40 @@ export const FileUploadButton: React.FC<FileUploadButtonProps> = ({
   attachments,
   removeAttachment
 }) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (handleAttachmentUpload && handleFileUpload) {
+      handleAttachmentUpload(e);
+      handleFileUpload(e);
+      
+      // Reset the file input value after upload to allow selecting the same file again
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="relative">
-        {/* File Upload UI is rendered in VoiceSearchInput */}
+        {/* File Upload Button (only visible if not integrated in SearchInput) */}
+        {attachments.length === 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="hidden md:flex items-center gap-2 rounded-full"
+            onClick={() => document.getElementById('file-upload-separate')?.click()}
+          >
+            <Upload className="h-4 w-4" />
+            <span>Attach Files</span>
+            <input
+              id="file-upload-separate"
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+              multiple
+            />
+          </Button>
+        )}
       </div>
       
       {/* Attachments List */}

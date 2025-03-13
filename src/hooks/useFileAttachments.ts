@@ -12,6 +12,8 @@ export const useFileAttachments = () => {
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
     console.log('Files selected for upload:', files.map(f => ({
       name: f.name,
       type: f.type,
@@ -19,10 +21,11 @@ export const useFileAttachments = () => {
     })));
     
     try {
-      for (const file of files) {
+      const uploadPromises = files.map(async (file) => {
         const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
         console.log('Generated file path:', filePath);
         
+        // Check if file already exists by name and size
         const { data: existingFile } = await supabase
           .from('chat_attachments')
           .select('*')
@@ -32,11 +35,10 @@ export const useFileAttachments = () => {
 
         if (existingFile) {
           console.log('File already exists:', existingFile);
-          setAttachments(prev => [...prev, file]);
-          setUploadedAttachments(prev => [...prev, existingFile]);
-          continue;
+          return { file, existingFile };
         }
         
+        // Upload file to storage
         const { error: uploadError } = await supabase.storage
           .from('chat-attachments')
           .upload(filePath, file);
@@ -48,6 +50,7 @@ export const useFileAttachments = () => {
 
         console.log('File uploaded to storage successfully');
 
+        // Save file metadata to database
         const { data, error: insertError } = await supabase
           .from('chat_attachments')
           .insert({
@@ -66,11 +69,35 @@ export const useFileAttachments = () => {
 
         if (data) {
           console.log('File metadata saved to database:', data);
-          setAttachments(prev => [...prev, file]);
-          setUploadedAttachments(prev => [...prev, data]);
           toast.success(`File ${file.name} uploaded successfully`);
+          return { file, newFile: data };
         }
-      }
+        
+        throw new Error('Failed to get file data after upload');
+      });
+      
+      // Process all uploads in parallel
+      const results = await Promise.all(uploadPromises);
+      
+      // Update state with all successful uploads
+      const newFiles: File[] = [];
+      const newAttachments: ChatAttachment[] = [];
+      
+      results.forEach(result => {
+        if (result.file) {
+          newFiles.push(result.file);
+          
+          if (result.existingFile) {
+            newAttachments.push(result.existingFile);
+          } else if (result.newFile) {
+            newAttachments.push(result.newFile);
+          }
+        }
+      });
+      
+      setAttachments(prev => [...prev, ...newFiles]);
+      setUploadedAttachments(prev => [...prev, ...newAttachments]);
+      
     } catch (error) {
       console.error('Error in file upload process:', error);
       toast.error('Failed to upload file: ' + (error as Error).message);
@@ -105,6 +132,7 @@ export const useFileAttachments = () => {
 
   return {
     attachments,
+    uploadedAttachments,
     handleAttachmentUpload,
     removeAttachment
   };

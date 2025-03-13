@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,13 +43,10 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
 }) => {
   const [showOrb, setShowOrb] = useState(false);
   
-  // Show orb when voice mode is active
   useEffect(() => {
     setShowOrb(voiceMode);
     
-    // Auto-start recording when voice mode is activated
     if (voiceMode && !isRecording && !isTranscribing && !isReadingResponse) {
-      // Small delay to ensure the UI updates first
       const timer = setTimeout(() => {
         handleMicClick();
       }, 300);
@@ -59,7 +55,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     }
   }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
 
-  // Helper function to get status text
   const getStatusText = () => {
     if (isRecording) return "Listening... Speak now and pause when done";
     if (isTranscribing) return "Processing your speech...";
@@ -68,9 +63,17 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
     return "Ask our Intelligence anything about your business and journey";
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (handleAttachmentUpload && handleFileUpload) {
+      handleAttachmentUpload(e);
+      handleFileUpload(e);
+      
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="relative flex items-center">
-      {/* Voice Mode Toggle Button */}
       <div className="mr-4">
         <div className="relative">
           <Button
@@ -90,7 +93,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             <Volume2 className="h-5 w-5 text-white" />
           </Button>
 
-          {/* Recording indicator dot */}
           {isRecording && (
             <div className="absolute -top-1 -right-1">
               <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
@@ -99,7 +101,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         </div>
       </div>
       
-      {/* Floating Orb Above Search Box - Appears when voice mode is active */}
       <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
         <AnimatePresence>
           {showOrb && (
@@ -121,7 +122,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
         </AnimatePresence>
       </div>
       
-      {/* Search Box */}
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
         <Input 
           ref={inputRef}
@@ -139,7 +139,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           disabled={voiceMode || isLoading}
         />
         
-        {/* Status Indicator in Voice Mode */}
         {voiceMode && (
           <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
             <div className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -156,9 +155,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
           </div>
         )}
         
-        {/* Clear button and Search Button with Upload Icon */}
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-          {/* Clear button when there's text */}
           {searchQuery && !voiceMode && (
             <Button
               variant="ghost"
@@ -171,7 +168,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             </Button>
           )}
           
-          {/* In voice mode, show stop reading button when applicable */}
           {voiceMode && isReadingResponse && (
             <Button
               variant="outline"
@@ -185,7 +181,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             </Button>
           )}
           
-          {/* Recording indicator - small visual cue */}
           {voiceMode && isRecording && (
             <div className="mr-2 flex items-center">
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mr-1.5"></span>
@@ -193,7 +188,6 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
             </div>
           )}
           
-          {/* Wider Search button with Upload functionality inside */}
           <div className="relative inline-flex items-center">
             <Button
               type="button"
@@ -218,12 +212,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
                 <input
                   type="file"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                  onChange={e => {
-                    if (handleAttachmentUpload && handleFileUpload) {
-                      handleAttachmentUpload(e);
-                      handleFileUpload(e);
-                    }
-                  }}
+                  onChange={handleFileChange}
                   accept=".pdf,.doc,.docx,.txt,.csv,image/*"
                   multiple
                   onClick={e => e.stopPropagation()}
