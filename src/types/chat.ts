@@ -1,28 +1,35 @@
 
-export interface ChatAttachment {
-  type: 'image' | 'file';
-  url: string;
-  name: string;
-}
-
 export interface ChatVisualization {
-  id?: string;  // Added ID for tracking visualizations
+  id?: string;
   type: 'table' | 'chart';
-  data: Record<string, any>[];
-  headers?: string[];  // For tables
-  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed';  // For charts
-  xKey?: string;  // For charts
-  yKeys?: string[];  // For charts
-  height?: number;  // For charts
-  title?: string;
-  subTitle?: string;
-  userSettings?: Record<string, any>;  // For storing user customizations
-  originalSettings?: Record<string, any>;  // For storing original settings
+  data: any[];
+  headers?: string[];
+  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed';
+  xKey?: string;
+  yKeys?: string[];
+  height?: number;
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
   content: string;
-  attachments?: ChatAttachment[];
+  role: 'user' | 'assistant';
   visualizations?: ChatVisualization[];
+  attachments?: ChatAttachment[];
+}
+
+export interface ChatAttachment {
+  id?: string;
+  name: string;
+  url: string;
+  type: 'image' | 'document' | 'audio' | 'video' | 'other';
+  contentType?: string;
+  size?: number;
+}
+
+export interface WebSocketMessage {
+  id: string;
+  content: string;
+  sender: string;
+  timestamp: number;
+  type?: 'message' | 'ping' | 'system';
 }

@@ -101,6 +101,9 @@ export const ConversationList = ({
   const currentThreadId = threadIds.length > 0 ? threadIds[0] : null;
   const currentThread = currentThreadId ? threadMap.get(currentThreadId) || [] : [];
   
+  // Reverse the thread to show newest messages at the top
+  const reversedThread = [...currentThread].reverse();
+  
   return (
     <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-gray-50">
@@ -123,7 +126,7 @@ export const ConversationList = ({
       </div>
       
       <div className="p-4 space-y-6 max-h-[600px] overflow-y-auto">
-        {currentThread.map((conversation, index) => {
+        {reversedThread.map((conversation, index) => {
           const isBenchmarks = conversation.assistant_type === 'benchmarks';
           const isCurrentlySpeaking = isSpeaking && currentSpeakingId === conversation.id;
           
@@ -222,3 +225,4 @@ export const ConversationList = ({
     </div>
   );
 };
+
