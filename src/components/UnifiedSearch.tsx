@@ -35,7 +35,7 @@ export const UnifiedSearch = ({
   const [voiceMode, setVoiceMode] = useState(false);
   const [isReadingResponse, setIsReadingResponse] = useState(false);
   const [orbState, setOrbState] = useState<"idle" | "user" | "ai">("idle");
-  const inputRef = useRef<any>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [lastResponse, setLastResponse] = useState<string>("");
   
   function handleTranscriptionComplete(transcribedText: string) {

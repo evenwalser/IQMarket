@@ -20,7 +20,7 @@ interface VoiceSearchInputProps {
   isReadingResponse: boolean;
   stopReading: () => void;
   orbState: "idle" | "user" | "ai";
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
   handleAttachmentUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -76,7 +76,7 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
   // Use a textarea instead of an input for better text wrapping
   const renderTextArea = () => (
     <textarea
-      ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+      ref={inputRef}
       placeholder={getStatusText()} 
       className={`w-full px-5 py-4 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900
         placeholder:text-gray-500 text-center resize-none overflow-hidden
