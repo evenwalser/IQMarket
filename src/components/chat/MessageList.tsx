@@ -2,6 +2,7 @@
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
+import { useEffect, useRef } from "react";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -41,6 +42,39 @@ export const MessageList = ({ messages }: MessageListProps) => {
     }
   };
 
+  // Format the message content with proper spacing and formatting
+  const formatMessageContent = (content: string) => {
+    if (!content) return "";
+
+    // Replace markdown-style bullets with proper HTML
+    let formattedContent = content
+      // Convert markdown bullet points
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/^\* (.+)$/gm, '<li>$1</li>')
+      // Convert markdown numbered lists
+      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+      // Wrap bullet points in ul tags
+      .replace(/<li>(.+)<\/li>(\n<li>(.+)<\/li>)+/g, '<ul>$&</ul>')
+      // Handle headers
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Convert double line breaks to paragraph breaks
+      .replace(/\n\n/g, '</p><p>')
+      // Bold and italic formatting
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Convert single line breaks within paragraphs
+      .replace(/\n/g, '<br/>');
+
+    // Ensure content is wrapped in paragraphs
+    if (!formattedContent.startsWith('<')) {
+      formattedContent = `<p>${formattedContent}</p>`;
+    }
+
+    return formattedContent;
+  };
+
   if (messages.length === 0) {
     return (
       <div className="text-center text-gray-500">
@@ -54,7 +88,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
       {messages.map((msg, index) => (
         <div
           key={index}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
         >
           <div
             className={`max-w-[80%] px-4 py-2 rounded-lg ${
@@ -63,7 +97,14 @@ export const MessageList = ({ messages }: MessageListProps) => {
                 : 'bg-gray-100 text-gray-900'
             }`}
           >
-            <div className="whitespace-pre-wrap">{msg.content}</div>
+            {msg.role === 'user' ? (
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            ) : (
+              <div 
+                className="prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: formatMessageContent(msg.content) }} 
+              />
+            )}
             {msg.visualizations?.map((viz, i) => (
               <div key={i}>
                 {renderVisualization(viz)}
