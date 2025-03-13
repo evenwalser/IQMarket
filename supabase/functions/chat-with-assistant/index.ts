@@ -33,14 +33,16 @@ async function getAssistantId(supabase, assistantType) {
   );
 
   if (assistantError) {
+    console.error(`Error fetching assistant ID for ${assistantType}:`, assistantError);
     throw new Error(`Error fetching assistant ID: ${assistantError.message}`);
   }
 
   if (!assistantId) {
-    throw new Error(`No assistant ID found for type: ${assistantType}`);
+    console.error(`No assistant ID found for type: ${assistantType}`);
+    throw new Error(`No assistant ID found for type: ${assistantType}. Please ensure the assistant is properly configured in the database.`);
   }
 
-  console.log("Using assistant ID:", assistantId);
+  console.log(`Using assistant ID for ${assistantType}:`, assistantId);
   return assistantId;
 }
 
@@ -209,6 +211,29 @@ Format your response as follows:
 
 If you need to include tables directly in the text, still use standard markdown formatting.
 `;
+  } else if (assistantType === 'frameworks') {
+    instructions += `
+Format your response as follows:
+1. Provide a brief introduction to the requested framework or strategic approach.
+2. For key components of the framework:
+   - Use clear headings and structured sections
+   - Present the core elements in a systematic way
+   - Use markdown formatting for better readability
+   - Where relevant, use diagrams or structured JSON blocks like this:
+      \`\`\`json
+      {
+        "type": "table",
+        "title": "Framework Components",
+        "data": [
+          {"Step": "Step 1", "Description": "Define the problem", "Key Activities": "Research, stakeholder interviews"},
+          {"Step": "Step 2", "Description": "Generate solutions", "Key Activities": "Brainstorming, prioritization"}
+        ]
+      }
+      \`\`\`
+3. Conclude with practical implementation advice and potential challenges.
+
+Use examples from the knowledge base whenever possible to illustrate how the framework has been applied successfully.
+`;
   } else {
     // Template for JSON visualization
     const jsonTemplate = structuredOutput ? `Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
@@ -247,7 +272,7 @@ or
  * Run the assistant on the thread
  */
 async function runAssistant(openAIApiKey, threadId, assistantId, instructions) {
-  console.log("Running assistant with enhanced instructions");
+  console.log(`Running assistant ${assistantId} with enhanced instructions for thread ${threadId}`);
   const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
     method: 'POST',
     headers: {
@@ -277,9 +302,11 @@ async function runAssistant(openAIApiKey, threadId, assistantId, instructions) {
 async function waitForRunCompletion(openAIApiKey, threadId, runId) {
   let currentRun;
   let runStatus = 'in_progress';
+  let retryCount = 0;
+  const maxRetries = 30; // Limit retries to avoid infinite loops
   
-  while (runStatus !== 'completed' && runStatus !== 'failed') {
-    console.log("Checking run status...");
+  while (runStatus !== 'completed' && runStatus !== 'failed' && retryCount < maxRetries) {
+    console.log(`Checking run status (attempt ${retryCount + 1}/${maxRetries})...`);
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const runCheckResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
@@ -293,16 +320,37 @@ async function waitForRunCompletion(openAIApiKey, threadId, runId) {
     
     if (!runCheckResponse.ok) {
       const errorData = await runCheckResponse.json();
-      throw new Error(`Failed to check run status: ${JSON.stringify(errorData)}`);
+      console.error(`Failed to check run status: ${JSON.stringify(errorData)}`);
+      
+      // If we get an error, increment retry count but continue
+      retryCount++;
+      
+      if (retryCount >= maxRetries) {
+        throw new Error(`Failed to check run status after ${maxRetries} attempts: ${JSON.stringify(errorData)}`);
+      }
+      
+      continue;
     }
     
     currentRun = await runCheckResponse.json();
     runStatus = currentRun.status;
-    console.log("Run status:", runStatus);
+    console.log(`Run status: ${runStatus}, details:`, JSON.stringify(currentRun.status_details || {}));
+    
+    // If the run is in a terminal state, break out of the loop
+    if (runStatus === 'completed' || runStatus === 'failed' || runStatus === 'cancelled' || runStatus === 'expired') {
+      break;
+    }
+    
+    retryCount++;
   }
   
   if (runStatus === 'failed') {
+    console.error(`Run failed with details:`, JSON.stringify(currentRun));
     throw new Error(`Run failed with reason: ${currentRun?.last_error?.message || 'Unknown error'}`);
+  }
+  
+  if (runStatus !== 'completed') {
+    throw new Error(`Run did not complete successfully. Status: ${runStatus}`);
   }
   
   return currentRun;
@@ -398,10 +446,15 @@ Deno.serve(async (req) => {
       message, 
       assistantType, 
       attachmentsCount: attachments.length, 
-      attachments: attachments.map(a => ({ url: a.url, name: a.file_name })),
       structuredOutput, 
       threadId 
     });
+
+    // Validate the assistant type is one of the allowed values
+    const validAssistantTypes = ['knowledge', 'benchmarks', 'frameworks'];
+    if (!validAssistantTypes.includes(assistantType)) {
+      throw new Error(`Invalid assistant type: ${assistantType}. Must be one of: ${validAssistantTypes.join(', ')}`);
+    }
 
     // Get Supabase client
     const supabase = getSupabaseClient();
