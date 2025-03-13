@@ -12,14 +12,6 @@ export const useFileAttachments = () => {
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
-    // If no files, clear the attachments
-    if (files.length === 0) {
-      setAttachments([]);
-      setUploadedAttachments([]);
-      return;
-    }
-    
     console.log('Files selected for upload:', files.map(f => ({
       name: f.name,
       type: f.type,
@@ -86,42 +78,24 @@ export const useFileAttachments = () => {
   };
 
   const removeAttachment = async (index: number) => {
-    if (index < 0 || index >= attachments.length) {
-      console.error('Invalid attachment index:', index);
-      return;
-    }
+    const removedAttachment = uploadedAttachments[index];
     
     try {
-      // If we have uploaded attachment data, remove from storage
-      if (uploadedAttachments[index]) {
-        const removedAttachment = uploadedAttachments[index];
-        
-        const { error: storageError } = await supabase.storage
-          .from('chat-attachments')
-          .remove([removedAttachment.file_path]);
+      const { error: storageError } = await supabase.storage
+        .from('chat-attachments')
+        .remove([removedAttachment.file_path]);
 
-        if (storageError) {
-          console.error('Storage removal error:', storageError);
-          throw storageError;
-        }
+      if (storageError) throw storageError;
 
-        const { error: deleteError } = await supabase
-          .from('chat_attachments')
-          .delete()
-          .eq('id', removedAttachment.id);
+      const { error: deleteError } = await supabase
+        .from('chat_attachments')
+        .delete()
+        .eq('id', removedAttachment.id);
 
-        if (deleteError) {
-          console.error('Database delete error:', deleteError);
-          throw deleteError;
-        }
-        
-        // Update state after successful deletion
-        setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
-      }
-      
-      // Always update the local attachments state
+      if (deleteError) throw deleteError;
+
       setAttachments(prev => prev.filter((_, i) => i !== index));
-      
+      setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
       toast.success('File removed successfully');
     } catch (error) {
       console.error('Error removing file:', error);
@@ -129,39 +103,9 @@ export const useFileAttachments = () => {
     }
   };
 
-  const clearAllAttachments = async () => {
-    try {
-      // Remove all files from storage
-      for (const attachment of uploadedAttachments) {
-        await supabase.storage
-          .from('chat-attachments')
-          .remove([attachment.file_path]);
-          
-        await supabase
-          .from('chat_attachments')
-          .delete()
-          .eq('id', attachment.id);
-      }
-      
-      // Clear state
-      setAttachments([]);
-      setUploadedAttachments([]);
-      
-    } catch (error) {
-      console.error('Error clearing attachments:', error);
-      toast.error('Failed to clear all attachments');
-    }
-  };
-
   return {
     attachments,
-    uploadedAttachments,
     handleAttachmentUpload,
-    removeAttachment,
-    clearAllAttachments,
-    files: attachments,
-    uploadFiles: handleAttachmentUpload,
-    removeFile: removeAttachment,
-    clearFiles: clearAllAttachments
+    removeAttachment
   };
 };

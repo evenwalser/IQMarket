@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AttachmentList } from "@/components/chat/AttachmentList";
 import { SearchControls } from "@/components/search/SearchControls";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
 
 interface SearchInputProps {
@@ -27,7 +28,7 @@ export const SearchInput = ({
   handleFileUpload,
   attachments
 }: SearchInputProps) => {
-  // Remove the problematic hook usage
+  const { isRecording, isTranscribing, handleMicClick } = useVoiceRecording(setSearchQuery);
   const { handleAttachmentUpload, removeAttachment } = useFileAttachments();
 
   return (
@@ -71,9 +72,9 @@ export const SearchInput = ({
         </div>
         <SearchControls
           isLoading={isLoading}
-          isRecording={false}
-          isTranscribing={false}
-          onMicClick={() => {}}
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          onMicClick={handleMicClick}
           onSearch={handleSearch}
         />
       </div>

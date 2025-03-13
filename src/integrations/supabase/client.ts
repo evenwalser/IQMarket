@@ -2,12 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Use production Supabase URL and key since local setup is having issues
 const SUPABASE_URL = "https://nmfhetqfewbjwqyoxqkd.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tZmhldHFmZXdiandxeW94cWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk0ODUyMTUsImV4cCI6MjA1NTA2MTIxNX0.079LL235eAwSjjesZTarMnrLmFpmZdmzSAoiQO35XLI";
-
-// Log which URL we're using (helpful for debugging)
-console.log("Using Supabase URL:", SUPABASE_URL);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

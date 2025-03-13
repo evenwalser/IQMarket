@@ -1,194 +1,287 @@
 
-import React, { forwardRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, Upload, Volume2, VolumeX, Mic, MicOff, Paperclip } from "lucide-react";
-import DataOrb from "@/components/DataOrb";
 import { Button } from "@/components/ui/button";
-import { FileUploadButton } from "./FileUploadButton";
+import { Search, Loader2, Volume2, X, Upload, Mic } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import DataOrb from "@/components/DataOrb";
 
 interface VoiceSearchInputProps {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
   onSearch: () => Promise<void>;
-  placeholder?: string;
-  isLoading?: boolean;
-  isRecording?: boolean;
-  isProcessing?: boolean;
-  disabled?: boolean;
-  orbState?: "idle" | "user" | "ai";
-  onFileDrop?: (files: FileList) => void;
-  voiceMode?: boolean;
-  onToggleVoiceMode?: () => void;
-  onToggleRecording?: () => void;
-  showFileUpload?: boolean;
-  onFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  attachments?: File[];
-  onRemoveAttachment?: (index: number) => void;
-  onDragOver?: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragLeave?: (e: React.DragEvent<HTMLDivElement>) => void;
-  isDraggingOver?: boolean;
+  isLoading: boolean;
+  isRecording: boolean;
+  isTranscribing: boolean;
+  handleMicClick: () => void;
+  recordingStartTime: number | null;
+  voiceMode: boolean;
+  toggleVoiceMode: () => void;
+  isReadingResponse: boolean;
+  stopReading: () => void;
+  orbState: "idle" | "user" | "ai";
+  inputRef: React.RefObject<HTMLInputElement>;
+  handleAttachmentUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const VoiceSearchInput = forwardRef<HTMLInputElement, VoiceSearchInputProps>(({
-  value,
-  onChange,
+export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
+  searchQuery,
+  setSearchQuery,
   onSearch,
-  placeholder = "Ask me anything...",
-  isLoading = false,
-  isRecording = false,
-  isProcessing = false,
-  disabled = false,
-  orbState = "idle",
-  onFileDrop,
-  voiceMode = false,
-  onToggleVoiceMode,
-  onToggleRecording,
-  showFileUpload = false,
-  onFileUpload,
-  attachments = [],
-  onRemoveAttachment,
-  onDragOver,
-  onDragLeave,
-  isDraggingOver = false
-}, ref) => {
+  isLoading,
+  isRecording,
+  isTranscribing,
+  handleMicClick,
+  voiceMode,
+  toggleVoiceMode,
+  isReadingResponse,
+  stopReading,
+  orbState,
+  inputRef,
+  handleAttachmentUpload,
+  handleFileUpload
+}) => {
+  const [showOrb, setShowOrb] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isLoading && !disabled) {
-      onSearch();
+  // Show orb when voice mode is active
+  useEffect(() => {
+    setShowOrb(voiceMode);
+  }, [voiceMode]);
+  
+  // Update recording duration timer
+  useEffect(() => {
+    if (isRecording) {
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setRecordingDuration(0);
     }
+    
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, [isRecording]);
+
+  // Helper function to get status text
+  const getStatusText = () => {
+    if (isRecording) return `Listening... (${recordingDuration}s) - Pause when done`;
+    if (isTranscribing) return "Processing your speech...";
+    if (isReadingResponse) return "AI is speaking...";
+    if (voiceMode) return "Voice mode active. Click to start speaking";
+    return "Ask our Intelligence anything about your business and journey";
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (onFileDrop && e.dataTransfer.files.length > 0) {
-      onFileDrop(e.dataTransfer.files);
-    }
+  // Format recording duration
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' + secs : secs}`;
   };
 
   return (
-    <div className="w-full flex flex-col gap-2">
-      <div 
-        className={`relative flex items-center w-full ${isDraggingOver ? 'ring-2 ring-primary rounded-full' : ''}`}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={handleDrop}
-      >
-        {/* Search box with orb animation */}
-        <div className="relative w-full">
-          <Input
-            ref={ref}
-            type="text"
-            placeholder={placeholder}
-            className={`h-12 pl-12 pr-36 rounded-full border-2 text-base focus-visible:ring-offset-0 focus-visible:ring-1 ${isDraggingOver ? 'bg-gray-50 opacity-60' : ''}`}
-            value={value}
-            onChange={onChange}
-            onKeyDown={handleKeyDown}
-            disabled={disabled || isLoading}
-          />
-          
-          {/* Orb */}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            <div className="w-6 h-6">
-              <DataOrb 
-                size={24} 
-                speakingState={orbState} 
-                pulseIntensity={1.2} 
-                speed={1}
-              />
+    <div className="relative flex items-center">
+      {/* Voice Mode Toggle Button */}
+      <div className="mr-4">
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            onClick={toggleVoiceMode}
+            className={`
+              rounded-full w-12 h-12 transition-all shadow-lg
+              ${voiceMode 
+                ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white' 
+                : 'bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 opacity-70 hover:opacity-100 text-white'
+              }
+              ${isRecording ? 'animate-pulse' : ''}
+            `}
+          >
+            <Volume2 className="h-5 w-5 text-white" />
+          </Button>
+
+          {/* Recording indicator dot */}
+          {isRecording && (
+            <div className="absolute -top-1 -right-1">
+              <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse"></div>
             </div>
-          </div>
-          
-          {/* Voice controls, file upload and search icon */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-            {/* File upload button - only shown in benchmarks mode */}
-            {showFileUpload && onFileUpload && (
-              <FileUploadButton
-                onFileUpload={onFileUpload}
-                attachments={attachments}
-                disabled={disabled || isLoading}
-                onRemoveAttachment={onRemoveAttachment}
-                inline={true}
-              />
-            )}
-            
-            {/* Voice mode toggle */}
-            {onToggleVoiceMode && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 p-0 ${voiceMode ? 'text-primary' : 'text-muted-foreground'}`}
-                onClick={onToggleVoiceMode}
-                title={voiceMode ? "Disable voice mode" : "Enable voice mode"}
-                type="button"
-              >
-                {voiceMode ? <Volume2 size={16} /> : <VolumeX size={16} />}
-              </Button>
-            )}
-            
-            {/* Voice record button */}
-            {onToggleRecording && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 p-0 ${isRecording ? 'text-destructive' : 'text-muted-foreground'}`}
-                onClick={onToggleRecording}
-                title={isRecording ? "Stop recording" : "Start voice recording"}
-                disabled={disabled}
-                type="button"
-              >
-                {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-              </Button>
-            )}
-            
-            {/* Loading indicator */}
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-            ) : (
-              <Search className="h-5 w-5 text-muted-foreground" />
-            )}
-          </div>
+          )}
         </div>
+      </div>
+      
+      {/* Floating Orb Above Search Box - Appears when voice mode is active */}
+      <div className="absolute left-0 right-0 mx-auto w-full flex justify-center">
+        <AnimatePresence>
+          {showOrb && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: -120 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+              className="absolute z-30"
+            >
+              <DataOrb 
+                size={180} 
+                speakingState={orbState} 
+                pulseIntensity={1.5} 
+                speed={1.2} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      {/* Search Box */}
+      <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
+        <Input 
+          ref={inputRef}
+          type="text" 
+          placeholder={getStatusText()} 
+          className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
+          value={searchQuery} 
+          onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !voiceMode) {
+              onSearch();
+            }
+          }}
+          readOnly={voiceMode}
+          disabled={voiceMode || isLoading}
+        />
         
-        {/* Drag overlay */}
-        {isDraggingOver && (
-          <div className="absolute inset-0 rounded-full bg-primary bg-opacity-10 flex items-center justify-center border-2 border-dashed border-primary">
-            <div className="flex items-center text-primary font-medium">
-              <Upload className="mr-2 h-5 w-5" />
-              Drop files here
+        {/* Status Indicator in Voice Mode */}
+        {voiceMode && (
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-7">
+            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+              isRecording ? 'bg-green-100 text-green-700' : 
+              isTranscribing ? 'bg-amber-100 text-amber-700' :
+              isReadingResponse ? 'bg-blue-100 text-blue-700' :
+              'bg-purple-100 text-purple-700'
+            }`}>
+              {isRecording ? `Recording (${formatDuration(recordingDuration)})` : 
+               isTranscribing ? 'Processing speech...' :
+               isReadingResponse ? 'AI Speaking...' :
+               'Voice Mode Active'}
             </div>
           </div>
         )}
-      </div>
-      
-      {/* File attachments display below search box */}
-      {showFileUpload && attachments && attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {attachments.map((file, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 text-xs px-3 py-1 bg-primary/10 text-primary-700 rounded-full"
+        
+        {/* Action buttons on the right side of input */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+          {/* Clear button when there's text */}
+          {searchQuery && !voiceMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-8 w-8 rounded-full p-0 hover:bg-gray-100"
+              onClick={() => setSearchQuery("")}
             >
-              <Paperclip size={12} />
-              <span className="truncate max-w-[150px]">{file.name}</span>
-              {onRemoveAttachment && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0 hover:bg-primary/20 rounded-full"
-                  onClick={() => onRemoveAttachment(index)}
-                >
-                  <span className="sr-only">Remove {file.name}</span>
-                  <span aria-hidden="true">&times;</span>
-                </Button>
+              <X className="h-4 w-4 text-gray-500" />
+            </Button>
+          )}
+          
+          {/* In voice mode, show stop reading button when applicable */}
+          {voiceMode && isReadingResponse && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="rounded-full bg-red-50 text-red-600 border-red-200 hover:bg-red-100 h-8 px-3 py-0"
+              onClick={stopReading}
+            >
+              <X className="h-3 w-3 mr-1" />
+              Stop AI
+            </Button>
+          )}
+          
+          {/* Voice mode - manual microphone control */}
+          {voiceMode && !isReadingResponse && !isTranscribing && (
+            <Button
+              variant={isRecording ? "destructive" : "outline"}
+              size="sm"
+              type="button"
+              className={`rounded-full h-8 px-3 py-0 ${
+                isRecording 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+              }`}
+              onClick={handleMicClick}
+            >
+              {isRecording ? (
+                <>
+                  <X className="h-3 w-3 mr-1" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Mic className="h-3 w-3 mr-1" />
+                  Speak
+                </>
               )}
-            </span>
-          ))}
+            </Button>
+          )}
+          
+          {/* Recording indicator - small visual cue */}
+          {voiceMode && isRecording && (
+            <div className="mr-2 flex items-center">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse mr-1.5"></span>
+              <span className="text-xs text-red-500 font-medium">{formatDuration(recordingDuration)}</span>
+            </div>
+          )}
+          
+          {/* Search/Upload button (disabled in voice mode) */}
+          <div className="relative inline-flex items-center">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="rounded-full h-10 min-w-28 pr-3 pl-4 py-0 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white flex items-center justify-between"
+              onClick={onSearch}
+              disabled={isLoading || (!searchQuery.trim() && !isRecording) || voiceMode}
+            >
+              <span className="flex items-center gap-1">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                <span className="ml-1">Search</span>
+              </span>
+              
+              <span className="h-6 w-px bg-purple-400 mx-2"></span>
+              
+              <label className="cursor-pointer relative inline-flex items-center">
+                <input
+                  type="file"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                  onChange={e => {
+                    if (handleAttachmentUpload && handleFileUpload) {
+                      handleAttachmentUpload(e);
+                      handleFileUpload(e);
+                    }
+                  }}
+                  accept=".pdf,.doc,.docx,.txt,.csv,image/*"
+                  multiple
+                  onClick={e => e.stopPropagation()}
+                  disabled={voiceMode}
+                />
+                <Upload className="h-4 w-4 text-white" />
+              </label>
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
-});
-
-VoiceSearchInput.displayName = "VoiceSearchInput";
+};

@@ -10,7 +10,7 @@ export interface ChatVisualization {
   type: 'table' | 'chart';
   data: Record<string, any>[];
   headers?: string[];  // For tables
-  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed' | 'image';  // Updated to include 'image'
+  chartType?: 'line' | 'bar' | 'area' | 'radar' | 'composed';  // For charts
   xKey?: string;  // For charts
   yKeys?: string[];  // For charts
   height?: number;  // For charts
@@ -18,8 +18,6 @@ export interface ChatVisualization {
   subTitle?: string;
   userSettings?: Record<string, any>;  // For storing user customizations
   originalSettings?: Record<string, any>;  // For storing original settings
-  imageData?: string; // Base64 encoded image data for image charts
-  [key: string]: any; // Index signature to make it compatible with Json type
 }
 
 export interface ChatMessage {
