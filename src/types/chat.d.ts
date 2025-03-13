@@ -9,10 +9,14 @@ export interface ChatVisualization {
   type: 'table' | 'chart';
   data: Record<string, any>[];
   headers?: string[];  // For tables
-  chartType?: 'line' | 'bar';  // For charts
+  chartType?: 'line' | 'bar' | 'radar' | 'area' | 'composed';  // For charts
   xKey?: string;  // For charts
   yKeys?: string[];  // For charts
   height?: number;  // For charts
+  title?: string;  // Title for either
+  subTitle?: string;  // Subtitle for chart
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green';  // Color scheme for chart
+  compact?: boolean;  // For tables
 }
 
 export interface ChatMessage {

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -16,9 +16,45 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   className
 }) => {
+  // Effect to handle mermaid diagrams if any
+  useEffect(() => {
+    const diagrams = document.querySelectorAll('.mermaid-diagram');
+    if (diagrams.length > 0 && typeof window !== 'undefined') {
+      // Dynamically import mermaid if needed
+      import('mermaid').then((mermaid) => {
+        mermaid.default.initialize({
+          startOnLoad: true,
+          theme: 'neutral',
+          securityLevel: 'loose'
+        });
+        
+        diagrams.forEach((diagram) => {
+          const diagramId = diagram.getAttribute('data-diagram-id');
+          const diagramContent = decodeURIComponent(diagram.getAttribute('data-diagram-content') || '');
+          
+          try {
+            mermaid.default.render(diagramId || 'mermaid', diagramContent).then(({ svg }) => {
+              diagram.innerHTML = svg;
+            });
+          } catch (error) {
+            console.error('Failed to render mermaid diagram:', error);
+          }
+        });
+      }).catch((error) => {
+        console.error('Failed to load mermaid:', error);
+      });
+    }
+    
+    // Handle math equations if needed
+    const mathElements = document.querySelectorAll('.math-block, .math-inline');
+    if (mathElements.length > 0 && typeof window !== 'undefined') {
+      // You can integrate with KaTeX or MathJax if needed
+    }
+  }, [content]);
+
   return (
     <ReactMarkdown
-      className={cn("prose prose-sm max-w-none prose-headings:font-bold prose-headings:text-gray-900", className)}
+      className={cn("prose prose-sm max-w-none dark:prose-invert", className)}
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw]}
       components={{
@@ -75,6 +111,20 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           <blockquote className="border-l-4 border-gray-200 pl-4 py-1 my-3 text-gray-600 italic" {...props} />
         ),
 
+        // Images with responsive sizing
+        img: ({ node, ...props }) => (
+          <img
+            className="max-w-full h-auto rounded-md my-4"
+            loading="lazy"
+            {...props}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.onerror = null;
+              target.src = '/placeholder.svg';
+            }}
+          />
+        ),
+
         // Tables
         table: ({ node, ...props }) => (
           <div className="overflow-x-auto my-4">
@@ -96,6 +146,25 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         sup: ({ node, ...props }) => (
           <sup className="text-xs text-blue-600" {...props} />
         ),
+        
+        // Handle divs for special components like mermaid diagrams
+        div: ({ node, className, ...props }) => {
+          if (className?.includes('mermaid-diagram')) {
+            return <div className="my-4 overflow-x-auto bg-gray-50 p-4 rounded-md" {...props} />;
+          }
+          if (className?.includes('math-block')) {
+            return <div className="my-4 text-center py-2 bg-gray-50 rounded-md" {...props} />;
+          }
+          return <div {...props} />;
+        },
+        
+        // Handle spans for math inline
+        span: ({ node, className, ...props }) => {
+          if (className?.includes('math-inline')) {
+            return <span className="px-1 bg-gray-50 rounded" {...props} />;
+          }
+          return <span {...props} />;
+        }
       }}
     >
       {content}

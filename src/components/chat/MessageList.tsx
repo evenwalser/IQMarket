@@ -28,7 +28,10 @@ export const MessageList = ({ messages }: MessageListProps) => {
           <div className="mt-4 overflow-x-auto">
             <DataTable 
               data={visualization.data} 
-              headers={visualization.headers} 
+              headers={visualization.headers}
+              title={visualization.title}
+              sortable={true}
+              compact={visualization.compact}
             />
           </div>
         );
@@ -37,10 +40,13 @@ export const MessageList = ({ messages }: MessageListProps) => {
           <div className="mt-4">
             <DataChart 
               data={visualization.data}
-              type={visualization.chartType}
-              xKey={visualization.xKey}
-              yKeys={visualization.yKeys}
+              type={visualization.chartType || 'bar'}
+              xKey={visualization.xKey || 'x'}
+              yKeys={visualization.yKeys || ['y']}
               height={visualization.height || 300}
+              title={visualization.title}
+              subTitle={visualization.subTitle}
+              colorScheme={visualization.colorScheme || 'default'}
             />
           </div>
         );
@@ -61,10 +67,14 @@ export const MessageList = ({ messages }: MessageListProps) => {
   return (
     <>
       {messages.map((msg, index) => {
-        // Process AI responses through the preprocessor
-        const { processedContent } = msg.role !== 'user' ? 
-          preprocessContent(msg.content) : 
-          { processedContent: msg.content };
+        // Process all messages through the preprocessor to handle formatting and extract visualizations
+        const { processedContent, extractedVisualizations } = preprocessContent(msg.content);
+        
+        // Combine explicit visualizations from the message with extracted ones
+        const allVisualizations = [
+          ...(msg.visualizations || []),
+          ...extractedVisualizations
+        ];
           
         return (
           <div
@@ -83,7 +93,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
               ) : (
                 <MarkdownRenderer content={processedContent} />
               )}
-              {msg.visualizations?.map((viz, i) => (
+              {allVisualizations?.map((viz, i) => (
                 <div key={i} className="mt-4 border-t border-gray-100 pt-3">
                   {renderVisualization(viz)}
                 </div>
