@@ -44,11 +44,11 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
 
   const getFileColorClass = (fileType: string) => {
     if (fileType.startsWith('image/')) {
-      return "bg-blue-50 text-blue-600";
+      return "bg-blue-100 text-blue-600";
     } else if (fileType.includes('pdf')) {
-      return "bg-red-50 text-red-600";
+      return "bg-red-100 text-red-600";
     } else {
-      return "bg-green-50 text-green-600";
+      return "bg-green-100 text-green-600";
     }
   };
 
@@ -58,30 +58,42 @@ export const AttachmentList = ({ attachments, onRemove }: AttachmentListProps) =
         {attachments.map((file, index) => (
           <div 
             key={index} 
-            className="relative flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm transition-shadow hover:shadow-md group"
+            className="relative group"
           >
-            {/* Container for icon + filename + remove button */}
-            <div className="flex items-center p-2">
-              {/* Colored icon circle */}
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mr-2 ${getFileColorClass(file.type)}`}>
-                {getFileIcon(file.type)}
-              </div>
+            {/* Square with rounded edges */}
+            <div className="w-32 h-32 bg-white rounded-xl shadow-md border border-gray-200 flex flex-col items-center justify-center overflow-hidden p-2">
+              {/* Preview for images, icons for other files */}
+              {previews[index] ? (
+                <div className="w-full h-16 flex items-center justify-center mb-2">
+                  <img 
+                    src={previews[index]!} 
+                    alt={file.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className={`w-16 h-16 ${getFileColorClass(file.type)} rounded-lg flex items-center justify-center mb-2`}>
+                  {getFileIcon(file.type)}
+                </div>
+              )}
               
               {/* File name */}
-              <span className="text-sm font-medium text-gray-700 mr-1 truncate max-w-[120px]">
-                {file.name}
-              </span>
-              
-              {/* Remove Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 ml-1 rounded-full hover:bg-gray-100"
-                onClick={() => onRemove(index)}
-              >
-                <X className="h-3.5 w-3.5 text-gray-500" />
-              </Button>
+              <div className="w-full px-2">
+                <p className="text-xs font-medium text-gray-700 text-center truncate">
+                  {file.name}
+                </p>
+              </div>
             </div>
+            
+            {/* Remove Button - positioned on the top right */}
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-6 w-6 p-0 absolute -top-2 -right-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onRemove(index)}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
           </div>
         ))}
       </div>
