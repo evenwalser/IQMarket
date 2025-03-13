@@ -1,10 +1,10 @@
 
 import { useState, useRef, useEffect } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2, Volume2, X, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import DataOrb from "@/components/DataOrb";
+import { Textarea } from "@/components/ui/textarea";
 
 interface VoiceSearchInputProps {
   searchQuery: string;
@@ -20,7 +20,7 @@ interface VoiceSearchInputProps {
   isReadingResponse: boolean;
   stopReading: () => void;
   orbState: "idle" | "user" | "ai";
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
   handleAttachmentUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleFileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -55,6 +55,14 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       return () => clearTimeout(timer);
     }
   }, [voiceMode, isRecording, isTranscribing, isReadingResponse, handleMicClick]);
+
+  // Auto-adjust textarea height based on content
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [searchQuery, inputRef]);
 
   const getStatusText = () => {
     if (isRecording) return "Listening... Speak now and pause when done";
@@ -124,20 +132,26 @@ export const VoiceSearchInput: React.FC<VoiceSearchInputProps> = ({
       </div>
       
       <div className="relative flex-1 bg-white shadow-lg rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-all">
-        <Input 
+        <Textarea 
           ref={inputRef}
-          type="text" 
           placeholder={getStatusText()} 
-          className={`w-full h-14 px-5 rounded-xl border-0 focus:ring-0 transition-colors text-gray-900 placeholder:text-gray-500 text-center ${voiceMode ? 'bg-gray-50' : ''}`}
+          className={`w-full px-5 py-4 rounded-xl border-0 focus:ring-0 transition-colors 
+                      text-gray-900 placeholder:text-gray-500 text-center min-h-[56px] max-h-[200px] 
+                      resize-none overflow-hidden ${voiceMode ? 'bg-gray-50' : ''}`}
           value={searchQuery} 
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={e => {
+            setSearchQuery(e.target.value);
+          }}
           onKeyDown={e => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
               onSearch();
             }
           }}
+          rows={1}
           readOnly={voiceMode}
           disabled={voiceMode || isLoading}
+          style={{ lineHeight: '1.5' }}
         />
         
         {voiceMode && (
