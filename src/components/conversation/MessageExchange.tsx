@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 import { DataTable } from "@/components/chat/visualizations/DataTable";
 import { DataChart } from "@/components/chat/visualizations/DataChart";
+import type { ChatVisualization } from "@/types/chat";
 
 interface MessageExchangeProps {
   id: string;
@@ -10,16 +11,7 @@ interface MessageExchangeProps {
   response: string;
   isCurrentlySpeaking: boolean;
   toggleSpeakResponse: (response: string, conversationId: string) => void;
-  visualizations?: ReadonlyArray<{
-    type: string;
-    data: any[];
-    headers?: string[];
-    chartType?: 'bar' | 'line';
-    xKey?: string;
-    yKeys?: string[];
-    height?: number;
-    id?: string;
-  }>;
+  visualizations?: ReadonlyArray<ChatVisualization>;
   assistantType: string;
 }
 
