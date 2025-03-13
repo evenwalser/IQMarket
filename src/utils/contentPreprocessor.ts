@@ -29,12 +29,11 @@ export const preprocessContent = (content: string): {
   });
   
   // Clean up citation markers with a more markdown-friendly format
+  // The format is 【n:m†source】 where n and m are numbers
   processedContent = processedContent.replace(
     /【(\d+):(\d+)†source】/g, 
-    '[Source $1.$2]'
+    '<sup class="citation">[<a href="#citation-$1-$2" title="Source Reference $1.$2" class="citation-link">$1.$2</a>]</sup>'
   );
-  
-  // Handle any other special formatting needs
   
   return { processedContent, extractedVisualizations };
 };

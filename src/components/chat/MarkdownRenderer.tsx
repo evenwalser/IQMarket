@@ -31,8 +31,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         p: ({ node, ...props }) => <p className="my-2 text-gray-700" {...props} />,
         
         // List items with proper styling
-        ul: ({ node, ...props }) => <ul className="my-3 pl-6 space-y-1" {...props} />,
-        ol: ({ node, ...props }) => <ol className="my-3 pl-6 space-y-1" {...props} />,
+        ul: ({ node, ...props }) => <ul className="my-3 pl-6 space-y-1 list-disc" {...props} />,
+        ol: ({ node, ...props }) => <ol className="my-3 pl-6 space-y-1 list-decimal" {...props} />,
         li: ({ node, ...props }) => <li className="text-gray-700" {...props} />,
         
         // Emphasis and strong text
@@ -91,6 +91,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           />
         ),
         td: ({ node, ...props }) => <td className="px-4 py-3 text-sm text-gray-700" {...props} />,
+        
+        // Superscript with styling for citations
+        sup: ({ node, ...props }) => (
+          <sup className="text-xs text-blue-600" {...props} />
+        ),
       }}
     >
       {content}

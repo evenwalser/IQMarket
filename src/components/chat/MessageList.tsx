@@ -60,51 +60,58 @@ export const MessageList = ({ messages }: MessageListProps) => {
 
   return (
     <>
-      {messages.map((msg, index) => (
-        <div
-          key={index}
-          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
-        >
+      {messages.map((msg, index) => {
+        // Process AI responses through the preprocessor
+        const { processedContent } = msg.role !== 'user' ? 
+          preprocessContent(msg.content) : 
+          { processedContent: msg.content };
+          
+        return (
           <div
-            className={`max-w-[85%] px-5 py-3 rounded-lg shadow-sm ${
-              msg.role === 'user'
-                ? 'bg-blue-500 text-white'
-                : 'bg-white border border-gray-200 text-gray-900'
-            }`}
+            key={index}
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}
           >
-            {msg.role === 'user' ? (
-              <div className="whitespace-pre-wrap text-white">{msg.content}</div>
-            ) : (
-              <MarkdownRenderer content={msg.content} />
-            )}
-            {msg.visualizations?.map((viz, i) => (
-              <div key={i} className="mt-4 border-t border-gray-100 pt-3">
-                {renderVisualization(viz)}
-              </div>
-            ))}
-            {msg.attachments?.map((attachment, i) => (
-              <div key={i} className="mt-3 border-t border-gray-100 pt-3">
-                {attachment.type === 'image' ? (
-                  <img 
-                    src={attachment.url} 
-                    alt={attachment.name}
-                    className="max-w-full rounded-md"
-                  />
-                ) : (
-                  <a 
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm underline text-blue-600 hover:text-blue-800"
-                  >
-                    {attachment.name}
-                  </a>
-                )}
-              </div>
-            ))}
+            <div
+              className={`max-w-[85%] px-5 py-3 rounded-lg shadow-sm ${
+                msg.role === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white border border-gray-200 text-gray-900'
+              }`}
+            >
+              {msg.role === 'user' ? (
+                <div className="whitespace-pre-wrap text-white">{processedContent}</div>
+              ) : (
+                <MarkdownRenderer content={processedContent} />
+              )}
+              {msg.visualizations?.map((viz, i) => (
+                <div key={i} className="mt-4 border-t border-gray-100 pt-3">
+                  {renderVisualization(viz)}
+                </div>
+              ))}
+              {msg.attachments?.map((attachment, i) => (
+                <div key={i} className="mt-3 border-t border-gray-100 pt-3">
+                  {attachment.type === 'image' ? (
+                    <img 
+                      src={attachment.url} 
+                      alt={attachment.name}
+                      className="max-w-full rounded-md"
+                    />
+                  ) : (
+                    <a 
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm underline text-blue-600 hover:text-blue-800"
+                    >
+                      {attachment.name}
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <div ref={messagesEndRef} />
     </>
   );
