@@ -34,6 +34,7 @@ const Index = () => {
   const [sessionId, setSessionId] = useState<string>("");
   const [voiceMode, setVoiceMode] = useState<boolean>(false);
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
+  const pageTopRef = useRef<HTMLDivElement>(null);
   const { speakText } = useTextToSpeech();
 
   useEffect(() => {
@@ -142,12 +143,11 @@ const Index = () => {
         result.push(conversation);
       }
       
-      // Set thread ID to the most recent thread if available
-      if (result.length > 0) {
-        setThreadId(result[0].thread_id);
-      }
-      
       setConversations(result);
+      
+      // Scroll to top of page when conversations are loaded
+      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Error loading conversations:', error);
       toast.error('Failed to load conversation history');
@@ -218,11 +218,9 @@ const Index = () => {
   };
 
   const processAssistantResponse = (data: any): JsonObject[] => {
-    // Set thread ID for conversation continuity
-    if (data.thread_id) {
-      setThreadId(data.thread_id);
-    }
-
+    // Don't automatically set thread ID for conversation continuity anymore
+    // Instead, a new thread will be created for each assistant type
+    
     // Early return for invalid data
     if (!data.visualizations || !Array.isArray(data.visualizations)) {
       return [];
@@ -278,13 +276,15 @@ const Index = () => {
         structuredOutput: structuredOutput
       });
 
+      // For new conversations, don't pass threadId
+      // This ensures each assistant type gets its own thread
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: searchQuery,
           assistantType: selectedMode,
           attachments: formattedAttachments,
-          structuredOutput: structuredOutput,
-          threadId: threadId
+          structuredOutput: structuredOutput
+          // Removed threadId parameter to create a new thread
         }
       });
       
@@ -325,6 +325,10 @@ const Index = () => {
         setLatestResponse(data.response);
         
         toast.success("Response received!");
+        
+        // Scroll to top when a new conversation is created
+        pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       console.error("Full error details:", error);
@@ -393,6 +397,10 @@ const Index = () => {
       }
       
       toast.success("Reply sent!");
+      
+      // Scroll to top when a new reply is received
+      pageTopRef.current?.scrollIntoView({ behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Error sending reply:", error);
       toast.error("Failed to send reply. Please try again.");
@@ -419,6 +427,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
+      <div ref={pageTopRef} /> {/* Reference for scrolling to top of page */}
       <Header />
 
       <main className="pt-0">
