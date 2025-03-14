@@ -42,7 +42,8 @@ export const extractChartDescriptionsFromHeaders = (
   const extractedVisualizations: ChatVisualization[] = [];
   
   // Match headers that have chart-related words (Bar Chart, Line Chart, etc.)
-  const chartHeaderRegex = /(#{1,3})\s+(.+?(Bar Chart|Line Chart|Chart|Graph|Comparison|Visualization).+?)(?:\n|$)([\s\S]*?)(?=#{1,3}|$)/gi;
+  // Enhanced to also match "Point X:" headers with visualization descriptions
+  const chartHeaderRegex = /(#{1,3}|Point \d+:)\s+(.+?(Bar Chart|Line Chart|Chart|Graph|Comparison|Visualization|Forecast|Projection).+?)(?:\n|$)([\s\S]*?)(?=#{1,3}|Point \d+:|Conclusion:|$)/gi;
   
   let match;
   let processedContent = content;
@@ -86,6 +87,56 @@ export const extractChartDescriptionsFromHeaders = (
       // Replace the header and description with a reference to the visualization
       const replacementText = `\n\n${headerMarks} ${headerTitle}\n\n*Visualization #${extractedVisualizations.length}*\n\n${description}`;
       processedContent = processedContent.replace(fullMatch, replacementText);
+    }
+  }
+  
+  // Also check specifically for the forecasted outcomes section
+  const forecastRegex = /(#{1,3}|Conclusion:|Forecasted Outcomes:|Recommendations:)\s+(.+?)(?:\n|$)([\s\S]*?)(?=#{1,3}|$)/gi;
+  forecastRegex.lastIndex = 0;
+  
+  while ((match = forecastRegex.exec(content)) !== null) {
+    const [fullMatch, headerMarks, headerTitle, description] = match;
+    
+    // Skip if there's already a visualization reference
+    if (fullMatch.includes('*Visualization #')) {
+      continue;
+    }
+    
+    // Look for forecast-related terms
+    if (headerTitle.toLowerCase().includes('forecast') || 
+        headerTitle.toLowerCase().includes('outcome') || 
+        headerTitle.toLowerCase().includes('recommendation') ||
+        headerTitle.toLowerCase().includes('projection')) {
+      
+      console.log(`Found forecast section: ${headerTitle}`);
+      
+      // Parse metrics from the description
+      const metrics = extractMetricsFromDescription(description);
+      
+      if (metrics.length > 0) {
+        // Generate sample data based on the metrics found
+        const data = generateSampleDataFromMetrics(metrics, headerTitle);
+        
+        // Create a chart visualization
+        const vizId = crypto.randomUUID();
+        const visualization: ChatVisualization = {
+          id: vizId,
+          type: 'chart',
+          chartType: 'composed', // Best for comparing current vs. projected values
+          title: headerTitle,
+          subTitle: "Projected outcomes based on recommendations",
+          data,
+          xKey: 'category',
+          yKeys: ['current', 'projected'],
+          colorScheme: 'performance'
+        };
+        
+        extractedVisualizations.push(visualization);
+        
+        // Replace the header and description with a reference to the visualization
+        const replacementText = `\n\n${headerMarks} ${headerTitle}\n\n*Visualization #${extractedVisualizations.length}*\n\n${description}`;
+        processedContent = processedContent.replace(fullMatch, replacementText);
+      }
     }
   }
   

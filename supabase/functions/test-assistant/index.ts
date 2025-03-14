@@ -47,7 +47,7 @@ Please extract these metrics and list them as raw values without any additional 
       throw new Error(`Failed to create thread: ${JSON.stringify(threadData)}`);
     }
 
-    // Step 2: Create a run to process the message
+    // Step 2: Create a run to process the message with specific instructions for the benchmarks format
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
       method: "POST",
       headers: {
@@ -57,7 +57,25 @@ Please extract these metrics and list them as raw values without any additional 
       },
       body: JSON.stringify({
         assistant_id: assistantId,
-        model: "gpt-4o-mini"  // Explicitly specify the model
+        model: "gpt-4o-mini",  // Explicitly specify the model
+        instructions: `Always structure your responses in the following format for the Benchmarks assistant:
+
+1. Restate the question/request from the user
+2. Opening statement that frames the analysis
+3. Point 1: Concise text explanation followed by relevant data visualization (chart, graph, or table)
+4. Point 2: Concise text explanation followed by relevant data visualization
+5. Continue with additional points as needed, each with text and visual data
+6. Conclusion with clear, actionable recommendations
+7. Data visualization showing forecasted outcomes based on recommendations
+
+For all data visualizations:
+- Use JSON format that can be rendered as charts or tables
+- For charts, specify: type (bar, line, area, radar), title, data, and color scheme
+- For tables, include headers and formatted data
+- Use color schemes appropriate to the data (financial, retention, performance, operational)
+- Present data in comparative format where possible (current vs. benchmark, before vs. after, etc.)
+
+Keep explanatory text concise and focused on insights. Let the visualizations do most of the communication.`
       })
     });
 
