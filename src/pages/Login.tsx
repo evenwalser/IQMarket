@@ -33,7 +33,10 @@ const Login = () => {
 
   // Mock data for the blurred background
   const mockProps = {
-    handleSearch: () => {},
+    handleSearch: async () => {
+      // Mock async function that returns a Promise
+      return Promise.resolve();
+    },
     isLoading: false,
     selectedMode: "assistant" as const,
     setSelectedMode: () => {},
