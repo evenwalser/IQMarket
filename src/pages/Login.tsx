@@ -32,18 +32,18 @@ const Login = () => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center">
-      {/* Blurred background */}
-      <div className="absolute inset-0 backdrop-blur-md bg-background/50" />
+      {/* Blurred background that shows content behind it */}
+      <div className="absolute inset-0 backdrop-blur-md bg-background/30" />
       
       {/* Login card */}
-      <Card className="w-full max-w-md z-10 shadow-lg border-2">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
+      <Card className="w-full max-w-sm z-10 shadow-lg border border-gray-200 bg-white/90 backdrop-filter backdrop-blur-sm">
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-xl font-semibold text-center bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Login</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <label htmlFor="username" className="text-sm font-medium text-gray-700">
                 Username
               </label>
               <Input
@@ -52,10 +52,11 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                className="h-9"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+            <div className="space-y-1">
+              <label htmlFor="password" className="text-sm font-medium text-gray-700">
                 Password
               </label>
               <Input
@@ -65,11 +66,14 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-9"
               />
             </div>
-            <Button type="submit" className="w-full">
-              Login
-            </Button>
+            <div className="pt-2">
+              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-200">
+                Sign In
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
