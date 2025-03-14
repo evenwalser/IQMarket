@@ -24,6 +24,8 @@ export const preprocessContent = (content: string, visualizations?: ChatVisualiz
     };
   }
 
+  console.log("Processing content with visualizations:", visualizations?.length || 0);
+
   // Apply comprehensive markdown cleaning
   let processedContent = cleanMarkdownContent(content);
   
@@ -55,6 +57,7 @@ export const preprocessContent = (content: string, visualizations?: ChatVisualiz
   
   // Process direct visualizations from the API
   if (visualizations && visualizations.length > 0) {
+    console.log("Processing direct visualizations:", visualizations);
     const directVisualizationsResult = extractDirectVisualizations(processedContent, visualizations);
     processedContent = directVisualizationsResult.processedContent;
     extractedVisualizations = [...extractedVisualizations, ...directVisualizationsResult.extractedVisualizations];

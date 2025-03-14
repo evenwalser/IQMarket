@@ -155,6 +155,8 @@ export const extractDirectVisualizations = (
   if (!visualizations || visualizations.length === 0) {
     return { processedContent: content, extractedVisualizations };
   }
+
+  console.log("Processing direct visualizations:", visualizations.length);
   
   // Process each visualization to ensure it has the correct format and data is normalized
   visualizations.forEach(viz => {
@@ -163,55 +165,35 @@ export const extractDirectVisualizations = (
         ...viz,
         data: normalizeChartData(viz.data),
         chartType: viz.chartType || determineChartType(viz.title || '', viz.subTitle || ''),
-        colorScheme: viz.colorScheme || determineColorScheme(viz.title, viz.xKey || '')
+        colorScheme: viz.colorScheme || determineColorScheme(viz.title || '', viz.xKey || '')
       };
       extractedVisualizations.push(enhancedViz);
-    } else {
+    } else if (viz.type === 'table') {
       extractedVisualizations.push(viz);
     }
   });
   
   // Look for existing visualization references
   const referenceRegex = /\*Visualization #(\d+)\*/g;
-  let hasReferences = referenceRegex.test(content);
+  let processedContent = content;
+  const hasReferences = referenceRegex.test(content);
   
   // If no references found, add them to the content at appropriate places
   if (!hasReferences && extractedVisualizations.length > 0) {
-    let processedContent = content;
-    const sections = processedContent.split(/#{1,3}\s+/);
+    const sections = processedContent.split(/(#{1,3}\s+.+\n)/);
     
     if (sections.length > 1) {
       // Add visualizations after relevant sections
+      let newContent = '';
       let vizIndex = 0;
-      let newContent = sections[0]; // Keep the content before the first header
       
-      for (let i = 1; i < sections.length && vizIndex < extractedVisualizations.length; i++) {
-        const section = sections[i];
-        const sectionTitle = section.split('\n')[0];
+      for (let i = 0; i < sections.length; i++) {
+        newContent += sections[i];
         
-        // Add the section header and content
-        newContent += `### ${sectionTitle}\n${section.substring(sectionTitle.length)}`;
-        
-        // Check if this is a good place for a visualization based on keywords
-        const viz = extractedVisualizations[vizIndex];
-        const sectionLower = section.toLowerCase();
-        const vizTitleLower = (viz.title || '').toLowerCase();
-        
-        if (viz.type === 'chart') {
-          // Check for keyword matches between section and visualization
-          const keywords = [
-            'revenue', 'growth', 'comparison', 'benchmark', 'metric', 
-            'performance', 'trend', 'forecast', 'projection', 'analysis'
-          ];
-          
-          const keywordMatch = keywords.some(keyword => 
-            sectionLower.includes(keyword) && vizTitleLower.includes(keyword)
-          );
-          
-          if (keywordMatch || i === Math.floor(sections.length / 2)) {
-            newContent += `\n\n*Visualization #${vizIndex + 1}*\n\n`;
-            vizIndex++;
-          }
+        // After a header section, try to insert a visualization if available
+        if (i % 2 === 1 && vizIndex < extractedVisualizations.length) {
+          newContent += `\n*Visualization #${vizIndex + 1}*\n\n`;
+          vizIndex++;
         }
       }
       
@@ -224,15 +206,11 @@ export const extractDirectVisualizations = (
       return { processedContent: newContent, extractedVisualizations };
     }
     
-    // For simpler content without sections, add visualizations at the end
-    let appendedContent = processedContent;
+    // For content without headers, add visualizations at the end
     extractedVisualizations.forEach((_, index) => {
-      appendedContent += `\n\n*Visualization #${index + 1}*\n\n`;
+      processedContent += `\n\n*Visualization #${index + 1}*\n\n`;
     });
-    
-    return { processedContent: appendedContent, extractedVisualizations };
   }
   
-  // If references already exist, just return the content as is
-  return { processedContent: content, extractedVisualizations };
+  return { processedContent, extractedVisualizations };
 };

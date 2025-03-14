@@ -45,23 +45,27 @@ export const ChatInterface = () => {
         setThreadId(data.thread_id);
       }
 
-      // Process the assistant's response content
+      // Check if we have any visualizations directly from the API
+      const apiVisualizations = data.visualizations || [];
+      console.log("API provided visualizations:", apiVisualizations);
+
+      // Process the assistant's response content - pass visualizations to preprocessor
       const { processedContent, extractedVisualizations } = preprocessContent(
         data.response, 
-        data.visualizations
+        apiVisualizations
       );
 
-      // Combine extracted visualizations with any that came directly from the API
+      console.log("Preprocessor extracted visualizations:", extractedVisualizations);
+
+      // Combine all visualizations, prioritizing extracted ones if they have the same ID
       const allVisualizations = [
-        ...(data.visualizations || []),
-        ...extractedVisualizations
-      ].filter((viz, index, self) => 
-        // Remove duplicates based on id
-        index === self.findIndex((v) => v.id === viz.id)
-      );
+        ...extractedVisualizations,
+        ...apiVisualizations.filter(apiViz => 
+          !extractedVisualizations.some(extractedViz => extractedViz.id === apiViz.id)
+        )
+      ];
 
-      console.log("Extracted visualizations:", extractedVisualizations);
-      console.log("All visualizations:", allVisualizations);
+      console.log("Final combined visualizations:", allVisualizations);
 
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
