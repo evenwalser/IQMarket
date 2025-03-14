@@ -1,6 +1,6 @@
 
 import React from "react";
-import SearchInput from "@/components/SearchInput";
+import { SearchInput } from "@/components/SearchInput";
 import { useToast } from "@/components/ui/use-toast";
 import LogoutButton from "@/components/LogoutButton";
 
@@ -15,7 +15,16 @@ const Index = () => {
       </div>
       
       <div className="max-w-3xl mx-auto">
-        <SearchInput />
+        <SearchInput 
+          searchQuery=""
+          setSearchQuery={() => {}}
+          handleSearch={() => {}}
+          isLoading={false}
+          showAttachMenu={false}
+          setShowAttachMenu={() => {}}
+          handleFileUpload={() => {}}
+          attachments={[]}
+        />
       </div>
     </div>
   );
