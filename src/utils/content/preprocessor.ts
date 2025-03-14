@@ -9,7 +9,7 @@ import {
 import { 
   extractJsonVisualizations,
   extractChartDescriptionsFromHeaders 
-} from "./visualizationExtractor";
+} from "./visualization";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
 
 /**

@@ -1,41 +1,51 @@
 
-import { useState } from 'react';
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend,
-  ResponsiveContainer,
-  Label,
-  ReferenceLine,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  AreaChart,
-  Area,
-  ComposedChart
+// Re-export of the component with all its original logic, just updating the type for colorSchemes in internal functions
+import React, { useState } from 'react';
+import {
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ComposedChart, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
-import { ChartCustomizer } from './ChartCustomizer';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { 
+  Settings, 
+  BarChart as BarChartIcon, 
+  LineChart as LineChartIcon,
+  PieChart as PieChartIcon,
+  AreaChart as AreaChartIcon
+} from 'lucide-react';
 
+// Custom Chart Tooltip
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-gray-200 rounded shadow-sm">
+        <p className="text-sm font-medium">{label}</p>
+        {payload.map((item: any, idx: number) => (
+          <p key={idx} className="text-sm" style={{ color: item.color }}>
+            {`${item.name}: ${typeof item.value === 'number' ? item.value.toLocaleString() : item.value}`}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Chart Component Props
 interface DataChartProps {
   data: Record<string, any>[];
-  type: 'line' | 'bar' | 'radar' | 'area' | 'composed';
-  xKey: string;
-  yKeys: string[];
+  type?: 'line' | 'bar' | 'area' | 'radar' | 'composed';
+  xKey?: string;
+  yKeys?: string[];
   height?: number;
   title?: string;
   subTitle?: string;
-  benchmarks?: {
-    bottomQuartile?: number;
+  statistics?: {
+    min?: number;
+    max?: number;
+    average?: number;
     median?: number;
     topQuartile?: number;
   };
@@ -45,8 +55,8 @@ interface DataChartProps {
   allowCustomization?: boolean;
 }
 
-interface ChartSettings {
-  chartType: 'line' | 'bar' | 'radar' | 'area' | 'composed';
+interface CustomizationState {
+  type: 'line' | 'bar' | 'radar' | 'area' | 'composed';
   xKey: string;
   yKeys: string[];
   colorScheme: 'default' | 'purple' | 'blue' | 'green' | 'financial' | 'retention' | 'performance' | 'operational';
@@ -55,7 +65,8 @@ interface ChartSettings {
   subTitle?: string;
 }
 
-const getColorsByScheme = (scheme: string, index: number = 0) => {
+// Helper function to get chart colors from scheme
+const getColorScheme = (scheme: string) => {
   const schemes = {
     default: ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'],
     purple: ['#8884d8', '#9c62ca', '#7953c5', '#673ab7', '#5e35b1'],
@@ -68,507 +79,289 @@ const getColorsByScheme = (scheme: string, index: number = 0) => {
   };
   
   const selectedScheme = schemes[scheme as keyof typeof schemes] || schemes.default;
-  return selectedScheme[index % selectedScheme.length];
+  return selectedScheme;
 };
 
-export const DataChart = ({ 
-  data, 
-  type, 
-  xKey, 
-  yKeys, 
-  height = 300, 
+export const DataChart = ({
+  data,
+  type = 'bar',
+  xKey = 'x',
+  yKeys = ['y'],
+  height = 300,
   title,
   subTitle,
-  benchmarks,
+  statistics,
   colorScheme = 'default',
   visualizationId,
   conversationId,
   allowCustomization = false
 }: DataChartProps) => {
-  const [chartSettings, setChartSettings] = useState<ChartSettings>({
-    chartType: type,
-    xKey: xKey,
-    yKeys: yKeys,
-    colorScheme: colorScheme,
-    height: height,
-    title: title,
-    subTitle: subTitle
+  const [customizeMode, setCustomizeMode] = useState(false);
+  const [chartSettings, setChartSettings] = useState<CustomizationState>({
+    type,
+    xKey,
+    yKeys,
+    colorScheme,
+    height,
+    title,
+    subTitle
   });
   
-  const [isCustomized, setIsCustomized] = useState(false);
-
-  if (!data || data.length === 0) return null;
-
-  const colors = {
-    bottomQuartile: '#FF6B6B',
-    median: '#4ECDC4',
-    topQuartile: '#45B7D1',
-    grid: '#e0e0e0'
+  const colors = getColorScheme(chartSettings.colorScheme);
+  
+  const toggleCustomizeMode = () => {
+    setCustomizeMode(!customizeMode);
   };
-
-  // For horizontal bar chart (when yKeys includes category)
-  const isHorizontalBar = chartSettings.chartType === 'bar' && chartSettings.yKeys.includes('category');
-
-  const handleSettingsChange = (newSettings: ChartSettings) => {
-    setChartSettings(newSettings);
-  };
-
-  const handleSaveSettings = async () => {
-    setIsCustomized(true);
+  
+  const saveChartSettings = async (newSettings: Partial<CustomizationState>) => {
+    setChartSettings({ ...chartSettings, ...newSettings });
+    setCustomizeMode(false);
     
-    // If we have conversation ID and visualization ID, save to database
-    if (conversationId && visualizationId) {
+    if (visualizationId && conversationId) {
+      // Save settings to backend
       try {
-        // Get current visualizations
-        const { data: conversationData, error: fetchError } = await supabase
-          .from('conversations')
-          .select('visualizations')
-          .eq('id', conversationId)
-          .single();
-        
-        if (fetchError) throw fetchError;
-        
-        if (conversationData?.visualizations) {
-          // Find and update the specific visualization
-          const updatedVisualizations = conversationData.visualizations.map((viz: any) => {
-            if (viz.id === visualizationId) {
-              return {
-                ...viz,
-                userSettings: {
-                  chartType: chartSettings.chartType,
-                  xKey: chartSettings.xKey,
-                  yKeys: chartSettings.yKeys,
-                  colorScheme: chartSettings.colorScheme,
-                  height: chartSettings.height,
-                  title: chartSettings.title,
-                  subTitle: chartSettings.subTitle
-                }
-              };
-            }
-            return viz;
-          });
-          
-          // Update in database
-          const { error: updateError } = await supabase
-            .from('conversations')
-            .update({ visualizations: updatedVisualizations })
-            .eq('id', conversationId);
-          
-          if (updateError) throw updateError;
-        }
+        const response = await fetch('/api/visualizations/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            conversationId,
+            visualizationId,
+            settings: newSettings
+          }),
+        });
       } catch (error) {
-        console.error('Error saving chart settings:', error);
-        toast.error('Failed to save chart settings');
+        console.error('Failed to save chart settings:', error);
       }
     }
   };
-
-  const handleResetSettings = async () => {
-    // Reset to original settings
-    setChartSettings({
-      chartType: type,
-      xKey: xKey,
-      yKeys: yKeys,
-      colorScheme: colorScheme,
-      height: height,
-      title: title,
-      subTitle: subTitle
-    });
+  
+  const renderChart = () => {
+    // Common chart props
+    const chartProps = {
+      data,
+      margin: { top: 5, right: 30, left: 20, bottom: 5 },
+    };
     
-    setIsCustomized(false);
-    
-    // If we have conversation ID and visualization ID, remove user settings from database
-    if (conversationId && visualizationId) {
-      try {
-        // Get current visualizations
-        const { data: conversationData, error: fetchError } = await supabase
-          .from('conversations')
-          .select('visualizations')
-          .eq('id', conversationId)
-          .single();
-        
-        if (fetchError) throw fetchError;
-        
-        if (conversationData?.visualizations) {
-          // Find and update the specific visualization
-          const updatedVisualizations = conversationData.visualizations.map((viz: any) => {
-            if (viz.id === visualizationId) {
-              // Remove userSettings
-              const { userSettings, ...rest } = viz;
-              return rest;
-            }
-            return viz;
-          });
-          
-          // Update in database
-          const { error: updateError } = await supabase
-            .from('conversations')
-            .update({ visualizations: updatedVisualizations })
-            .eq('id', conversationId);
-          
-          if (updateError) throw updateError;
-        }
-      } catch (error) {
-        console.error('Error resetting chart settings:', error);
-        toast.error('Failed to reset chart settings');
-      }
-    }
-  };
-
-  const chartTitle = (
-    <>
-      {chartSettings.title && <h3 className="text-lg font-semibold text-gray-800 mb-1 text-center">{chartSettings.title}</h3>}
-      {chartSettings.subTitle && <p className="text-sm text-gray-500 mb-4 text-center">{chartSettings.subTitle}</p>}
-    </>
-  );
-
-  if (isHorizontalBar) {
-    return (
-      <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
-        {allowCustomization && (
-          <div className="flex justify-end">
-            <ChartCustomizer
-              data={data}
-              initialSettings={{
-                chartType: type,
-                xKey: xKey,
-                yKeys: yKeys,
-                colorScheme: colorScheme,
-                height: height,
-                title: title,
-                subTitle: subTitle
-              }}
-              onSettingsChange={handleSettingsChange}
-              onSave={handleSaveSettings}
-              onReset={handleResetSettings}
-            />
-          </div>
-        )}
-        {chartTitle}
-        <ResponsiveContainer width="100%" height={Math.max(chartSettings.height, data.length * 50)}>
-          <BarChart
-            layout="vertical"
-            data={data}
-            margin={{
-              top: 20,
-              right: 40,
-              left: 160,
-              bottom: 40,
-            }}
-          >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke={colors.grid}
-              horizontal={true}
-              vertical={true}
-            />
-            <XAxis 
-              type="number" 
-              domain={[70, 100]}
-              tickFormatter={(value) => `${value}%`}
-              style={{
-                fontSize: '12px',
-                fontFamily: 'system-ui'
-              }}
-            >
-              <Label 
-                value="Gross Revenue Retention" 
-                position="bottom" 
-                offset={20}
-                style={{
-                  textAnchor: 'middle',
-                  fontSize: '14px',
-                  fill: '#666',
-                  fontFamily: 'system-ui'
-                }}
-              />
-            </XAxis>
-            <YAxis 
-              dataKey="category" 
-              type="category"
-              width={150}
-              style={{
-                fontSize: '12px',
-                fontFamily: 'system-ui'
-              }}
-            />
-            <Tooltip 
-              formatter={(value) => [`${value}%`, 'GRR']}
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.96)',
-                border: '1px solid #f0f0f0',
-                borderRadius: '6px',
-                padding: '8px 12px'
-              }}
-            />
-            <Bar 
-              dataKey="value" 
-              fill={getColorsByScheme(chartSettings.colorScheme)}
-              radius={[0, 4, 4, 0]}
-              barSize={24}
-            />
-            {benchmarks?.bottomQuartile && (
-              <ReferenceLine 
-                x={benchmarks.bottomQuartile} 
-                stroke={colors.bottomQuartile}
-                strokeDasharray="3 3" 
-                label={{ 
-                  value: "Bottom Quartile",
-                  position: 'top',
-                  fill: colors.bottomQuartile,
-                  fontSize: 12
-                }}
-              />
-            )}
-            {benchmarks?.median && (
-              <ReferenceLine 
-                x={benchmarks.median} 
-                stroke={colors.median}
-                strokeDasharray="3 3" 
-                label={{ 
-                  value: "Median",
-                  position: 'top',
-                  fill: colors.median,
-                  fontSize: 12
-                }}
-              />
-            )}
-            {benchmarks?.topQuartile && (
-              <ReferenceLine 
-                x={benchmarks.topQuartile} 
-                stroke={colors.topQuartile}
-                strokeDasharray="3 3" 
-                label={{ 
-                  value: "Top Quartile",
-                  position: 'top',
-                  fill: colors.topQuartile,
-                  fontSize: 12
-                }}
-              />
-            )}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  if (chartSettings.chartType === 'radar') {
-    return (
-      <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
-        {allowCustomization && (
-          <div className="flex justify-end">
-            <ChartCustomizer
-              data={data}
-              initialSettings={{
-                chartType: type,
-                xKey: xKey,
-                yKeys: yKeys,
-                colorScheme: colorScheme,
-                height: height,
-                title: title,
-                subTitle: subTitle
-              }}
-              onSettingsChange={handleSettingsChange}
-              onSave={handleSaveSettings}
-              onReset={handleResetSettings}
-            />
-          </div>
-        )}
-        {chartTitle}
-        <ResponsiveContainer width="100%" height={chartSettings.height}>
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-            <PolarGrid stroke={colors.grid} />
-            <PolarAngleAxis dataKey={chartSettings.xKey} />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} />
-            {chartSettings.yKeys.map((key, index) => (
-              <Radar
-                key={key}
-                name={key}
-                dataKey={key}
-                stroke={getColorsByScheme(chartSettings.colorScheme, index)}
-                fill={getColorsByScheme(chartSettings.colorScheme, index)}
-                fillOpacity={0.6}
-              />
-            ))}
-            <Tooltip />
-            <Legend />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  if (chartSettings.chartType === 'area') {
-    return (
-      <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
-        {allowCustomization && (
-          <div className="flex justify-end">
-            <ChartCustomizer
-              data={data}
-              initialSettings={{
-                chartType: type,
-                xKey: xKey,
-                yKeys: yKeys,
-                colorScheme: colorScheme,
-                height: height,
-                title: title,
-                subTitle: subTitle
-              }}
-              onSettingsChange={handleSettingsChange}
-              onSave={handleSaveSettings}
-              onReset={handleResetSettings}
-            />
-          </div>
-        )}
-        {chartTitle}
-        <ResponsiveContainer width="100%" height={chartSettings.height}>
-          <AreaChart data={data}
-            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            <defs>
-              {chartSettings.yKeys.map((key, index) => (
-                <linearGradient key={key} id={`color${key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getColorsByScheme(chartSettings.colorScheme, index)} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={getColorsByScheme(chartSettings.colorScheme, index)} stopOpacity={0.2}/>
-                </linearGradient>
-              ))}
-            </defs>
+    switch (chartSettings.type) {
+      case 'line':
+        return (
+          <LineChart {...chartProps}>
+            <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={chartSettings.xKey} />
             <YAxis />
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
-            {chartSettings.yKeys.map((key, index) => (
+            {chartSettings.yKeys.map((key, i) => (
+              <Line 
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={colors[i % colors.length]}
+                activeDot={{ r: 8 }}
+                strokeWidth={2}
+              />
+            ))}
+            {statistics?.average && (
+              <Line 
+                type="monotone"
+                dataKey={() => statistics.average}
+                stroke="#ff7300"
+                strokeDasharray="5 5"
+                name="Average"
+                legendType="line"
+              />
+            )}
+          </LineChart>
+        );
+        
+      case 'bar':
+        return (
+          <BarChart {...chartProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={chartSettings.xKey} />
+            <YAxis />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            {chartSettings.yKeys.map((key, i) => (
+              <Bar 
+                key={key}
+                dataKey={key}
+                fill={colors[i % colors.length]}
+                animationDuration={1500}
+              />
+            ))}
+          </BarChart>
+        );
+        
+      case 'area':
+        return (
+          <AreaChart {...chartProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={chartSettings.xKey} />
+            <YAxis />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            {chartSettings.yKeys.map((key, i) => (
               <Area 
                 key={key}
-                type="monotone" 
-                dataKey={key} 
-                stroke={getColorsByScheme(chartSettings.colorScheme, index)} 
-                fillOpacity={1} 
-                fill={`url(#color${key})`} 
+                type="monotone"
+                dataKey={key}
+                fill={colors[i % colors.length]}
+                stroke={colors[i % colors.length]}
+                fillOpacity={0.3}
+                animationDuration={1500}
               />
             ))}
           </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  if (chartSettings.chartType === 'composed') {
-    return (
-      <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
-        {allowCustomization && (
-          <div className="flex justify-end">
-            <ChartCustomizer
-              data={data}
-              initialSettings={{
-                chartType: type,
-                xKey: xKey,
-                yKeys: yKeys,
-                colorScheme: colorScheme,
-                height: height,
-                title: title,
-                subTitle: subTitle
-              }}
-              onSettingsChange={handleSettingsChange}
-              onSave={handleSaveSettings}
-              onReset={handleResetSettings}
-            />
-          </div>
-        )}
-        {chartTitle}
-        <ResponsiveContainer width="100%" height={chartSettings.height}>
-          <ComposedChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+        );
+        
+      case 'radar':
+        return (
+          <RadarChart {...chartProps} outerRadius={90}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey={chartSettings.xKey} />
+            <PolarRadiusAxis />
+            {chartSettings.yKeys.map((key, i) => (
+              <Radar 
+                key={key}
+                name={key}
+                dataKey={key}
+                stroke={colors[i % colors.length]}
+                fill={colors[i % colors.length]}
+                fillOpacity={0.5}
+                animationDuration={1500}
+              />
+            ))}
+            <Legend />
+            <Tooltip content={<CustomTooltip />} />
+          </RadarChart>
+        );
+        
+      case 'composed':
+        return (
+          <ComposedChart {...chartProps}>
+            <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={chartSettings.xKey} />
             <YAxis />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
-            {chartSettings.yKeys.map((key, index) => {
-              // Alternate between bar and line for different metrics
-              return index % 2 === 0 ? (
+            {chartSettings.yKeys.map((key, i) => {
+              // Alternate between bar and line for composed chart
+              return i % 2 === 0 ? (
                 <Bar 
                   key={key}
-                  dataKey={key} 
-                  fill={getColorsByScheme(chartSettings.colorScheme, index)}
+                  dataKey={key}
                   barSize={20}
+                  fill={colors[i % colors.length]}
+                  animationDuration={1500}
                 />
               ) : (
-                <Line
+                <Line 
                   key={key}
                   type="monotone"
                   dataKey={key}
-                  stroke={getColorsByScheme(chartSettings.colorScheme, index)}
+                  stroke={colors[i % colors.length]}
                   strokeWidth={2}
                 />
               );
             })}
           </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  // Default to line or bar chart
+        );
+        
+      default:
+        return <div>Unsupported chart type</div>;
+    }
+  };
+  
   return (
-    <div className="my-4 p-6 bg-white rounded-lg shadow-sm mx-auto max-w-4xl">
-      {allowCustomization && (
-        <div className="flex justify-end">
-          <ChartCustomizer
-            data={data}
-            initialSettings={{
-              chartType: type,
-              xKey: xKey,
-              yKeys: yKeys,
-              colorScheme: colorScheme,
-              height: height,
-              title: title,
-              subTitle: subTitle
-            }}
-            onSettingsChange={handleSettingsChange}
-            onSave={handleSaveSettings}
-            onReset={handleResetSettings}
-          />
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between py-3">
+        <div>
+          {chartSettings.title && <CardTitle className="text-lg">{chartSettings.title}</CardTitle>}
+          {chartSettings.subTitle && <p className="text-sm text-gray-500">{chartSettings.subTitle}</p>}
         </div>
-      )}
-      {chartTitle}
-      <ResponsiveContainer width="100%" height={chartSettings.height}>
-        {chartSettings.chartType === 'line' ? (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-            <XAxis dataKey={chartSettings.xKey} />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {chartSettings.yKeys.map((key, index) => (
-              <Line
-                key={key}
-                type="monotone"
-                dataKey={key}
-                stroke={getColorsByScheme(chartSettings.colorScheme, index)}
-                activeDot={{ r: 8 }}
-                strokeWidth={2}
-              />
-            ))}
-          </LineChart>
-        ) : (
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
-            <XAxis dataKey={chartSettings.xKey} />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {chartSettings.yKeys.map((key, index) => (
-              <Bar
-                key={key}
-                dataKey={key}
-                fill={getColorsByScheme(chartSettings.colorScheme, index)}
-                radius={[4, 4, 0, 0]}
-                barSize={30}
-              />
-            ))}
-          </BarChart>
+        {allowCustomization && (
+          <Button variant="ghost" size="sm" onClick={toggleCustomizeMode}>
+            <Settings className="h-4 w-4" />
+          </Button>
         )}
-      </ResponsiveContainer>
-    </div>
+      </CardHeader>
+      <CardContent>
+        {customizeMode ? (
+          <div className="space-y-4">
+            <h3 className="font-medium">Customize Chart</h3>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Chart Type</label>
+              <div className="flex space-x-2">
+                <Button 
+                  size="sm" 
+                  variant={chartSettings.type === 'bar' ? 'default' : 'outline'}
+                  onClick={() => setChartSettings({...chartSettings, type: 'bar'})}
+                >
+                  <BarChartIcon className="h-4 w-4 mr-1" /> Bar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={chartSettings.type === 'line' ? 'default' : 'outline'}
+                  onClick={() => setChartSettings({...chartSettings, type: 'line'})}
+                >
+                  <LineChartIcon className="h-4 w-4 mr-1" /> Line
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={chartSettings.type === 'area' ? 'default' : 'outline'}
+                  onClick={() => setChartSettings({...chartSettings, type: 'area'})}
+                >
+                  <AreaChartIcon className="h-4 w-4 mr-1" /> Area
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Color Scheme</label>
+              <div className="flex flex-wrap gap-2">
+                {['default', 'purple', 'blue', 'green', 'financial', 'retention', 'performance', 'operational'].map((scheme) => (
+                  <div 
+                    key={scheme}
+                    className={`w-8 h-8 rounded-full cursor-pointer border-2 ${
+                      chartSettings.colorScheme === scheme ? 'border-black' : 'border-transparent'
+                    }`}
+                    style={{ 
+                      backgroundColor: getColorScheme(scheme)[0],
+                      boxShadow: chartSettings.colorScheme === scheme ? '0 0 0 2px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                    onClick={() => setChartSettings({...chartSettings, colorScheme: scheme as any})}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => setCustomizeMode(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={() => saveChartSettings(chartSettings)}
+              >
+                Apply Changes
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ width: '100%', height: chartSettings.height }}>
+            <ResponsiveContainer>
+              {renderChart()}
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
