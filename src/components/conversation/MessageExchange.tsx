@@ -54,32 +54,41 @@ export const MessageExchange = ({
             </Button>
           </div>
           
-          {visualizations?.map((visualization, vizIndex) => (
-            <div key={`${id}-viz-${vizIndex}`} className="mt-4">
-              {visualization.type === 'table' && (
-                <DataTable 
-                  data={visualization.data} 
-                  headers={visualization.headers}
-                  allowCustomization={assistantType === 'benchmarks'}
-                  visualizationId={visualization.id || `viz-${vizIndex}`}
-                  conversationId={id}
-                />
-              )}
-              
-              {visualization.type === 'chart' && (
-                <DataChart 
-                  data={visualization.data}
-                  type={visualization.chartType || 'bar'}
-                  xKey={visualization.xKey || 'x'}
-                  yKeys={visualization.yKeys || ['y']}
-                  height={visualization.height || 300}
-                  allowCustomization={assistantType === 'benchmarks'}
-                  visualizationId={visualization.id || `viz-${vizIndex}`}
-                  conversationId={id}
-                />
-              )}
+          {visualizations && visualizations.length > 0 && (
+            <div className="mt-4 space-y-4 border-t border-gray-200 pt-4">
+              {visualizations.map((visualization, vizIndex) => (
+                <div key={`${id}-viz-${vizIndex}`} className="mt-4">
+                  {visualization.type === 'table' && (
+                    <DataTable 
+                      data={visualization.data} 
+                      headers={visualization.headers}
+                      allowCustomization={assistantType === 'benchmarks'}
+                      visualizationId={visualization.id || `viz-${vizIndex}`}
+                      conversationId={id}
+                      title={visualization.title}
+                      colorScheme={visualization.colorScheme}
+                    />
+                  )}
+                  
+                  {visualization.type === 'chart' && (
+                    <DataChart 
+                      data={visualization.data}
+                      type={visualization.chartType || 'bar'}
+                      xKey={visualization.xKey || 'x'}
+                      yKeys={visualization.yKeys || ['y']}
+                      height={visualization.height || 300}
+                      allowCustomization={assistantType === 'benchmarks'}
+                      visualizationId={visualization.id || `viz-${vizIndex}`}
+                      conversationId={id}
+                      title={visualization.title}
+                      subTitle={visualization.subTitle}
+                      colorScheme={visualization.colorScheme}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
