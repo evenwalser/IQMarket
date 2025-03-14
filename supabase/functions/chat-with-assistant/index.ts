@@ -161,6 +161,7 @@ async function processAttachments(openAIApiKey, attachments) {
       }
     } catch (fileError) {
       console.error(`Error processing attachment: ${fileError.message}`);
+      // Continue processing other files instead of failing the entire operation
     }
   }
   
@@ -285,39 +286,48 @@ FORMAT YOUR RESPONSE CAREFULLY:
   if (assistantType === 'benchmarks') {
     instructions += `
 Format your response as follows:
-1. First, provide a brief introduction to the requested benchmark data.
-2. For each key benchmark or metric:
-   - Present the data in one of two formats:
-     a. For COMPARATIVE data (company vs benchmark), use structured JSON blocks like this:
-        \`\`\`json
-        {
-          "type": "table",
-          "title": "Revenue Comparison",
-          "data": [
-            {"Metric": "ARR", "Company": "$1.5M", "Industry Benchmark": "$2.1M"},
-            {"Metric": "Growth Rate", "Company": "15%", "Industry Benchmark": "22%"}
-          ]
-        }
-        \`\`\`
-     b. For TREND data, use chart visualizations like this:
-        \`\`\`json
-        {
-          "type": "chart",
-          "chartType": "bar",
-          "title": "Monthly Active Users",
-          "xKey": "Month",
-          "yKeys": ["Users"],
-          "data": [
-            {"Month": "Jan", "Users": 1500},
-            {"Month": "Feb", "Users": 1720},
-            {"Month": "Mar", "Users": 2100}
-          ]
-        }
-        \`\`\`
-3. After each visualization, provide a brief analysis of what the data means.
-4. Conclude with overall insights and recommendations.
+1. First, RESTATE THE QUESTION asked by the user.
+2. Provide a BRIEF OPENING STATEMENT about the benchmark data.
+3. Present POINTS 1 to N, where each point follows this structure:
+   - A clear heading for the point
+   - Brief explanatory text
+   - Then a visualization (either chart or table) with the actual data
+   - Each point MUST include a data visualization
+4. End with a CONCLUSION that includes specific RECOMMENDATIONS.
+5. Add a final data visualization showing FORECASTED OUTCOMES based on your recommendations.
 
-If you need to include tables directly in the text, still use standard markdown formatting.
+IMPORTANT: 
+- Prioritize VISUAL DATA (charts and tables) over text
+- Use JSON blocks for ALL visualizations:
+  a. For COMPARATIVE data, use tables:
+     \`\`\`json
+     {
+       "type": "table",
+       "title": "Revenue Comparison",
+       "data": [
+         {"Metric": "ARR", "Company": "$1.5M", "Industry Benchmark": "$2.1M"},
+         {"Metric": "Growth Rate", "Company": "15%", "Industry Benchmark": "22%"}
+       ]
+     }
+     \`\`\`
+  b. For TREND data, use charts:
+     \`\`\`json
+     {
+       "type": "chart",
+       "chartType": "bar",
+       "title": "Monthly Active Users",
+       "xKey": "Month",
+       "yKeys": ["Users"],
+       "data": [
+         {"Month": "Jan", "Users": 1500},
+         {"Month": "Feb", "Users": 1720},
+         {"Month": "Mar", "Users": 2100}
+       ]
+     }
+     \`\`\`
+6. ALWAYS include a final visualization showing forecasted outcomes based on recommendations.
+
+MAKE SURE to use the data from any attached files to populate your visualizations. Do not use placeholder data!
 `;
   } else if (assistantType === 'frameworks') {
     instructions += `
@@ -645,4 +655,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
