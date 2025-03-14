@@ -57,11 +57,19 @@ export const preprocessContent = (content: string, visualizations?: ChatVisualiz
   
   // Process direct visualizations from the API
   if (visualizations && visualizations.length > 0) {
-    console.log("Processing direct visualizations:", visualizations);
+    console.log("Processing direct visualizations:", visualizations.length);
     const directVisualizationsResult = extractDirectVisualizations(processedContent, visualizations);
     processedContent = directVisualizationsResult.processedContent;
-    extractedVisualizations = [...extractedVisualizations, ...directVisualizationsResult.extractedVisualizations];
+    
+    // Add direct visualizations only if they don't already exist by ID
+    directVisualizationsResult.extractedVisualizations.forEach(directViz => {
+      if (!extractedVisualizations.some(existingViz => existingViz.id === directViz.id)) {
+        extractedVisualizations.push(directViz);
+      }
+    });
   }
+
+  console.log("Final processed content with", extractedVisualizations.length, "visualizations");
   
   return {
     processedContent,

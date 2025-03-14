@@ -1,3 +1,4 @@
+
 /**
  * Determine the chart type based on title and description
  */
@@ -142,6 +143,8 @@ export const determineColorScheme = (title: string | undefined, headers: string[
 export const normalizeChartData = (data: Record<string, any>[]): Record<string, any>[] => {
   if (!data || data.length === 0) return [];
   
+  console.log("Normalizing chart data:", data.length, "rows");
+  
   return data.map(item => {
     const result: Record<string, any> = {};
     
@@ -155,7 +158,7 @@ export const normalizeChartData = (data: Record<string, any>[]): Record<string, 
       
       // Process string values that might contain numbers
       if (typeof value === 'string') {
-        // Remove currency symbols, commas, etc. and try to convert to number
+        // Check if it looks like a currency or percentage value
         if (value.match(/^[+-]?[$£€¥]?[\d,.]+[%]?$/)) {
           // Remove currency symbols and commas
           let cleanValue = value.replace(/[$£€¥,]/g, '');
@@ -167,10 +170,19 @@ export const normalizeChartData = (data: Record<string, any>[]): Record<string, 
           } else {
             result[key] = parseFloat(cleanValue);
           }
+        } else if (value === "true" || value === "false") {
+          // Handle boolean strings
+          result[key] = value === "true" ? 1 : 0;
+        } else if (!isNaN(Number(value))) {
+          // Handle numeric strings
+          result[key] = Number(value);
         } else {
           // Keep non-numeric strings as is
           result[key] = value;
         }
+      } else if (typeof value === 'boolean') {
+        // Convert booleans to numbers for charts
+        result[key] = value ? 1 : 0;
       } else {
         // Keep numbers and other types as is
         result[key] = value;

@@ -160,18 +160,43 @@ export const extractDirectVisualizations = (
   
   // Process each visualization to ensure it has the correct format and data is normalized
   visualizations.forEach(viz => {
-    if (viz.type === 'chart' && viz.data) {
-      const enhancedViz: ChatVisualization = {
-        ...viz,
-        data: normalizeChartData(viz.data),
-        chartType: viz.chartType || determineChartType(viz.title || '', viz.subTitle || ''),
-        colorScheme: viz.colorScheme || determineColorScheme(viz.title || '', viz.xKey || '')
-      };
-      extractedVisualizations.push(enhancedViz);
-    } else if (viz.type === 'table') {
-      extractedVisualizations.push(viz);
+    if (!viz) {
+      console.warn("Received undefined visualization");
+      return;
+    }
+    
+    console.log(`Processing ${viz.type} visualization:`, viz.title || "Untitled");
+    
+    try {
+      if (viz.type === 'chart' && viz.data) {
+        // For charts, normalize the data and ensure required fields are present
+        const enhancedViz: ChatVisualization = {
+          ...viz,
+          id: viz.id || crypto.randomUUID(),
+          data: normalizeChartData(viz.data),
+          chartType: viz.chartType || determineChartType(viz.title || '', viz.subTitle || ''),
+          colorScheme: viz.colorScheme || determineColorScheme(viz.title || '', viz.xKey || '')
+        };
+        extractedVisualizations.push(enhancedViz);
+        console.log(`Enhanced chart visualization with ID ${enhancedViz.id}`);
+      } else if (viz.type === 'table' && viz.data) {
+        // For tables, ensure required fields are present
+        const enhancedViz: ChatVisualization = {
+          ...viz,
+          id: viz.id || crypto.randomUUID(),
+          headers: viz.headers || (viz.data.length > 0 ? Object.keys(viz.data[0]) : [])
+        };
+        extractedVisualizations.push(enhancedViz);
+        console.log(`Enhanced table visualization with ID ${enhancedViz.id}`);
+      } else {
+        console.warn(`Skipping visualization with incomplete data:`, viz);
+      }
+    } catch (error) {
+      console.error(`Error processing visualization:`, error, viz);
     }
   });
+  
+  console.log(`Processed ${extractedVisualizations.length} direct visualizations`);
   
   // Look for existing visualization references
   const referenceRegex = /\*Visualization #(\d+)\*/g;
@@ -180,6 +205,8 @@ export const extractDirectVisualizations = (
   
   // If no references found, add them to the content at appropriate places
   if (!hasReferences && extractedVisualizations.length > 0) {
+    console.log(`No visualization references found in content, adding them manually`);
+    
     const sections = processedContent.split(/(#{1,3}\s+.+\n)/);
     
     if (sections.length > 1) {
@@ -203,13 +230,15 @@ export const extractDirectVisualizations = (
         vizIndex++;
       }
       
-      return { processedContent: newContent, extractedVisualizations };
+      processedContent = newContent;
+      console.log(`Added ${extractedVisualizations.length} visualization references to content`);
+    } else {
+      // For content without headers, add visualizations at the end
+      extractedVisualizations.forEach((_, index) => {
+        processedContent += `\n\n*Visualization #${index + 1}*\n\n`;
+      });
+      console.log(`Added ${extractedVisualizations.length} visualization references at the end of content`);
     }
-    
-    // For content without headers, add visualizations at the end
-    extractedVisualizations.forEach((_, index) => {
-      processedContent += `\n\n*Visualization #${index + 1}*\n\n`;
-    });
   }
   
   return { processedContent, extractedVisualizations };

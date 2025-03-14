@@ -37,6 +37,7 @@ export const ChatInterface = () => {
         content: userMessage,
       }]);
 
+      console.log("Sending message to API with attachments:", attachments.length);
       const data = await sendMessage(userMessage, threadId, attachments);
       console.log("Received response from API:", data);
 
@@ -47,7 +48,7 @@ export const ChatInterface = () => {
 
       // Check if we have any visualizations directly from the API
       const apiVisualizations = data.visualizations || [];
-      console.log("API provided visualizations:", apiVisualizations);
+      console.log("API provided visualizations:", apiVisualizations.length);
 
       // Process the assistant's response content - pass visualizations to preprocessor
       const { processedContent, extractedVisualizations } = preprocessContent(
@@ -55,23 +56,25 @@ export const ChatInterface = () => {
         apiVisualizations
       );
 
-      console.log("Preprocessor extracted visualizations:", extractedVisualizations);
+      console.log("Preprocessor extracted visualizations:", extractedVisualizations.length);
 
       // Combine all visualizations, prioritizing extracted ones if they have the same ID
       const allVisualizations = [
-        ...extractedVisualizations,
         ...apiVisualizations.filter(apiViz => 
-          !extractedVisualizations.some(extractedViz => extractedViz.id === apiViz.id)
-        )
+          !extractedVisualizations.some(extractedViz => 
+            extractedViz.id === apiViz.id
+          )
+        ),
+        ...extractedVisualizations
       ];
 
-      console.log("Final combined visualizations:", allVisualizations);
+      console.log("Final combined visualizations:", allVisualizations.length);
 
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: processedContent,
-        visualizations: allVisualizations.length > 0 ? allVisualizations : undefined
+        visualizations: allVisualizations
       }]);
 
     } catch (error) {
