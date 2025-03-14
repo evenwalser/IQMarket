@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import Index from './Index';
+import { UnifiedSearch } from '@/components/UnifiedSearch';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -31,11 +31,32 @@ const Login = () => {
     return <Navigate to="/" replace />;
   }
 
+  // Mock data for the blurred background
+  const mockProps = {
+    handleSearch: () => {},
+    isLoading: false,
+    selectedMode: "assistant" as const,
+    setSelectedMode: () => {},
+    handleFileUpload: () => {},
+    attachments: [],
+    structuredOutput: false,
+    setStructuredOutput: () => {},
+    latestResponse: ""
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* Main application content (blurred) */}
       <div className="absolute inset-0 filter blur-[4px] opacity-50">
-        <Index />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-4xl font-bold">Assistant Explorer</h1>
+          </div>
+          
+          <div className="max-w-3xl mx-auto">
+            <UnifiedSearch {...mockProps} />
+          </div>
+        </div>
       </div>
       
       {/* Overlay to darken the background */}
@@ -43,7 +64,7 @@ const Login = () => {
       
       {/* Login container */}
       <div className="absolute inset-0 flex items-center justify-center z-10">
-        <Card className="w-full max-w-sm shadow-lg border border-gray-200 bg-white/90 backdrop-filter backdrop-blur-sm">
+        <Card className="w-full max-w-sm shadow-lg border border-gray-200 bg-white/90 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-2">
             <CardTitle className="text-xl font-semibold text-center bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
               Login to Assistant Explorer
