@@ -5,9 +5,41 @@
 export function determineChartType(title: string, description: string): 'bar' | 'line' | 'area' | 'radar' | 'composed' {
   const titleAndDesc = (title + description).toLowerCase();
   
+  // Financial-specific chart type determination
+  if (titleAndDesc.includes('growth rate') || 
+      titleAndDesc.includes('trend') || 
+      titleAndDesc.includes('over time') || 
+      titleAndDesc.includes('trajectory') ||
+      titleAndDesc.includes('historical')) {
+    return 'line';
+  } else if (titleAndDesc.includes('distribution') || 
+             titleAndDesc.includes('breakdown') || 
+             titleAndDesc.includes('composition') ||
+             titleAndDesc.includes('allocation')) {
+    return 'bar';
+  } else if (titleAndDesc.includes('cumulative') || 
+             titleAndDesc.includes('total growth') ||
+             titleAndDesc.includes('market share')) {
+    return 'area';
+  } else if (titleAndDesc.includes('comparison') ||
+             titleAndDesc.includes('benchmark') ||
+             titleAndDesc.includes('versus') ||
+             titleAndDesc.includes('vs')) {
+    return 'bar';
+  } else if (titleAndDesc.includes('performance metrics') ||
+             titleAndDesc.includes('kpi') ||
+             titleAndDesc.includes('balanced scorecard')) {
+    return 'radar';
+  } else if (titleAndDesc.includes('combined') || 
+             titleAndDesc.includes('composite') ||
+             titleAndDesc.includes('mixed metrics')) {
+    return 'composed';
+  }
+  
+  // Default chart type based on general terms
   if (titleAndDesc.includes('bar chart') || titleAndDesc.includes('comparison')) {
     return 'bar';
-  } else if (titleAndDesc.includes('line chart') || titleAndDesc.includes('trend') || titleAndDesc.includes('over time')) {
+  } else if (titleAndDesc.includes('line chart') || titleAndDesc.includes('trend')) {
     return 'line';
   } else if (titleAndDesc.includes('area chart')) {
     return 'area';
@@ -55,12 +87,21 @@ export const determineColorScheme = (title: string | undefined, headers: string[
     lowerHeaders = [headers.toLowerCase()];
   }
   
+  // Financial-specific indicators
+  const financialKeywords = ['revenue', 'cost', 'profit', 'margin', 'arr', 'mrr', 'cac', 'ltv', 'budget', 
+    'expense', 'income', 'cash', 'price', 'ebitda', 'gross', 'net', 'roi', 'roas', 'payback', 
+    'burn', 'runway', 'capital', 'funding', 'valuation', 'multiple', 'saas', 'arpu'];
+  
+  if (financialKeywords.some(term => lowerTitle.includes(term)) || 
+      lowerHeaders.some(header => financialKeywords.some(term => header.includes(term)))) {
+    return 'financial';
+  }
+  
   // Define metric categories with their associated terms
   const metricCategories = {
-    financial: ['revenue', 'cost', 'profit', 'margin', 'arr', 'mrr', 'cac', 'ltv', 'budget', 'expense', 'income', 'cash', 'price'],
-    retention: ['churn', 'retention', 'customers', 'users', 'engagement', 'active', 'returning', 'loyalty', 'nrr'],
-    performance: ['growth', 'conversion', 'sales', 'traffic', 'leads', 'acquisition', 'performance'],
-    operational: ['time', 'speed', 'efficiency', 'productivity', 'capacity', 'utilization'],
+    retention: ['churn', 'retention', 'customers', 'users', 'engagement', 'active', 'returning', 'loyalty', 'nrr', 'nps', 'csat', 'cohort', 'renewal'],
+    performance: ['growth', 'conversion', 'sales', 'traffic', 'leads', 'acquisition', 'performance', 'kpi', 'benchmark', 'target', 'goal', 'forecast'],
+    operational: ['time', 'speed', 'efficiency', 'productivity', 'capacity', 'utilization', 'headcount', 'staff', 'team', 'process', 'operations'],
   };
   
   // Check title and headers against categories
@@ -71,5 +112,6 @@ export const determineColorScheme = (title: string | undefined, headers: string[
     }
   }
   
-  return 'default';
+  // Default to financial for benchmarking assistant
+  return 'financial';
 };
