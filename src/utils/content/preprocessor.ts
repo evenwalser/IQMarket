@@ -8,23 +8,20 @@ import {
 } from "../markdownUtils";
 import { 
   extractJsonVisualizations,
-  extractChartDescriptionsFromHeaders,
-  extractDirectVisualizations
+  extractChartDescriptionsFromHeaders 
 } from "./visualization";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
 
 /**
  * Processes the content of a message to extract visualizations and format the content.
  */
-export const preprocessContent = (content: string, visualizations?: ChatVisualization[]): ProcessedContentResult => {
+export const preprocessContent = (content: string): ProcessedContentResult => {
   if (!content) {
     return {
       processedContent: '',
       extractedVisualizations: []
     };
   }
-
-  console.log("Processing content with visualizations:", visualizations?.length || 0);
 
   // Apply comprehensive markdown cleaning
   let processedContent = cleanMarkdownContent(content);
@@ -54,22 +51,6 @@ export const preprocessContent = (content: string, visualizations?: ChatVisualiz
   const asciiResult = extractAsciiTables(processedContent);
   processedContent = asciiResult.processedContent;
   extractedVisualizations = [...extractedVisualizations, ...asciiResult.extractedVisualizations];
-  
-  // Process direct visualizations from the API
-  if (visualizations && visualizations.length > 0) {
-    console.log("Processing direct visualizations:", visualizations.length);
-    const directVisualizationsResult = extractDirectVisualizations(processedContent, visualizations);
-    processedContent = directVisualizationsResult.processedContent;
-    
-    // Add direct visualizations only if they don't already exist by ID
-    directVisualizationsResult.extractedVisualizations.forEach(directViz => {
-      if (!extractedVisualizations.some(existingViz => existingViz.id === directViz.id)) {
-        extractedVisualizations.push(directViz);
-      }
-    });
-  }
-
-  console.log("Final processed content with", extractedVisualizations.length, "visualizations");
   
   return {
     processedContent,

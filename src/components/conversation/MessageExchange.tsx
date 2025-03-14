@@ -33,8 +33,6 @@ export const MessageExchange = ({
       return;
     }
     
-    console.log(`Processing message with ${visualizations?.length || 0} visualizations`);
-    
     // Process the response to render visualizations inline
     const segments: React.ReactNode[] = [];
     
@@ -42,13 +40,8 @@ export const MessageExchange = ({
     const referenceRegex = /\*Visualization #(\d+)\*/g;
     let lastIndex = 0;
     let match;
-    let hasReferences = false;
     
-    // Create a copy of the response for regex operations
-    const contentCopy = response;
-    
-    while ((match = referenceRegex.exec(contentCopy)) !== null) {
-      hasReferences = true;
+    while ((match = referenceRegex.exec(response)) !== null) {
       const vizIndex = parseInt(match[1], 10) - 1;
       const matchedVisualization = visualizations && vizIndex >= 0 && vizIndex < visualizations.length 
         ? visualizations[vizIndex] 
@@ -57,7 +50,7 @@ export const MessageExchange = ({
       // Add text before this match
       if (match.index > lastIndex) {
         segments.push(
-          <p key={`text-${lastIndex}`} className="mb-3 whitespace-pre-wrap">
+          <p key={`text-${lastIndex}`} className="mb-3">
             {response.substring(lastIndex, match.index)}
           </p>
         );
@@ -65,7 +58,6 @@ export const MessageExchange = ({
       
       // Add the visualization if it exists
       if (matchedVisualization) {
-        console.log(`Rendering visualization #${vizIndex + 1}:`, matchedVisualization.type);
         segments.push(
           <div key={`viz-${vizIndex}`} className="my-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             {matchedVisualization.type === 'table' && (
@@ -97,8 +89,6 @@ export const MessageExchange = ({
             )}
           </div>
         );
-      } else {
-        console.warn(`Visualization #${vizIndex + 1} reference found but no matching visualization data`);
       }
       
       lastIndex = match.index + match[0].length;
@@ -107,19 +97,21 @@ export const MessageExchange = ({
     // Add the remaining text
     if (lastIndex < response.length) {
       segments.push(
-        <p key={`text-${lastIndex}`} className="mb-3 whitespace-pre-wrap">
+        <p key={`text-${lastIndex}`} className="mb-3">
           {response.substring(lastIndex)}
         </p>
       );
     }
     
-    // If no references were found but we have visualizations, append them at the end
-    if (!hasReferences && visualizations && visualizations.length > 0) {
-      console.log(`No visualization references found, appending ${visualizations.length} visualizations at the end`);
+    // If there were no references but we have visualizations, append them at the end
+    if (segments.length === 0 && visualizations && visualizations.length > 0) {
+      // Add the entire response as text first
+      segments.push(<p key="full-text" className="mb-3">{response}</p>);
       
+      // Then add all visualizations
       visualizations.forEach((visualization, vizIndex) => {
         segments.push(
-          <div key={`viz-append-${vizIndex}`} className="my-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div key={`viz-${vizIndex}`} className="my-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             {visualization.type === 'table' && (
               <DataTable 
                 data={visualization.data} 
@@ -167,13 +159,9 @@ export const MessageExchange = ({
       {/* Assistant response */}
       <div className="flex justify-start">
         <div className={`rounded-lg p-3 max-w-[80%] ${isCurrentlySpeaking ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
-          <div className="text-gray-800 relative pr-8">
+          <div className="whitespace-pre-wrap text-gray-800 relative pr-8">
             {/* Render the formatted content with inline visualizations */}
-            {formattedContent.length > 0 ? (
-              formattedContent
-            ) : (
-              <p className="mb-3 whitespace-pre-wrap">{response}</p>
-            )}
+            {formattedContent}
             
             {/* Text-to-speech button */}
             <Button

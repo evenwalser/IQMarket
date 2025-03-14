@@ -37,7 +37,6 @@ export const ChatInterface = () => {
         content: userMessage,
       }]);
 
-      console.log("Sending message to API with attachments:", attachments.length);
       const data = await sendMessage(userMessage, threadId, attachments);
       console.log("Received response from API:", data);
 
@@ -46,35 +45,23 @@ export const ChatInterface = () => {
         setThreadId(data.thread_id);
       }
 
-      // Check if we have any visualizations directly from the API
-      const apiVisualizations = data.visualizations || [];
-      console.log("API provided visualizations:", apiVisualizations.length);
+      // Process the assistant's response content
+      const { processedContent, extractedVisualizations } = preprocessContent(data.response);
 
-      // Process the assistant's response content - pass visualizations to preprocessor
-      const { processedContent, extractedVisualizations } = preprocessContent(
-        data.response, 
-        apiVisualizations
-      );
-
-      console.log("Preprocessor extracted visualizations:", extractedVisualizations.length);
-
-      // Combine all visualizations, prioritizing extracted ones if they have the same ID
+      // Combine extracted visualizations with any that came directly from the API
       const allVisualizations = [
-        ...apiVisualizations.filter(apiViz => 
-          !extractedVisualizations.some(extractedViz => 
-            extractedViz.id === apiViz.id
-          )
-        ),
+        ...(data.visualizations || []),
         ...extractedVisualizations
       ];
 
-      console.log("Final combined visualizations:", allVisualizations.length);
+      console.log("Extracted visualizations:", extractedVisualizations);
+      console.log("All visualizations:", allVisualizations);
 
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: processedContent,
-        visualizations: allVisualizations
+        visualizations: allVisualizations.length > 0 ? allVisualizations : undefined
       }]);
 
     } catch (error) {

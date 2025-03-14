@@ -3,21 +3,13 @@
 import {
   extractJsonVisualizations,
   extractChartDescriptionsFromHeaders,
-  extractDirectVisualizations
-} from './visualization/extractors';
-import {
   determineIfChartable,
-  determineColorScheme,
-  normalizeChartData,
-  determineChartType
-} from './visualization/chartHelpers';
+  determineColorScheme
+} from './visualization';
 
 export {
   extractJsonVisualizations,
   extractChartDescriptionsFromHeaders,
-  extractDirectVisualizations,
   determineIfChartable,
-  determineColorScheme,
-  normalizeChartData,
-  determineChartType
+  determineColorScheme
 };

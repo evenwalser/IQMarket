@@ -17,6 +17,110 @@ export const MessageList = ({ messages }: MessageListProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const renderFormattedMessage = (msg: ChatMessage, index: number) => {
+    // Process all messages through the preprocessor to handle formatting and extract visualizations
+    const { processedContent, extractedVisualizations } = preprocessContent(msg.content);
+    
+    // Combine explicit visualizations from the message with extracted ones
+    const allVisualizations = [
+      ...(msg.visualizations || []),
+      ...extractedVisualizations
+    ];
+    
+    if (allVisualizations.length === 0) {
+      // No visualizations - just render the markdown content
+      return (
+        <div className="mb-3">
+          <MarkdownRenderer 
+            content={processedContent} 
+            isUserMessage={msg.role === 'user'} 
+          />
+        </div>
+      );
+    }
+    
+    // Check for visualization references in the content
+    const referenceRegex = /\*Visualization #(\d+)\*/g;
+    const hasReferences = referenceRegex.test(processedContent);
+    
+    // Reset the regex after test
+    referenceRegex.lastIndex = 0;
+    
+    let segments: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    
+    // If there are references, process them for inline placement
+    if (hasReferences) {
+      while ((match = referenceRegex.exec(processedContent)) !== null) {
+        const vizIndex = parseInt(match[1], 10) - 1;
+        const matchedVisualization = allVisualizations && vizIndex >= 0 && vizIndex < allVisualizations.length 
+          ? allVisualizations[vizIndex] 
+          : undefined;
+        
+        // Add text before this match
+        if (match.index > lastIndex) {
+          segments.push(
+            <div key={`text-${index}-${lastIndex}`} className="mb-3">
+              <MarkdownRenderer 
+                content={processedContent.substring(lastIndex, match.index)} 
+                isUserMessage={msg.role === 'user'} 
+              />
+            </div>
+          );
+        }
+        
+        // Add the visualization if it exists
+        if (matchedVisualization) {
+          segments.push(
+            <div key={`viz-${index}-${vizIndex}`} className="my-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+              {renderVisualization(matchedVisualization, vizIndex)}
+            </div>
+          );
+        } else {
+          console.warn(`Visualization #${vizIndex + 1} reference found but no matching visualization data`);
+        }
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Add the remaining text
+      if (lastIndex < processedContent.length) {
+        segments.push(
+          <div key={`text-${index}-${lastIndex}`} className="mb-3">
+            <MarkdownRenderer 
+              content={processedContent.substring(lastIndex)} 
+              isUserMessage={msg.role === 'user'} 
+            />
+          </div>
+        );
+      }
+    } else {
+      // No references - render the content normally and append visualizations at the end
+      segments.push(
+        <div key={`text-${index}`} className="mb-3">
+          <MarkdownRenderer 
+            content={processedContent} 
+            isUserMessage={msg.role === 'user'} 
+          />
+        </div>
+      );
+      
+      // If there are visualizations but no references, append them
+      if (allVisualizations.length > 0) {
+        allVisualizations.forEach((viz, vizIndex) => {
+          segments.push(
+            <div key={`viz-${index}-${vizIndex}`} className="mt-4 border-t border-gray-100 pt-3">
+              {renderVisualization(viz, vizIndex)}
+            </div>
+          );
+        });
+      }
+    }
+    
+    return segments;
+  };
+  
   const renderVisualization = (visualization: any, index: number) => {
     if (!visualization) {
       console.warn(`Empty visualization at index ${index}`);
@@ -58,102 +162,6 @@ export const MessageList = ({ messages }: MessageListProps) => {
         console.warn('Unknown visualization type:', visualization.type);
         return null;
     }
-  };
-
-  const renderFormattedMessage = (msg: ChatMessage, index: number) => {
-    console.log(`Rendering message ${index}, has ${msg.visualizations?.length || 0} visualizations`);
-    
-    // If the message already has visualizations, use them directly
-    const allVisualizations = msg.visualizations || [];
-    
-    // Check for visualization references
-    const referenceRegex = /\*Visualization #(\d+)\*/g;
-    const hasReferences = referenceRegex.test(msg.content);
-    
-    // If no references but has visualizations, add them to the end
-    if (!hasReferences && allVisualizations.length > 0) {
-      return (
-        <>
-          <div className="mb-3">
-            <MarkdownRenderer 
-              content={msg.content} 
-              isUserMessage={msg.role === 'user'} 
-            />
-          </div>
-          {allVisualizations.map((viz, vizIndex) => (
-            <div key={`viz-${index}-${vizIndex}`} className="mt-4 border-t border-gray-100 pt-3">
-              {renderVisualization(viz, vizIndex)}
-            </div>
-          ))}
-        </>
-      );
-    }
-    
-    // If there are visualization references, process them
-    if (hasReferences) {
-      let segments: React.ReactNode[] = [];
-      let lastIndex = 0;
-      let match;
-      
-      // Reset regex
-      referenceRegex.lastIndex = 0;
-      
-      while ((match = referenceRegex.exec(msg.content)) !== null) {
-        const vizIndex = parseInt(match[1], 10) - 1;
-        const matchedVisualization = allVisualizations && vizIndex >= 0 && vizIndex < allVisualizations.length 
-          ? allVisualizations[vizIndex] 
-          : undefined;
-        
-        // Add text before this match
-        if (match.index > lastIndex) {
-          segments.push(
-            <div key={`text-${index}-${lastIndex}`} className="mb-3">
-              <MarkdownRenderer 
-                content={msg.content.substring(lastIndex, match.index)} 
-                isUserMessage={msg.role === 'user'} 
-              />
-            </div>
-          );
-        }
-        
-        // Add the visualization if it exists
-        if (matchedVisualization) {
-          segments.push(
-            <div key={`viz-${index}-${vizIndex}`} className="my-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
-              {renderVisualization(matchedVisualization, vizIndex)}
-            </div>
-          );
-        } else {
-          console.warn(`Visualization #${vizIndex + 1} reference found but no matching visualization data`);
-        }
-        
-        lastIndex = match.index + match[0].length;
-      }
-      
-      // Add the remaining text
-      if (lastIndex < msg.content.length) {
-        segments.push(
-          <div key={`text-${index}-${lastIndex}`} className="mb-3">
-            <MarkdownRenderer 
-              content={msg.content.substring(lastIndex)} 
-              isUserMessage={msg.role === 'user'} 
-            />
-          </div>
-        );
-      }
-      
-      return segments;
-    }
-    
-    // No visualizations - just render the markdown content
-    return (
-      <div className="mb-3">
-        <MarkdownRenderer 
-          content={msg.content} 
-          isUserMessage={msg.role === 'user'} 
-        />
-      </div>
-    );
   };
 
   if (messages.length === 0) {
