@@ -34,6 +34,19 @@ export function determineChartType(title: string, description: string): 'bar' | 
              titleAndDesc.includes('composite') ||
              titleAndDesc.includes('mixed metrics')) {
     return 'composed';
+  } else if (titleAndDesc.includes('percentile') ||
+             titleAndDesc.includes('quartile') ||
+             titleAndDesc.includes('ranking') ||
+             titleAndDesc.includes('industry position')) {
+    return 'bar';  // Enhanced for benchmark positioning
+  } else if (titleAndDesc.includes('peer comparison') ||
+             titleAndDesc.includes('competitive analysis') ||
+             titleAndDesc.includes('market position')) {
+    return 'radar';  // Good for multi-dimensional comparisons
+  } else if (titleAndDesc.includes('forecast') ||
+             titleAndDesc.includes('prediction') ||
+             titleAndDesc.includes('projection')) {
+    return 'line';  // Best for showing future projections
   }
   
   // Default chart type based on general terms
