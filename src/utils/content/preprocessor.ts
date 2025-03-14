@@ -6,10 +6,7 @@ import {
   formatMarkdownLinks, 
   enhanceMarkdownTables 
 } from "../markdownUtils";
-import { 
-  extractJsonVisualizations,
-  extractChartDescriptionsFromHeaders 
-} from "./visualization";
+import { extractJsonVisualizations } from "./visualizationExtractor";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
 
 /**
@@ -36,11 +33,6 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   const jsonResult = extractJsonVisualizations(processedContent);
   processedContent = jsonResult.processedContent;
   let extractedVisualizations: ChatVisualization[] = jsonResult.extractedVisualizations;
-
-  // Extract chart descriptions from markdown headers
-  const chartHeaderResult = extractChartDescriptionsFromHeaders(processedContent);
-  processedContent = chartHeaderResult.processedContent;
-  extractedVisualizations = [...extractedVisualizations, ...chartHeaderResult.extractedVisualizations];
 
   // Extract Markdown tables
   const tableResult = extractMarkdownTables(processedContent);

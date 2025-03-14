@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
@@ -38,7 +37,6 @@ export const ChatInterface = () => {
       }]);
 
       const data = await sendMessage(userMessage, threadId, attachments);
-      console.log("Received response from API:", data);
 
       // Set thread ID for conversation continuity
       if (data.thread_id) {
@@ -53,9 +51,6 @@ export const ChatInterface = () => {
         ...(data.visualizations || []),
         ...extractedVisualizations
       ];
-
-      console.log("Extracted visualizations:", extractedVisualizations);
-      console.log("All visualizations:", allVisualizations);
 
       // Add assistant's response to chat
       setMessages(prev => [...prev, { 

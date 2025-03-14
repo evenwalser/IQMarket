@@ -18,7 +18,7 @@ interface DataTableProps {
   visualizationId?: string;
   conversationId?: string;
   allowCustomization?: boolean;
-  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red' | 'financial' | 'retention' | 'performance' | 'operational';
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'red';
 }
 
 interface TableSettings {

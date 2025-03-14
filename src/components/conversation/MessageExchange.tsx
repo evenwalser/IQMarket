@@ -4,7 +4,6 @@ import { Volume2, VolumeX } from "lucide-react";
 import { DataTable } from "@/components/chat/visualizations/DataTable";
 import { DataChart } from "@/components/chat/visualizations/DataChart";
 import type { ChatVisualization } from "@/types/chat";
-import { useEffect, useState } from "react";
 
 interface MessageExchangeProps {
   id: string;
@@ -25,128 +24,6 @@ export const MessageExchange = ({
   visualizations,
   assistantType
 }: MessageExchangeProps) => {
-  const [formattedContent, setFormattedContent] = useState<React.ReactNode[]>([]);
-  
-  useEffect(() => {
-    if (!response) {
-      setFormattedContent([]);
-      return;
-    }
-    
-    // Process the response to render visualizations inline
-    const segments: React.ReactNode[] = [];
-    
-    // Check for visualization references
-    const referenceRegex = /\*Visualization #(\d+)\*/g;
-    let lastIndex = 0;
-    let match;
-    
-    while ((match = referenceRegex.exec(response)) !== null) {
-      const vizIndex = parseInt(match[1], 10) - 1;
-      const matchedVisualization = visualizations && vizIndex >= 0 && vizIndex < visualizations.length 
-        ? visualizations[vizIndex] 
-        : undefined;
-      
-      // Add text before this match
-      if (match.index > lastIndex) {
-        segments.push(
-          <p key={`text-${lastIndex}`} className="mb-3">
-            {response.substring(lastIndex, match.index)}
-          </p>
-        );
-      }
-      
-      // Add the visualization if it exists
-      if (matchedVisualization) {
-        segments.push(
-          <div key={`viz-${vizIndex}`} className="my-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            {matchedVisualization.type === 'table' && (
-              <DataTable 
-                data={matchedVisualization.data} 
-                headers={matchedVisualization.headers}
-                allowCustomization={assistantType === 'benchmarks'}
-                visualizationId={matchedVisualization.id || `viz-${vizIndex}`}
-                conversationId={id}
-                title={matchedVisualization.title}
-                colorScheme={matchedVisualization.colorScheme}
-              />
-            )}
-            
-            {matchedVisualization.type === 'chart' && (
-              <DataChart 
-                data={matchedVisualization.data}
-                type={matchedVisualization.chartType || 'bar'}
-                xKey={matchedVisualization.xKey || 'x'}
-                yKeys={matchedVisualization.yKeys || ['y']}
-                height={matchedVisualization.height || 300}
-                allowCustomization={assistantType === 'benchmarks'}
-                visualizationId={matchedVisualization.id || `viz-${vizIndex}`}
-                conversationId={id}
-                title={matchedVisualization.title}
-                subTitle={matchedVisualization.subTitle}
-                colorScheme={matchedVisualization.colorScheme}
-              />
-            )}
-          </div>
-        );
-      }
-      
-      lastIndex = match.index + match[0].length;
-    }
-    
-    // Add the remaining text
-    if (lastIndex < response.length) {
-      segments.push(
-        <p key={`text-${lastIndex}`} className="mb-3">
-          {response.substring(lastIndex)}
-        </p>
-      );
-    }
-    
-    // If there were no references but we have visualizations, append them at the end
-    if (segments.length === 0 && visualizations && visualizations.length > 0) {
-      // Add the entire response as text first
-      segments.push(<p key="full-text" className="mb-3">{response}</p>);
-      
-      // Then add all visualizations
-      visualizations.forEach((visualization, vizIndex) => {
-        segments.push(
-          <div key={`viz-${vizIndex}`} className="my-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            {visualization.type === 'table' && (
-              <DataTable 
-                data={visualization.data} 
-                headers={visualization.headers}
-                allowCustomization={assistantType === 'benchmarks'}
-                visualizationId={visualization.id || `viz-${vizIndex}`}
-                conversationId={id}
-                title={visualization.title}
-                colorScheme={visualization.colorScheme}
-              />
-            )}
-            
-            {visualization.type === 'chart' && (
-              <DataChart 
-                data={visualization.data}
-                type={visualization.chartType || 'bar'}
-                xKey={visualization.xKey || 'x'}
-                yKeys={visualization.yKeys || ['y']}
-                height={visualization.height || 300}
-                allowCustomization={assistantType === 'benchmarks'}
-                visualizationId={visualization.id || `viz-${vizIndex}`}
-                conversationId={id}
-                title={visualization.title}
-                subTitle={visualization.subTitle}
-                colorScheme={visualization.colorScheme}
-              />
-            )}
-          </div>
-        );
-      });
-    }
-    
-    setFormattedContent(segments);
-  }, [response, visualizations, id, assistantType]);
-
   return (
     <div className="space-y-4">
       {/* User message */}
@@ -160,8 +37,7 @@ export const MessageExchange = ({
       <div className="flex justify-start">
         <div className={`rounded-lg p-3 max-w-[80%] ${isCurrentlySpeaking ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
           <div className="whitespace-pre-wrap text-gray-800 relative pr-8">
-            {/* Render the formatted content with inline visualizations */}
-            {formattedContent}
+            {response}
             
             {/* Text-to-speech button */}
             <Button
@@ -177,6 +53,33 @@ export const MessageExchange = ({
               )}
             </Button>
           </div>
+          
+          {visualizations?.map((visualization, vizIndex) => (
+            <div key={`${id}-viz-${vizIndex}`} className="mt-4">
+              {visualization.type === 'table' && (
+                <DataTable 
+                  data={visualization.data} 
+                  headers={visualization.headers}
+                  allowCustomization={assistantType === 'benchmarks'}
+                  visualizationId={visualization.id || `viz-${vizIndex}`}
+                  conversationId={id}
+                />
+              )}
+              
+              {visualization.type === 'chart' && (
+                <DataChart 
+                  data={visualization.data}
+                  type={visualization.chartType || 'bar'}
+                  xKey={visualization.xKey || 'x'}
+                  yKeys={visualization.yKeys || ['y']}
+                  height={visualization.height || 300}
+                  allowCustomization={assistantType === 'benchmarks'}
+                  visualizationId={visualization.id || `viz-${vizIndex}`}
+                  conversationId={id}
+                />
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

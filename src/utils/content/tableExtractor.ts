@@ -1,6 +1,6 @@
 
 import { ChatVisualization } from "@/types/chat";
-import { determineIfChartable, determineColorScheme } from "./visualization";
+import { determineIfChartable, determineColorScheme } from "./visualizationExtractor";
 
 /**
  * Extracts Markdown tables from the content and converts them to visualizations

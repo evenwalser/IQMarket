@@ -22,9 +22,7 @@ export const useFileAttachments = () => {
     
     try {
       const uploadPromises = files.map(async (file) => {
-        // Create a consistent filename to avoid special characters
-        const sanitizedName = file.name.replace(/[^\x00-\x7F]/g, '');
-        const filePath = `${crypto.randomUUID()}-${sanitizedName}`;
+        const filePath = `${crypto.randomUUID()}-${file.name.replace(/[^\x00-\x7F]/g, '')}`;
         console.log('Generated file path:', filePath);
         
         // Check if file already exists by name and size
@@ -110,11 +108,22 @@ export const useFileAttachments = () => {
     const removedAttachment = uploadedAttachments[index];
     
     try {
-      // We'll stop removing from storage to prevent issues with reusing files
-      // Just remove from UI state
+      const { error: storageError } = await supabase.storage
+        .from('chat-attachments')
+        .remove([removedAttachment.file_path]);
+
+      if (storageError) throw storageError;
+
+      const { error: deleteError } = await supabase
+        .from('chat_attachments')
+        .delete()
+        .eq('id', removedAttachment.id);
+
+      if (deleteError) throw deleteError;
+
       setAttachments(prev => prev.filter((_, i) => i !== index));
       setUploadedAttachments(prev => prev.filter((_, i) => i !== index));
-      toast.success('File removed from message');
+      toast.success('File removed successfully');
     } catch (error) {
       console.error('Error removing file:', error);
       toast.error('Failed to remove file: ' + (error as Error).message);

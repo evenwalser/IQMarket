@@ -80,7 +80,7 @@ async function getOrCreateThread(openAIApiKey, threadId) {
  * Upload a file to OpenAI
  */
 async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
-  console.log(`Attempting to download and upload file: ${fileName} from URL: ${fileUrl}`);
+  console.log(`Downloading file from URL: ${fileUrl}`);
   
   try {
     // First, download the file from our Supabase storage URL
@@ -92,7 +92,6 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     
     // Convert the downloaded file to a blob
     const fileBlob = await fileResponse.blob();
-    console.log(`Downloaded file ${fileName}, size: ${fileBlob.size} bytes, type: ${fileBlob.type}`);
     
     // Prepare form data for OpenAI upload
     const formData = new FormData();
@@ -109,14 +108,8 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     });
     
     if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error(`OpenAI file upload error response:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
-      } catch (e) {
-        throw new Error(`Failed to upload file to OpenAI: ${errorText}`);
-      }
+      const errorData = await uploadResponse.json();
+      throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
     }
     
     const uploadData = await uploadResponse.json();
@@ -136,14 +129,7 @@ async function processAttachments(openAIApiKey, attachments) {
     return [];
   }
 
-  console.log(`Processing ${attachments.length} attachments for OpenAI:`, 
-    attachments.map(a => ({ 
-      name: a.file_name, 
-      type: a.content_type,
-      url: a.url ? a.url.substring(0, 50) + '...' : 'no-url'
-    }))
-  );
-  
+  console.log(`Processing ${attachments.length} attachments for OpenAI`);
   const openAIFileIds = [];
   
   for (const attachment of attachments) {
@@ -155,17 +141,12 @@ async function processAttachments(openAIApiKey, attachments) {
       
       // Upload file to OpenAI and get the file ID
       const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name);
-      if (fileId) {
-        openAIFileIds.push(fileId);
-        console.log(`Successfully uploaded file to OpenAI with ID: ${fileId}`);
-      }
+      openAIFileIds.push(fileId);
     } catch (fileError) {
       console.error(`Error processing attachment: ${fileError.message}`);
-      // Continue processing other files instead of failing the entire operation
     }
   }
   
-  console.log(`Successfully processed ${openAIFileIds.length} attachment file IDs:`, openAIFileIds);
   return openAIFileIds;
 }
 
@@ -176,13 +157,13 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
   
   try {
-    // First, create the basic message without file_ids
+    // First, create the message without file_ids
     const messageData = {
       role: 'user',
       content: message
     };
     
-    console.log("Creating message with data:", JSON.stringify(messageData));
+    console.log("Initial message data being sent:", JSON.stringify(messageData));
     
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
@@ -195,28 +176,22 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
     });
     
     if (!messageResponse.ok) {
-      const errorText = await messageResponse.text();
-      console.error(`Failed to add message, response:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
-      } catch (e) {
-        throw new Error(`Failed to add message: ${errorText}`);
-      }
+      const errorData = await messageResponse.json();
+      console.error(`Failed message data:`, JSON.stringify(messageData));
+      throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
     }
     
     const messageResponseData = await messageResponse.json();
     const messageId = messageResponseData.id;
     console.log("Message added to thread successfully:", messageId);
     
-    // Now, if we have file IDs, attach each one to the message
+    // If we have file IDs, attach them to the message in a separate request
     if (fileIds.length > 0) {
       console.log(`Attaching ${fileIds.length} files to message ${messageId}`);
       
+      // For each file ID, we need to make a separate request to attach it to the message
       for (const fileId of fileIds) {
         try {
-          console.log(`Attaching file ${fileId} to message ${messageId}`);
-          
           const attachResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages/${messageId}/attachments`, {
             method: 'POST',
             headers: {
@@ -230,16 +205,16 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
           });
           
           if (!attachResponse.ok) {
-            const attachErrorText = await attachResponse.text();
-            console.error(`Failed to attach file ${fileId}, response:`, attachErrorText);
-            // Continue with other files instead of failing the entire process
+            const errorData = await attachResponse.json();
+            console.error(`Failed to attach file ${fileId} to message ${messageId}:`, errorData);
+            // Continue with other files even if one fails
           } else {
             const attachData = await attachResponse.json();
-            console.log(`Successfully attached file ${fileId} to message ${messageId}:`, attachData.id);
+            console.log(`File ${fileId} attached successfully:`, attachData.id);
           }
         } catch (attachError) {
-          console.error(`Error attaching file ${fileId} to message:`, attachError);
-          // Continue with other files
+          console.error(`Error attaching file ${fileId} to message ${messageId}:`, attachError);
+          // Continue with other files even if one fails
         }
       }
     }
@@ -286,48 +261,39 @@ FORMAT YOUR RESPONSE CAREFULLY:
   if (assistantType === 'benchmarks') {
     instructions += `
 Format your response as follows:
-1. First, RESTATE THE QUESTION asked by the user.
-2. Provide a BRIEF OPENING STATEMENT about the benchmark data.
-3. Present POINTS 1 to N, where each point follows this structure:
-   - A clear heading for the point
-   - Brief explanatory text
-   - Then a visualization (either chart or table) with the actual data
-   - Each point MUST include a data visualization
-4. End with a CONCLUSION that includes specific RECOMMENDATIONS.
-5. Add a final data visualization showing FORECASTED OUTCOMES based on your recommendations.
+1. First, provide a brief introduction to the requested benchmark data.
+2. For each key benchmark or metric:
+   - Present the data in one of two formats:
+     a. For COMPARATIVE data (company vs benchmark), use structured JSON blocks like this:
+        \`\`\`json
+        {
+          "type": "table",
+          "title": "Revenue Comparison",
+          "data": [
+            {"Metric": "ARR", "Company": "$1.5M", "Industry Benchmark": "$2.1M"},
+            {"Metric": "Growth Rate", "Company": "15%", "Industry Benchmark": "22%"}
+          ]
+        }
+        \`\`\`
+     b. For TREND data, use chart visualizations like this:
+        \`\`\`json
+        {
+          "type": "chart",
+          "chartType": "bar",
+          "title": "Monthly Active Users",
+          "xKey": "Month",
+          "yKeys": ["Users"],
+          "data": [
+            {"Month": "Jan", "Users": 1500},
+            {"Month": "Feb", "Users": 1720},
+            {"Month": "Mar", "Users": 2100}
+          ]
+        }
+        \`\`\`
+3. After each visualization, provide a brief analysis of what the data means.
+4. Conclude with overall insights and recommendations.
 
-IMPORTANT: 
-- Prioritize VISUAL DATA (charts and tables) over text
-- Use JSON blocks for ALL visualizations:
-  a. For COMPARATIVE data, use tables:
-     \`\`\`json
-     {
-       "type": "table",
-       "title": "Revenue Comparison",
-       "data": [
-         {"Metric": "ARR", "Company": "$1.5M", "Industry Benchmark": "$2.1M"},
-         {"Metric": "Growth Rate", "Company": "15%", "Industry Benchmark": "22%"}
-       ]
-     }
-     \`\`\`
-  b. For TREND data, use charts:
-     \`\`\`json
-     {
-       "type": "chart",
-       "chartType": "bar",
-       "title": "Monthly Active Users",
-       "xKey": "Month",
-       "yKeys": ["Users"],
-       "data": [
-         {"Month": "Jan", "Users": 1500},
-         {"Month": "Feb", "Users": 1720},
-         {"Month": "Mar", "Users": 2100}
-       ]
-     }
-     \`\`\`
-6. ALWAYS include a final visualization showing forecasted outcomes based on recommendations.
-
-MAKE SURE to use the data from any attached files to populate your visualizations. Do not use placeholder data!
+If you need to include tables directly in the text, still use standard markdown formatting.
 `;
   } else if (assistantType === 'frameworks') {
     instructions += `
@@ -494,8 +460,6 @@ async function getLatestMessage(openAIApiKey, threadId) {
   }
   
   const messagesData = await messagesResponse.json();
-  console.log("Messages response:", JSON.stringify(messagesData).substring(0, 500) + "...");
-  
   const assistantMessages = messagesData.data.filter(msg => msg.role === 'assistant');
   
   if (assistantMessages.length === 0) {
@@ -574,7 +538,6 @@ Deno.serve(async (req) => {
       message, 
       assistantType, 
       attachmentsCount: attachments.length, 
-      attachmentNames: attachments.map(a => a.file_name || 'unnamed'),
       structuredOutput, 
       threadId 
     });
