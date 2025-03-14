@@ -39,7 +39,7 @@ interface DataChartProps {
     median?: number;
     topQuartile?: number;
   };
-  colorScheme?: 'default' | 'purple' | 'blue' | 'green';
+  colorScheme?: 'default' | 'purple' | 'blue' | 'green' | 'financial' | 'retention' | 'performance' | 'operational';
   visualizationId?: string;
   conversationId?: string;
   allowCustomization?: boolean;
@@ -49,7 +49,7 @@ interface ChartSettings {
   chartType: 'line' | 'bar' | 'radar' | 'area' | 'composed';
   xKey: string;
   yKeys: string[];
-  colorScheme: 'default' | 'purple' | 'blue' | 'green';
+  colorScheme: 'default' | 'purple' | 'blue' | 'green' | 'financial' | 'retention' | 'performance' | 'operational';
   height: number;
   title?: string;
   subTitle?: string;
@@ -60,7 +60,11 @@ const getColorsByScheme = (scheme: string, index: number = 0) => {
     default: ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'],
     purple: ['#8884d8', '#9c62ca', '#7953c5', '#673ab7', '#5e35b1'],
     blue: ['#0088fe', '#00b0ff', '#2196f3', '#1976d2', '#0d47a1'],
-    green: ['#82ca9d', '#4caf50', '#43a047', '#388e3c', '#2e7d32']
+    green: ['#82ca9d', '#4caf50', '#43a047', '#388e3c', '#2e7d32'],
+    financial: ['#2E7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A'],
+    retention: ['#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5'],
+    performance: ['#7B1FA2', '#8E24AA', '#9C27B0', '#AB47BC', '#BA68C8'],
+    operational: ['#F57C00', '#FB8C00', '#FF9800', '#FFA726', '#FFB74D']
   };
   
   const selectedScheme = schemes[scheme as keyof typeof schemes] || schemes.default;

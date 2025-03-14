@@ -1,4 +1,3 @@
-
 import { ChatVisualization } from "@/types/chat";
 
 /**
@@ -191,14 +190,14 @@ export const determineIfChartable = (headers: string[], data: Record<string, str
  */
 export const determineColorScheme = (title: string | undefined, headers: string[]): 'default' | 'financial' | 'retention' | 'performance' | 'operational' => {
   if (!title) {
-    title = headers.join(' ');
+    title = '';
   }
   
-  const lowerTitle = title?.toLowerCase() || '';
+  const lowerTitle = title.toLowerCase();
   let lowerHeaders: string[] = [];
   
   if (Array.isArray(headers)) {
-    lowerHeaders = headers.map(h => h.toLowerCase());
+    lowerHeaders = headers.map(h => typeof h === 'string' ? h.toLowerCase() : '');
   } else if (typeof headers === 'string') {
     lowerHeaders = [headers.toLowerCase()];
   }
