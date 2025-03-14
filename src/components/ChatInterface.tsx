@@ -46,13 +46,19 @@ export const ChatInterface = () => {
       }
 
       // Process the assistant's response content
-      const { processedContent, extractedVisualizations } = preprocessContent(data.response);
+      const { processedContent, extractedVisualizations } = preprocessContent(
+        data.response, 
+        data.visualizations
+      );
 
       // Combine extracted visualizations with any that came directly from the API
       const allVisualizations = [
         ...(data.visualizations || []),
         ...extractedVisualizations
-      ];
+      ].filter((viz, index, self) => 
+        // Remove duplicates based on id
+        index === self.findIndex((v) => v.id === viz.id)
+      );
 
       console.log("Extracted visualizations:", extractedVisualizations);
       console.log("All visualizations:", allVisualizations);

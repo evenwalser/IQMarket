@@ -1,6 +1,6 @@
 
 import { ChatVisualization } from "@/types/chat";
-import { determineChartType, determineColorScheme } from "./chartHelpers";
+import { determineChartType, determineColorScheme, normalizeChartData } from "./chartHelpers";
 import { extractMetricsFromDescription, generateSampleDataFromMetrics } from "./metricHelpers";
 
 /**
@@ -76,7 +76,7 @@ export const extractChartDescriptionsFromHeaders = (
         chartType: determineChartType(headerTitle, description),
         title: headerTitle,
         subTitle: description.split('\n')[0]?.trim() || undefined,
-        data,
+        data: normalizeChartData(data),
         xKey: metrics.length > 0 ? 'category' : 'x',
         yKeys: metrics.length > 0 ? ['value', 'benchmark'] : ['y'],
         colorScheme: determineColorScheme(headerTitle, metrics)
@@ -125,7 +125,7 @@ export const extractChartDescriptionsFromHeaders = (
           chartType: 'composed', // Best for comparing current vs. projected values
           title: headerTitle,
           subTitle: "Projected outcomes based on recommendations",
-          data,
+          data: normalizeChartData(data),
           xKey: 'category',
           yKeys: ['current', 'projected'],
           colorScheme: 'performance'
@@ -141,4 +141,98 @@ export const extractChartDescriptionsFromHeaders = (
   }
   
   return { processedContent, extractedVisualizations };
+};
+
+/**
+ * Extracts direct visualization references and processes their data
+ */
+export const extractDirectVisualizations = (
+  content: string,
+  visualizations: ChatVisualization[] | undefined
+): { processedContent: string; extractedVisualizations: ChatVisualization[] } => {
+  const extractedVisualizations: ChatVisualization[] = [];
+  
+  if (!visualizations || visualizations.length === 0) {
+    return { processedContent: content, extractedVisualizations };
+  }
+  
+  // Process each visualization to ensure it has the correct format and data is normalized
+  visualizations.forEach(viz => {
+    if (viz.type === 'chart' && viz.data) {
+      const enhancedViz: ChatVisualization = {
+        ...viz,
+        data: normalizeChartData(viz.data),
+        chartType: viz.chartType || determineChartType(viz.title || '', viz.subTitle || ''),
+        colorScheme: viz.colorScheme || determineColorScheme(viz.title, viz.xKey || '')
+      };
+      extractedVisualizations.push(enhancedViz);
+    } else {
+      extractedVisualizations.push(viz);
+    }
+  });
+  
+  // Look for existing visualization references
+  const referenceRegex = /\*Visualization #(\d+)\*/g;
+  let hasReferences = referenceRegex.test(content);
+  
+  // If no references found, add them to the content at appropriate places
+  if (!hasReferences && extractedVisualizations.length > 0) {
+    let processedContent = content;
+    const sections = processedContent.split(/#{1,3}\s+/);
+    
+    if (sections.length > 1) {
+      // Add visualizations after relevant sections
+      let vizIndex = 0;
+      let newContent = sections[0]; // Keep the content before the first header
+      
+      for (let i = 1; i < sections.length && vizIndex < extractedVisualizations.length; i++) {
+        const section = sections[i];
+        const sectionTitle = section.split('\n')[0];
+        
+        // Add the section header and content
+        newContent += `### ${sectionTitle}\n${section.substring(sectionTitle.length)}`;
+        
+        // Check if this is a good place for a visualization based on keywords
+        const viz = extractedVisualizations[vizIndex];
+        const sectionLower = section.toLowerCase();
+        const vizTitleLower = (viz.title || '').toLowerCase();
+        
+        if (viz.type === 'chart') {
+          // Check for keyword matches between section and visualization
+          const keywords = [
+            'revenue', 'growth', 'comparison', 'benchmark', 'metric', 
+            'performance', 'trend', 'forecast', 'projection', 'analysis'
+          ];
+          
+          const keywordMatch = keywords.some(keyword => 
+            sectionLower.includes(keyword) && vizTitleLower.includes(keyword)
+          );
+          
+          if (keywordMatch || i === Math.floor(sections.length / 2)) {
+            newContent += `\n\n*Visualization #${vizIndex + 1}*\n\n`;
+            vizIndex++;
+          }
+        }
+      }
+      
+      // Add any remaining visualizations at the end
+      while (vizIndex < extractedVisualizations.length) {
+        newContent += `\n\n*Visualization #${vizIndex + 1}*\n\n`;
+        vizIndex++;
+      }
+      
+      return { processedContent: newContent, extractedVisualizations };
+    }
+    
+    // For simpler content without sections, add visualizations at the end
+    let appendedContent = processedContent;
+    extractedVisualizations.forEach((_, index) => {
+      appendedContent += `\n\n*Visualization #${index + 1}*\n\n`;
+    });
+    
+    return { processedContent: appendedContent, extractedVisualizations };
+  }
+  
+  // If references already exist, just return the content as is
+  return { processedContent: content, extractedVisualizations };
 };

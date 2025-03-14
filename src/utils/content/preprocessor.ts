@@ -8,14 +8,15 @@ import {
 } from "../markdownUtils";
 import { 
   extractJsonVisualizations,
-  extractChartDescriptionsFromHeaders 
+  extractChartDescriptionsFromHeaders,
+  extractDirectVisualizations
 } from "./visualization";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
 
 /**
  * Processes the content of a message to extract visualizations and format the content.
  */
-export const preprocessContent = (content: string): ProcessedContentResult => {
+export const preprocessContent = (content: string, visualizations?: ChatVisualization[]): ProcessedContentResult => {
   if (!content) {
     return {
       processedContent: '',
@@ -51,6 +52,13 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   const asciiResult = extractAsciiTables(processedContent);
   processedContent = asciiResult.processedContent;
   extractedVisualizations = [...extractedVisualizations, ...asciiResult.extractedVisualizations];
+  
+  // Process direct visualizations from the API
+  if (visualizations && visualizations.length > 0) {
+    const directVisualizationsResult = extractDirectVisualizations(processedContent, visualizations);
+    processedContent = directVisualizationsResult.processedContent;
+    extractedVisualizations = [...extractedVisualizations, ...directVisualizationsResult.extractedVisualizations];
+  }
   
   return {
     processedContent,
