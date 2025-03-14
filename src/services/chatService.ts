@@ -29,11 +29,13 @@ export const sendMessage = async (message: string, threadId: string | null, atta
         throw new Error('No matching attachments found in database. Please try uploading the file again.');
       }
 
+      // Map attachments to the format expected by the edge function
       const formattedAttachments = uploadedAttachments.map((att: DbChatAttachment) => {
         const publicUrl = supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl;
         console.log(`Formatted attachment ${att.file_name}:`, { 
           url: publicUrl, 
           type: att.content_type,
+          name: att.file_name,  // Make sure file_name is present
           path: att.file_path,
           size: att.size
         });
@@ -41,7 +43,8 @@ export const sendMessage = async (message: string, threadId: string | null, atta
           url: publicUrl,
           file_name: att.file_name,
           content_type: att.content_type,
-          file_path: att.file_path
+          file_path: att.file_path,
+          size: att.size
         };
       });
 

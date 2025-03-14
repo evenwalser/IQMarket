@@ -80,7 +80,7 @@ async function getOrCreateThread(openAIApiKey, threadId) {
  * Upload a file to OpenAI
  */
 async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
-  console.log(`Downloading file from URL: ${fileUrl}`);
+  console.log(`Attempting to download and upload file: ${fileName} from URL: ${fileUrl}`);
   
   try {
     // First, download the file from our Supabase storage URL
@@ -92,6 +92,7 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     
     // Convert the downloaded file to a blob
     const fileBlob = await fileResponse.blob();
+    console.log(`Downloaded file ${fileName}, size: ${fileBlob.size} bytes, type: ${fileBlob.type}`);
     
     // Prepare form data for OpenAI upload
     const formData = new FormData();
@@ -108,8 +109,14 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     });
     
     if (!uploadResponse.ok) {
-      const errorData = await uploadResponse.json();
-      throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
+      const errorText = await uploadResponse.text();
+      console.error(`OpenAI file upload error response:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
+      } catch (e) {
+        throw new Error(`Failed to upload file to OpenAI: ${errorText}`);
+      }
     }
     
     const uploadData = await uploadResponse.json();
@@ -129,7 +136,14 @@ async function processAttachments(openAIApiKey, attachments) {
     return [];
   }
 
-  console.log(`Processing ${attachments.length} attachments for OpenAI`);
+  console.log(`Processing ${attachments.length} attachments for OpenAI:`, 
+    attachments.map(a => ({ 
+      name: a.file_name, 
+      type: a.content_type,
+      url: a.url ? a.url.substring(0, 50) + '...' : 'no-url'
+    }))
+  );
+  
   const openAIFileIds = [];
   
   for (const attachment of attachments) {
@@ -141,12 +155,16 @@ async function processAttachments(openAIApiKey, attachments) {
       
       // Upload file to OpenAI and get the file ID
       const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name);
-      openAIFileIds.push(fileId);
+      if (fileId) {
+        openAIFileIds.push(fileId);
+        console.log(`Successfully uploaded file to OpenAI with ID: ${fileId}`);
+      }
     } catch (fileError) {
       console.error(`Error processing attachment: ${fileError.message}`);
     }
   }
   
+  console.log(`Successfully processed ${openAIFileIds.length} attachment file IDs:`, openAIFileIds);
   return openAIFileIds;
 }
 
@@ -157,13 +175,18 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
   
   try {
-    // First, create the message without file_ids
+    // Create the message with file_ids
     const messageData = {
       role: 'user',
       content: message
     };
     
-    console.log("Initial message data being sent:", JSON.stringify(messageData));
+    // Only add file_ids if we have any
+    if (fileIds.length > 0) {
+      messageData.file_ids = fileIds;
+    }
+    
+    console.log("Message data being sent:", JSON.stringify(messageData));
     
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
@@ -176,49 +199,18 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
     });
     
     if (!messageResponse.ok) {
-      const errorData = await messageResponse.json();
-      console.error(`Failed message data:`, JSON.stringify(messageData));
-      throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
-    }
-    
-    const messageResponseData = await messageResponse.json();
-    const messageId = messageResponseData.id;
-    console.log("Message added to thread successfully:", messageId);
-    
-    // If we have file IDs, attach them to the message in a separate request
-    if (fileIds.length > 0) {
-      console.log(`Attaching ${fileIds.length} files to message ${messageId}`);
-      
-      // For each file ID, we need to make a separate request to attach it to the message
-      for (const fileId of fileIds) {
-        try {
-          const attachResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages/${messageId}/attachments`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              'Content-Type': 'application/json',
-              'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({
-              file_id: fileId
-            })
-          });
-          
-          if (!attachResponse.ok) {
-            const errorData = await attachResponse.json();
-            console.error(`Failed to attach file ${fileId} to message ${messageId}:`, errorData);
-            // Continue with other files even if one fails
-          } else {
-            const attachData = await attachResponse.json();
-            console.log(`File ${fileId} attached successfully:`, attachData.id);
-          }
-        } catch (attachError) {
-          console.error(`Error attaching file ${fileId} to message ${messageId}:`, attachError);
-          // Continue with other files even if one fails
-        }
+      const errorText = await messageResponse.text();
+      console.error(`Failed to add message, response:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
+      } catch (e) {
+        throw new Error(`Failed to add message: ${errorText}`);
       }
     }
     
+    const messageResponseData = await messageResponse.json();
+    console.log("Message added to thread successfully:", messageResponseData.id);
     return true;
   } catch (error) {
     console.error("Error adding message to thread:", error);
@@ -538,6 +530,7 @@ Deno.serve(async (req) => {
       message, 
       assistantType, 
       attachmentsCount: attachments.length, 
+      attachmentNames: attachments.map(a => a.file_name || 'unnamed'),
       structuredOutput, 
       threadId 
     });
