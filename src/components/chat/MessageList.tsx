@@ -2,7 +2,7 @@
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { preprocessContent } from "@/utils/content/preprocessor";
 
@@ -26,6 +26,18 @@ export const MessageList = ({ messages }: MessageListProps) => {
       ...(msg.visualizations || []),
       ...extractedVisualizations
     ];
+    
+    if (allVisualizations.length === 0) {
+      // No visualizations - just render the markdown content
+      return (
+        <div className="mb-3">
+          <MarkdownRenderer 
+            content={processedContent} 
+            isUserMessage={msg.role === 'user'} 
+          />
+        </div>
+      );
+    }
     
     // Check for visualization references in the content
     const referenceRegex = /\*Visualization #(\d+)\*/g;
@@ -65,6 +77,8 @@ export const MessageList = ({ messages }: MessageListProps) => {
               {renderVisualization(matchedVisualization, vizIndex)}
             </div>
           );
+        } else {
+          console.warn(`Visualization #${vizIndex + 1} reference found but no matching visualization data`);
         }
         
         lastIndex = match.index + match[0].length;
@@ -108,7 +122,12 @@ export const MessageList = ({ messages }: MessageListProps) => {
   };
   
   const renderVisualization = (visualization: any, index: number) => {
-    if (!visualization) return null;
+    if (!visualization) {
+      console.warn(`Empty visualization at index ${index}`);
+      return null;
+    }
+
+    console.log(`Rendering visualization type ${visualization.type}:`, visualization);
 
     switch (visualization.type) {
       case 'table':
@@ -140,7 +159,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
           </div>
         );
       default:
-        console.log('Unknown visualization type:', visualization.type);
+        console.warn('Unknown visualization type:', visualization.type);
         return null;
     }
   };
