@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,8 +22,8 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-white border-b sticky top-0 z-40">
-      <div className="container mx-auto p-4 flex justify-between items-center">
+    <header className="bg-white border-b sticky top-0 z-40 w-full">
+      <div className="w-full max-w-[1600px] mx-auto px-4 py-4 flex justify-between items-center">
         <Link to="/" className="flex items-center">
           <img 
             src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
