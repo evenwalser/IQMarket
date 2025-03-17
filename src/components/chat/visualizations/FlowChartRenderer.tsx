@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
@@ -118,7 +119,7 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
           nodeBorderRadius={8}
           maskColor="rgba(240, 242, 245, 0.7)"
         />
-        <Background color="#f1f5f9" gap={16} variant={BackgroundVariant.DOTS} />
+        <Background color="#f1f5f9" gap={16} variant={BackgroundVariant.Dots} />
       </ReactFlow>
     </div>
   );
