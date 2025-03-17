@@ -1,3 +1,4 @@
+
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -78,7 +79,7 @@ async function getOrCreateThread(openAIApiKey, threadId) {
 /**
  * Upload a file to OpenAI
  */
-async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
+async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName, contentType) {
   console.log(`Downloading file from URL: ${fileUrl}`);
   
   try {
@@ -90,8 +91,8 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     }
     
     // Get file content type
-    const contentType = fileResponse.headers.get('content-type') || 'application/octet-stream';
-    console.log(`File content type: ${contentType}`);
+    const fileContentType = contentType || fileResponse.headers.get('content-type') || 'application/octet-stream';
+    console.log(`File content type: ${fileContentType}`);
     
     // Convert the downloaded file to a blob
     const fileBlob = await fileResponse.blob();
@@ -147,7 +148,7 @@ async function processAttachments(openAIApiKey, attachments) {
       console.log(`Processing attachment: ${attachment.file_name} (${attachment.content_type}) from URL: ${attachment.url}`);
       
       // Upload file to OpenAI and get the file ID
-      const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name);
+      const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name, attachment.content_type);
       openAIFileIds.push(fileId);
       console.log(`Successfully added file ID ${fileId} to list`);
     } catch (fileError) {
@@ -161,40 +162,69 @@ async function processAttachments(openAIApiKey, attachments) {
 
 /**
  * Add a message to the thread
+ * According to OpenAI API v2, we need to create the message first, then attach files separately
  */
 async function addMessageToThread(openAIApiKey, threadId, message, fileIds = []) {
-  console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
-  
   try {
-    // Create the message with file_ids if available
-    const messageData = {
-      role: 'user',
-      content: message,
-      file_ids: fileIds.length > 0 ? fileIds : undefined
-    };
-    
-    console.log("Full message data being sent:", JSON.stringify(messageData));
-    
-    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+    // Step 1: Create the message without file_ids
+    console.log(`Creating message in thread ${threadId}`);
+    const createMessageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
         'OpenAI-Beta': 'assistants=v2'
       },
-      body: JSON.stringify(messageData)
+      body: JSON.stringify({
+        role: 'user',
+        content: message
+      })
     });
     
-    if (!messageResponse.ok) {
-      const errorData = await messageResponse.json();
-      console.error(`Failed message data:`, JSON.stringify(messageData));
-      console.error(`Error response:`, errorData);
-      throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
+    if (!createMessageResponse.ok) {
+      const errorData = await createMessageResponse.json();
+      console.error('Error creating message:', errorData);
+      throw new Error(`Failed to create message: ${JSON.stringify(errorData)}`);
     }
     
-    const messageResponseData = await messageResponse.json();
-    const messageId = messageResponseData.id;
-    console.log("Message added to thread successfully:", messageId);
+    const messageData = await createMessageResponse.json();
+    const messageId = messageData.id;
+    console.log(`Message created successfully with ID: ${messageId}`);
+    
+    // Step 2: If we have file IDs, attach them to the message one by one
+    if (fileIds.length > 0) {
+      console.log(`Attaching ${fileIds.length} files to message ${messageId}`);
+      
+      for (const fileId of fileIds) {
+        try {
+          console.log(`Attaching file ${fileId} to message ${messageId}`);
+          const attachResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages/${messageId}/attachments`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+              'OpenAI-Beta': 'assistants=v2'
+            },
+            body: JSON.stringify({
+              file_id: fileId
+            })
+          });
+          
+          if (!attachResponse.ok) {
+            const errorData = await attachResponse.json();
+            console.error(`Failed to attach file ${fileId}:`, errorData);
+            // Continue with other files instead of failing the entire process
+          } else {
+            const attachData = await attachResponse.json();
+            console.log(`File ${fileId} successfully attached:`, attachData.id);
+          }
+        } catch (attachError) {
+          console.error(`Error attaching file ${fileId}:`, attachError);
+          // Continue with other files
+        }
+      }
+    }
+    
     return true;
   } catch (error) {
     console.error("Error adding message to thread:", error);
@@ -236,7 +266,13 @@ FORMAT YOUR RESPONSE CAREFULLY:
   // Add specific formatting instructions for the benchmarks assistant
   if (assistantType === 'benchmarks') {
     instructions += `
-VERY IMPORTANT: When analyzing PDF FILES, THOROUGHLY EXTRACT ALL NUMERIC DATA and STATISTICS from the documents. Extract EXACT NUMBERS for metrics like revenue, growth rates, customer counts, etc. DO NOT use placeholder values like "X%" or "$Y" - provide the ACTUAL NUMERIC VALUES found in the documents.
+VERY IMPORTANT FOR BENCHMARKS: When analyzing PDF FILES, CSV or other documents, THOROUGHLY EXTRACT ALL NUMERIC DATA and STATISTICS. Extract EXACT NUMBERS for metrics like revenue, growth rates, customer counts, etc. DON'T use placeholder values like "X%" or "$Y" - provide the ACTUAL NUMERIC VALUES found in the documents.
+
+For ANY file attachments uploaded by the user:
+1. Carefully analyze all attached PDFs, images, or other files in COMPLETE DETAIL
+2. Extract ALL metrics, numbers, statistics and quantitative data
+3. Use the EXACT values found in the attachments (not placeholders or examples)
+4. If the document has tables or graphs, extract and report the precise values
 
 Format your response as follows:
 1. First, provide a brief introduction to the requested benchmark data.
