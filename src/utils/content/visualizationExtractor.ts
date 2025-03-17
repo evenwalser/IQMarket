@@ -1,5 +1,6 @@
 
-import { ChatVisualization } from "@/types/chat";
+import { ChatVisualization, DiagramType } from "@/types/chat";
+import { detectVisualizationType, formatDataForVisualization } from "./visualizationDetector";
 
 /**
  * Extracts JSON visualizations from the content
@@ -14,13 +15,39 @@ export const extractJsonVisualizations = (
   const processedContent = content.replace(jsonRegex, (match, jsonContent) => {
     try {
       const data = JSON.parse(jsonContent);
-      if (data.type && (data.type === 'table' || data.type === 'chart') && data.data) {
+      
+      // Check if it's explicitly a visualization
+      if (data.type && (data.type === 'table' || data.type === 'chart' || 
+          data.type === 'flowChart' || data.type === 'orgChart' || 
+          data.type === 'quadrantChart' || data.type === 'raciMatrix' || 
+          data.type === 'timeline' || data.type === 'funnel' || 
+          data.type === 'mindMap')) {
+        
         const vizId = crypto.randomUUID();
         extractedVisualizations.push({
           id: vizId,
           ...data
         });
         return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;
+      }
+      
+      // If not explicitly a visualization, try to detect if it contains data we can visualize
+      if (Array.isArray(data)) {
+        // Detect the best visualization type based on the data structure
+        const diagramType = detectVisualizationType(data);
+        
+        if (diagramType) {
+          // Format the data appropriately for the detected type
+          const formattedData = formatDataForVisualization(data, diagramType);
+          
+          const vizId = crypto.randomUUID();
+          extractedVisualizations.push({
+            id: vizId,
+            type: diagramType,
+            ...formattedData
+          });
+          return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;
+        }
       }
     } catch (e) {
       console.error("Error parsing JSON visualization:", e);
@@ -76,4 +103,15 @@ export const determineColorScheme = (title: string | undefined, headers: string[
   }
   
   return 'default';
+};
+
+/**
+ * Intelligently suggests the best visualization type based on the data structure.
+ */
+export const suggestVisualizationType = (
+  data: Record<string, any>[],
+  headers: string[],
+  title?: string
+): DiagramType => {
+  return detectVisualizationType(data, headers, title);
 };

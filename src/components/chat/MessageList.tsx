@@ -1,11 +1,10 @@
 
 import { ChatMessage } from "@/types/chat";
-import { DataTable } from "./visualizations/DataTable";
-import { DataChart } from "./visualizations/DataChart";
 import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { preprocessContent } from "@/utils/content/preprocessor";
 import { cleanListFormatting, fixReplyThreadFormatting } from "@/utils/markdownUtils";
+import { VisualizationRenderer } from "./visualizations/VisualizationRenderer";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -17,46 +16,6 @@ export const MessageList = ({ messages }: MessageListProps) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const renderVisualization = (visualization: any) => {
-    if (!visualization) return null;
-
-    console.log('Rendering visualization:', visualization);
-
-    switch (visualization.type) {
-      case 'table':
-        return (
-          <div className="mt-4 overflow-x-auto">
-            <DataTable 
-              data={visualization.data} 
-              headers={visualization.headers}
-              title={visualization.title}
-              sortable={true}
-              compact={visualization.compact}
-              colorScheme={visualization.colorScheme || 'default'}
-            />
-          </div>
-        );
-      case 'chart':
-        return (
-          <div className="mt-4">
-            <DataChart 
-              data={visualization.data}
-              type={visualization.chartType || 'bar'}
-              xKey={visualization.xKey || 'x'}
-              yKeys={visualization.yKeys || ['y']}
-              height={visualization.height || 300}
-              title={visualization.title}
-              subTitle={visualization.subTitle}
-              colorScheme={visualization.colorScheme || 'default'}
-            />
-          </div>
-        );
-      default:
-        console.log('Unknown visualization type:', visualization.type);
-        return null;
-    }
-  };
 
   if (messages.length === 0) {
     return (
@@ -100,11 +59,18 @@ export const MessageList = ({ messages }: MessageListProps) => {
               ) : (
                 <MarkdownRenderer content={processedContent} />
               )}
+              
+              {/* Render visualizations */}
               {allVisualizations?.map((viz, i) => (
                 <div key={i} className="mt-4 border-t border-gray-100 pt-3">
-                  {renderVisualization(viz)}
+                  <VisualizationRenderer 
+                    visualization={viz} 
+                    allowCustomization={false}
+                  />
                 </div>
               ))}
+              
+              {/* Render attachments */}
               {msg.attachments?.map((attachment, i) => (
                 <div key={i} className="mt-3 border-t border-gray-100 pt-3">
                   {attachment.type === 'image' ? (
