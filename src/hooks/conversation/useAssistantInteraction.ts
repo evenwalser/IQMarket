@@ -6,6 +6,7 @@ import { AssistantType } from "@/lib/types";
 import { UploadedAttachment } from "@/lib/conversation-types";
 import { processAssistantResponse } from "@/utils/conversation/visualizationProcessor";
 import { useAuth } from "@/contexts/AuthContext";
+import { StructuredResponse } from "@/types/structuredResponse";
 
 export function useAssistantInteraction(
   sessionId: string, 
@@ -92,6 +93,13 @@ export function useAssistantInteraction(
       }
       
       const visualizations = processAssistantResponse(data);
+      
+      // Check for structured response
+      let structuredResponseData: StructuredResponse | null = null;
+      if (data.structuredResponse) {
+        console.log("Received structured response:", data.structuredResponse);
+        structuredResponseData = data.structuredResponse;
+      }
 
       const { error: dbError } = await supabase
         .from('conversations')
@@ -102,6 +110,7 @@ export function useAssistantInteraction(
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
           visualizations: visualizations,
+          structured_response: structuredResponseData,
           session_id: sessionId,
           user_id: user.id
         });
@@ -168,6 +177,13 @@ export function useAssistantInteraction(
       
       const visualizations = processAssistantResponse(data);
       
+      // Check for structured response
+      let structuredResponseData: StructuredResponse | null = null;
+      if (data.structuredResponse) {
+        console.log("Received structured response:", data.structuredResponse);
+        structuredResponseData = data.structuredResponse;
+      }
+      
       const { error: dbError } = await supabase
         .from('conversations')
         .insert({
@@ -177,6 +193,7 @@ export function useAssistantInteraction(
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
           visualizations: visualizations,
+          structured_response: structuredResponseData,
           session_id: sessionId,
           user_id: user.id
         });

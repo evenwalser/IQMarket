@@ -1,5 +1,5 @@
 
-// Version 2.0.0 - FIXED ATTACHMENT HANDLING WITH OPENAI ASSISTANTS API V2
+// Version 3.0.0 - STRUCTURED OUTPUT FORMAT IMPLEMENTATION
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -197,15 +197,51 @@ serve(async (req) => {
       }
     }
 
+    // Create assistant instructions based on assistant type and structured output preferences
+    let assistantInstructions = "";
+    
+    if (structuredOutput) {
+      // For structured output, provide specific JSON structure instructions based on assistant type
+      if (assistantType === 'knowledge') {
+        assistantInstructions = `
+You are a Knowledge Assistant. Always return valid JSON with the following structure:
+
+{
+  "assistantType": "knowledge",
+  "sections": [
+    {
+      "type": "text",
+      "content": "Some text content..."
+    },
+    {
+      "type": "heading",
+      "content": "Heading text",
+      "level": 2
+    }
+    // ... more sections
+  ]
+}
+
+Format your responses like a polished email or letter, with greeting, main body, and closing.
+Cite founders using something like '— {FounderName}' or reference them in the text directly.
+Break your response into logical sections with appropriate headings where needed.
+Return ONLY valid JSON that follows this schema.`;
+      } else {
+        // Default structured output instructions for other assistant types
+        assistantInstructions = "Please provide your response in a clear, structured format. When presenting data, provide it as properly formatted tables and visualizations. Extract all relevant metrics, numbers, and statistics from user's query and attachments.";
+      }
+    } else {
+      // Standard instructions for unstructured output
+      assistantInstructions = "Respond in a clear, helpful manner with proper formatting.";
+    }
+
     // Run assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
       method: 'POST',
       headers: openAIHeaders,
       body: JSON.stringify({
         assistant_id: assistantId,
-        instructions: structuredOutput ? 
-          "Please provide your response in a clear, structured format. When presenting data, provide it as properly formatted tables and visualizations. Extract all relevant metrics, numbers, and statistics from user's query and attachments." : 
-          "Respond in a clear, helpful manner with proper formatting."
+        instructions: assistantInstructions
       }),
     });
 
@@ -272,9 +308,28 @@ serve(async (req) => {
 
       console.log('Run completed successfully, returning response');
       
+      // Try to parse the response as structured JSON if structured output was requested
+      let structuredResponseObj = null;
+      let rawTextResponse = lastMessage.content[0].text.value;
+      
+      if (structuredOutput) {
+        try {
+          // Try to extract JSON from the response if it's embedded in a code block
+          const jsonMatch = rawTextResponse.match(/```(?:json)?\n([\s\S]*?)\n```/);
+          const jsonContent = jsonMatch ? jsonMatch[1] : rawTextResponse;
+          
+          structuredResponseObj = JSON.parse(jsonContent);
+          console.log('Successfully parsed structured JSON response');
+        } catch (err) {
+          console.warn('Failed to parse structured JSON response:', err);
+          // If parsing fails, we'll fall back to raw text response
+        }
+      }
+      
       return new Response(
         JSON.stringify({
-          response: lastMessage.content[0].text.value,
+          response: rawTextResponse,
+          structuredResponse: structuredResponseObj,
           thread_id: thread.id,
           assistant_id: assistantId,
           file_processing_results: processingResults

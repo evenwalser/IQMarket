@@ -1,5 +1,6 @@
 
 import { ChatVisualization } from "@/types/chat";
+import { StructuredResponse } from "@/types/structuredResponse";
 
 export type AssistantType = "knowledge" | "frameworks" | "benchmarks" | "assistant";
 
@@ -8,7 +9,7 @@ export interface AssistantMessage {
   content: string;
 }
 
-// Update Conversation type to include visualizations
+// Update Conversation type to include visualizations and structured response
 export interface Conversation {
   id: string;
   created_at: string;
@@ -19,6 +20,7 @@ export interface Conversation {
   session_id: string;
   assistant_id?: string | null;
   visualizations?: ReadonlyArray<ChatVisualization>; // Use ReadonlyArray to help TypeScript
+  structured_response?: StructuredResponse | null; // Add structured response field
 }
 
 export interface ChatMessage {
