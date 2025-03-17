@@ -1,3 +1,5 @@
+
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 import { DataTable } from "@/components/chat/visualizations/DataTable";
