@@ -1,6 +1,4 @@
 
-import { StructuredSectionType, StructuredSection } from './structuredResponse';
-
 export type StructuredSectionType = 'text' | 'heading' | 'chart' | 'image' | 'flowChart' | 'orgChart' | 'table';
 
 export interface StructuredSection {
