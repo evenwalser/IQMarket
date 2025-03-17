@@ -14,7 +14,7 @@ export function useAssistantInteraction(
   clearAttachments: () => void
 ) {
   const [isLoading, setIsLoading] = useState(false);
-  const [structuredOutput, setStructuredOutput] = useState<boolean>(false);
+  const [structuredOutput, setStructuredOutput] = useState<boolean>(true); // Set to true by default for better visualization
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const { user } = useAuth();
@@ -46,6 +46,8 @@ export function useAssistantInteraction(
             .getPublicUrl(att.file_path)
             .data.publicUrl;
 
+          console.log(`Generated public URL for ${att.file_name}:`, publicUrl);
+
           return {
             url: publicUrl,
             file_path: att.file_path,
@@ -62,12 +64,18 @@ export function useAssistantInteraction(
         structuredOutput: structuredOutput
       });
 
+      // Add specific instruction for benchmarks with attachments
+      let enhancedQuery = searchQuery;
+      if (selectedMode === 'benchmarks' && formattedAttachments.length > 0) {
+        enhancedQuery = `${searchQuery}\n\nIMPORTANT: This message includes file attachments containing metrics and benchmarks data. Please analyze these files in detail and extract all relevant metrics, numbers, and statistics. Present this data in structured, formatted tables and visualizations.`;
+      }
+
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
-          message: searchQuery,
+          message: enhancedQuery,
           assistantType: selectedMode,
           attachments: formattedAttachments,
-          structuredOutput: structuredOutput
+          structuredOutput: true // Always use structured output for better visualization
         }
       });
       

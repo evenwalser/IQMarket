@@ -1,4 +1,3 @@
-
 // Import specific modules we need rather than the entire OpenAI SDK
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
@@ -90,8 +89,13 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
       throw new Error(`Failed to download file from URL: ${fileUrl}, status: ${fileResponse.status}`);
     }
     
+    // Get file content type
+    const contentType = fileResponse.headers.get('content-type') || 'application/octet-stream';
+    console.log(`File content type: ${contentType}`);
+    
     // Convert the downloaded file to a blob
     const fileBlob = await fileResponse.blob();
+    console.log(`Downloaded file size: ${fileBlob.size} bytes`);
     
     // Prepare form data for OpenAI upload
     const formData = new FormData();
@@ -109,6 +113,7 @@ async function uploadFileToOpenAI(openAIApiKey, fileUrl, fileName) {
     
     if (!uploadResponse.ok) {
       const errorData = await uploadResponse.json();
+      console.error('Upload error response:', errorData);
       throw new Error(`Failed to upload file to OpenAI: ${JSON.stringify(errorData)}`);
     }
     
@@ -139,14 +144,18 @@ async function processAttachments(openAIApiKey, attachments) {
         continue;
       }
       
+      console.log(`Processing attachment: ${attachment.file_name} (${attachment.content_type}) from URL: ${attachment.url}`);
+      
       // Upload file to OpenAI and get the file ID
       const fileId = await uploadFileToOpenAI(openAIApiKey, attachment.url, attachment.file_name);
       openAIFileIds.push(fileId);
+      console.log(`Successfully added file ID ${fileId} to list`);
     } catch (fileError) {
       console.error(`Error processing attachment: ${fileError.message}`);
     }
   }
   
+  console.log(`Finished processing attachments, got ${openAIFileIds.length} valid file IDs`);
   return openAIFileIds;
 }
 
@@ -157,13 +166,14 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
   console.log(`Adding message to thread with ${fileIds.length} file IDs:`, fileIds);
   
   try {
-    // First, create the message without file_ids
+    // Create the message with file_ids if available
     const messageData = {
       role: 'user',
-      content: message
+      content: message,
+      file_ids: fileIds.length > 0 ? fileIds : undefined
     };
     
-    console.log("Initial message data being sent:", JSON.stringify(messageData));
+    console.log("Full message data being sent:", JSON.stringify(messageData));
     
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
@@ -178,47 +188,13 @@ async function addMessageToThread(openAIApiKey, threadId, message, fileIds = [])
     if (!messageResponse.ok) {
       const errorData = await messageResponse.json();
       console.error(`Failed message data:`, JSON.stringify(messageData));
+      console.error(`Error response:`, errorData);
       throw new Error(`Failed to add message: ${JSON.stringify(errorData)}`);
     }
     
     const messageResponseData = await messageResponse.json();
     const messageId = messageResponseData.id;
     console.log("Message added to thread successfully:", messageId);
-    
-    // If we have file IDs, attach them to the message in a separate request
-    if (fileIds.length > 0) {
-      console.log(`Attaching ${fileIds.length} files to message ${messageId}`);
-      
-      // For each file ID, we need to make a separate request to attach it to the message
-      for (const fileId of fileIds) {
-        try {
-          const attachResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages/${messageId}/attachments`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              'Content-Type': 'application/json',
-              'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({
-              file_id: fileId
-            })
-          });
-          
-          if (!attachResponse.ok) {
-            const errorData = await attachResponse.json();
-            console.error(`Failed to attach file ${fileId} to message ${messageId}:`, errorData);
-            // Continue with other files even if one fails
-          } else {
-            const attachData = await attachResponse.json();
-            console.log(`File ${fileId} attached successfully:`, attachData.id);
-          }
-        } catch (attachError) {
-          console.error(`Error attaching file ${fileId} to message ${messageId}:`, attachError);
-          // Continue with other files even if one fails
-        }
-      }
-    }
-    
     return true;
   } catch (error) {
     console.error("Error adding message to thread:", error);
@@ -260,6 +236,8 @@ FORMAT YOUR RESPONSE CAREFULLY:
   // Add specific formatting instructions for the benchmarks assistant
   if (assistantType === 'benchmarks') {
     instructions += `
+VERY IMPORTANT: When analyzing PDF FILES, THOROUGHLY EXTRACT ALL NUMERIC DATA and STATISTICS from the documents. Extract EXACT NUMBERS for metrics like revenue, growth rates, customer counts, etc. DO NOT use placeholder values like "X%" or "$Y" - provide the ACTUAL NUMERIC VALUES found in the documents.
+
 Format your response as follows:
 1. First, provide a brief introduction to the requested benchmark data.
 2. For each key benchmark or metric:
@@ -319,7 +297,6 @@ Format your response as follows:
 Use examples from the knowledge base whenever possible to illustrate how the framework has been applied successfully.
 `;
   } else {
-    // Template for JSON visualization
     const jsonTemplate = structuredOutput ? `Please provide structured data for visualization when relevant. For tables and charts, use JSON blocks like this:
 \`\`\`json
 {
@@ -566,6 +543,7 @@ Deno.serve(async (req) => {
     // Process attachments if present
     let fileIds = [];
     if (attachments && attachments.length > 0) {
+      console.log(`Processing ${attachments.length} attachments for thread ${threadId2}`);
       fileIds = await processAttachments(openAIApiKey, attachments);
       console.log(`Processed ${fileIds.length} file IDs for OpenAI:`, fileIds);
     }

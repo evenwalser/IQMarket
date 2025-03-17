@@ -49,6 +49,14 @@ const Index = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // When mode changes to benchmarks, automatically enable structured output
+  const handleModeChange = (mode: AssistantType) => {
+    setSelectedMode(mode);
+    if (mode === 'benchmarks') {
+      setStructuredOutput(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fafafa]">
       <div ref={pageTopRef} /> {/* Reference for scrolling to top of page */}
@@ -65,7 +73,7 @@ const Index = () => {
                 handleSearch={handleSearchRequest}
                 isLoading={isLoading}
                 selectedMode={selectedMode}
-                setSelectedMode={setSelectedMode}
+                setSelectedMode={handleModeChange}
                 handleFileUpload={handleFileUpload}
                 attachments={attachments}
                 structuredOutput={structuredOutput}
