@@ -17,6 +17,7 @@ export type Database = {
           file_path: string
           id: string
           size: number
+          user_id: string | null
         }
         Insert: {
           content_type: string
@@ -25,6 +26,7 @@ export type Database = {
           file_path: string
           id?: string
           size: number
+          user_id?: string | null
         }
         Update: {
           content_type?: string
@@ -33,6 +35,7 @@ export type Database = {
           file_path?: string
           id?: string
           size?: number
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -46,6 +49,7 @@ export type Database = {
           response: string
           session_id: string | null
           thread_id: string
+          user_id: string | null
           visualizations: Json[] | null
         }
         Insert: {
@@ -57,6 +61,7 @@ export type Database = {
           response: string
           session_id?: string | null
           thread_id: string
+          user_id?: string | null
           visualizations?: Json[] | null
         }
         Update: {
@@ -68,6 +73,7 @@ export type Database = {
           response?: string
           session_id?: string | null
           thread_id?: string
+          user_id?: string | null
           visualizations?: Json[] | null
         }
         Relationships: []

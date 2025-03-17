@@ -7,6 +7,12 @@ type DbChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
 
 export const sendMessage = async (message: string, threadId: string | null, attachments: File[]) => {
   try {
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('You must be logged in to send messages');
+    }
+
     if (attachments.length > 0) {
       console.log('Processing attachments:', attachments.map(a => ({ name: a.name, type: a.type, size: a.size })));
       
@@ -15,7 +21,8 @@ export const sendMessage = async (message: string, threadId: string | null, atta
         .from('chat_attachments')
         .select('*')
         .in('file_name', attachments.map(file => file.name))
-        .in('size', attachments.map(file => file.size));
+        .in('size', attachments.map(file => file.size))
+        .eq('user_id', user.id);
 
       if (fetchError) {
         console.error('Error fetching attachments:', fetchError);

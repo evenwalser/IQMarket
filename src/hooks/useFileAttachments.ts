@@ -3,16 +3,23 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
 
 export const useFileAttachments = () => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadedAttachments, setUploadedAttachments] = useState<ChatAttachment[]>([]);
+  const { user } = useAuth();
 
   const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    
+    if (!user) {
+      toast.error("You need to be logged in to upload files");
+      return;
+    }
     
     console.log('Files selected for upload:', files.map(f => ({
       name: f.name,
@@ -31,6 +38,7 @@ export const useFileAttachments = () => {
           .select('*')
           .eq('file_name', file.name)
           .eq('size', file.size)
+          .eq('user_id', user.id)
           .single();
 
         if (existingFile) {
@@ -57,7 +65,8 @@ export const useFileAttachments = () => {
             file_path: filePath,
             file_name: file.name,
             content_type: file.type,
-            size: file.size
+            size: file.size,
+            user_id: user.id
           })
           .select()
           .single();
@@ -105,6 +114,11 @@ export const useFileAttachments = () => {
   };
 
   const removeAttachment = async (index: number) => {
+    if (!user) {
+      toast.error("You need to be logged in to remove files");
+      return;
+    }
+    
     const removedAttachment = uploadedAttachments[index];
     
     try {
@@ -117,7 +131,8 @@ export const useFileAttachments = () => {
       const { error: deleteError } = await supabase
         .from('chat_attachments')
         .delete()
-        .eq('id', removedAttachment.id);
+        .eq('id', removedAttachment.id)
+        .eq('user_id', user.id);
 
       if (deleteError) throw deleteError;
 

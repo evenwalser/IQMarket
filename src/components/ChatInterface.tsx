@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { ChatMessage } from "@/types/chat";
@@ -8,6 +9,7 @@ import { MessageInput } from "./chat/MessageInput";
 import { sendMessage } from "@/services/chatService";
 import { useFileAttachments } from "@/hooks/useFileAttachments";
 import { preprocessContent } from "@/utils/content/preprocessor";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const ChatInterface = () => {
   const [message, setMessage] = useState("");
@@ -15,6 +17,7 @@ export const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const { attachments, handleAttachmentUpload, removeAttachment } = useFileAttachments();
+  const { user } = useAuth();
 
   const clearChat = () => {
     setMessages([]);
@@ -24,6 +27,10 @@ export const ChatInterface = () => {
 
   const handleSendMessage = async () => {
     if (!message.trim() && attachments.length === 0) return;
+    if (!user) {
+      toast.error("You need to be logged in to send messages");
+      return;
+    }
 
     try {
       setIsLoading(true);
