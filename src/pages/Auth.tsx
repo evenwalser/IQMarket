@@ -45,7 +45,7 @@ const Auth = () => {
         });
 
         if (error) throw error;
-        toast.success("Check your email for the confirmation link!");
+        toast.success("Sign up successful! Check your email for the confirmation link, or if email confirmation is disabled, you can now log in.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
