@@ -126,16 +126,23 @@ export function useAssistantInteraction(
     }
     
     try {
+      // Need to cast the assistantType string to AssistantType since it comes as a string
+      // Let's validate it to ensure it's a valid AssistantType
+      const validAssistantTypes: AssistantType[] = ['knowledge', 'frameworks', 'benchmarks', 'assistant'];
+      const typedAssistantType: AssistantType = validAssistantTypes.includes(assistantType as AssistantType) 
+        ? (assistantType as AssistantType) 
+        : 'knowledge'; // fallback to knowledge if invalid
+      
       console.log(`Sending reply to thread ${threadId}:`, {
         message,
-        assistantType,
+        assistantType: typedAssistantType,
         structuredOutput
       });
       
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message,
-          assistantType,
+          assistantType: typedAssistantType,
           threadId,
           structuredOutput
         }
@@ -158,7 +165,7 @@ export function useAssistantInteraction(
         .insert({
           query: message,
           response: data.response,
-          assistant_type: assistantType as AssistantType,
+          assistant_type: typedAssistantType,
           thread_id: data.thread_id,
           assistant_id: data.assistant_id,
           visualizations: visualizations,
