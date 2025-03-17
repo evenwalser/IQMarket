@@ -6,7 +6,7 @@ import { AssistantType } from "@/lib/types";
 import { UploadedAttachment } from "@/lib/conversation-types";
 import { processAssistantResponse } from "@/utils/conversation/visualizationProcessor";
 import { useAuth } from "@/contexts/AuthContext";
-import { StructuredResponse } from "@/types/structuredResponse";
+import { StructuredResponse, structuredResponseToJson } from "@/types/structuredResponse";
 
 export function useAssistantInteraction(
   sessionId: string, 
@@ -113,20 +113,23 @@ export function useAssistantInteraction(
         user_id: user.id
       };
 
-      // Only add structured_response if the database supports it
       try {
         // First try with structured response
         if (structuredResponseData) {
+          // Convert StructuredResponse to Json before sending to Supabase
+          const jsonStructuredResponse = structuredResponseToJson(structuredResponseData);
+          
           const { error: dbError } = await supabase
             .from('conversations')
             .insert({
               ...conversationData,
-              structured_response: structuredResponseData
+              structured_response: jsonStructuredResponse
             });
 
-          // If structured_response column doesn't exist, fall back to basic insert
-          if (dbError && (dbError.message.includes("structured_response") || dbError.code === "PGRST204")) {
-            console.warn("Structured response not supported in database schema, falling back to basic insert");
+          if (dbError) {
+            console.error("Error storing conversation with structured response:", dbError);
+            
+            // Fallback to basic insert without structured response
             const { error: fallbackError } = await supabase
               .from('conversations')
               .insert(conversationData);
@@ -134,8 +137,6 @@ export function useAssistantInteraction(
             if (fallbackError) {
               throw fallbackError;
             }
-          } else if (dbError) {
-            throw dbError;
           }
         } else {
           // No structured response, do basic insert
@@ -229,20 +230,23 @@ export function useAssistantInteraction(
         user_id: user.id
       };
 
-      // Only add structured_response if the database supports it
       try {
         // First try with structured response
         if (structuredResponseData) {
+          // Convert StructuredResponse to Json before sending to Supabase
+          const jsonStructuredResponse = structuredResponseToJson(structuredResponseData);
+          
           const { error: dbError } = await supabase
             .from('conversations')
             .insert({
               ...conversationData,
-              structured_response: structuredResponseData
+              structured_response: jsonStructuredResponse
             });
 
-          // If structured_response column doesn't exist, fall back to basic insert
-          if (dbError && (dbError.message.includes("structured_response") || dbError.code === "PGRST204")) {
-            console.warn("Structured response not supported in database schema, falling back to basic insert");
+          if (dbError) {
+            console.error("Error storing conversation with structured response:", dbError);
+            
+            // Fallback to basic insert without structured response
             const { error: fallbackError } = await supabase
               .from('conversations')
               .insert(conversationData);
@@ -250,8 +254,6 @@ export function useAssistantInteraction(
             if (fallbackError) {
               throw fallbackError;
             }
-          } else if (dbError) {
-            throw dbError;
           }
         } else {
           // No structured response, do basic insert

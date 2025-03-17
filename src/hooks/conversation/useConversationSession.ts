@@ -5,6 +5,7 @@ import { Conversation } from "@/lib/types";
 import { toast } from "sonner";
 import { safeMapVisualization } from "@/utils/conversation/visualizationProcessor";
 import { useAuth } from "@/contexts/AuthContext";
+import { jsonToStructuredResponse } from "@/types/structuredResponse";
 
 export function useConversationSession() {
   const [sessionId, setSessionId] = useState<string>("");
@@ -56,6 +57,11 @@ export function useConversationSession() {
           }
         }
         
+        // Process structured_response from JSON to StructuredResponse
+        const structuredResponse = item.structured_response 
+          ? jsonToStructuredResponse(item.structured_response)
+          : null;
+        
         const conversation: Conversation = {
           id: item.id,
           created_at: item.created_at,
@@ -66,7 +72,7 @@ export function useConversationSession() {
           session_id: item.session_id || sessId,
           assistant_id: item.assistant_id,
           visualizations: visualizationList,
-          structured_response: item.structured_response || null
+          structured_response: structuredResponse
         };
         
         result.push(conversation);
