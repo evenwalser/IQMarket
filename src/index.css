@@ -84,3 +84,9 @@
   background-size: 200% 200%;
   animation: gradient-background 15s ease infinite;
 }
+
+/* Header transparency and blur effect */
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}

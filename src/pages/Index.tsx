@@ -63,7 +63,7 @@ const Index = () => {
       <div ref={pageTopRef} /> {/* Reference for scrolling to top of page */}
       <Header />
 
-      <main className="pt-0 w-full">
+      <main className="pt-16 w-full"> {/* Added padding-top to account for fixed header */}
         <div className="w-full bg-gradient-to-r from-purple-600/5 via-blue-500/5 to-purple-600/5 
           animate-gradient-background backdrop-blur-sm pb-24">
           <div className="w-full mx-auto px-0 pt-20 bg-[#f2f2f2]">

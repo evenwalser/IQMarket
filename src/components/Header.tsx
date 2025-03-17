@@ -22,7 +22,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-white border-b sticky top-0 z-40 w-full">
+    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-white/80 border-b transition-all">
       <div className="w-full max-w-[1600px] mx-auto px-4 py-4 flex justify-between items-center">
         <Link to="/" className="flex items-center">
           <img 
