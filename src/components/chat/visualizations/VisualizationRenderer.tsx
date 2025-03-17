@@ -89,9 +89,9 @@ export const VisualizationRenderer = ({
         <OrgChart 
           nodes={visualization.nodes || []} 
           title={visualization.title}
-          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+          colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 
-            ["default", "purple", "blue", "green"]
+            ["default", "financial", "retention", "performance", "operational"]
           )}
         />
       );
@@ -104,9 +104,9 @@ export const VisualizationRenderer = ({
           yAxisLabel={visualization.yAxisLabel}
           title={visualization.title}
           height={visualization.height || 400}
-          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+          colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 
-            ["default", "purple", "blue", "green"]
+            ["default", "financial", "retention", "performance", "operational"]
           )}
         />
       );
@@ -117,9 +117,9 @@ export const VisualizationRenderer = ({
           tasks={visualization.tasks || []}
           roles={visualization.roles || []}
           title={visualization.title}
-          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+          colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 
-            ["default", "purple", "blue", "green"]
+            ["default", "financial", "retention", "performance", "operational"]
           )}
         />
       );
