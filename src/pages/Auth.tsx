@@ -74,7 +74,10 @@ const Auth = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Detailed Google auth error:", error);
+        throw error;
+      }
     } catch (error: any) {
       toast.error(error.message || "Google authentication failed");
       console.error("Google auth error:", error);
