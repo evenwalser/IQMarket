@@ -1,14 +1,15 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import ReactFlow, {
+import { 
   Node,
   Edge,
   Position,
   ReactFlowProvider,
   useNodesState,
   useEdgesState,
-  Panel
+  Panel,
+  ReactFlow as ReactFlowComponent
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -62,7 +63,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
     }
 
     // Calculate levels for each node using BFS
-    const nodeWithLevels = [...nodes];
+    const nodeWithLevels = [...nodes].map(node => ({...node, level: 0})); // Initialize all with level 0
     const queue = rootNodes.map(node => ({ ...node, level: 0 }));
     const processed = new Set<string>();
     
@@ -75,8 +76,11 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
       
       for (const child of children) {
         if (!processed.has(child.id)) {
-          child.level = (current.level || 0) + 1;
-          queue.push(child);
+          const childIndex = nodeWithLevels.findIndex(n => n.id === child.id);
+          if (childIndex >= 0) {
+            nodeWithLevels[childIndex].level = (current.level || 0) + 1;
+          }
+          queue.push({...child, level: (current.level || 0) + 1});
         }
       }
     }
@@ -168,7 +172,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
       <CardContent className="p-0">
         <div style={{ height: 500 }} ref={reactFlowWrapper}>
           <ReactFlowProvider>
-            <ReactFlow
+            <ReactFlowComponent
               nodes={reactFlowNodes}
               edges={reactFlowEdges}
               onNodesChange={onNodesChange}
@@ -183,7 +187,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
                   {nodes.length} members • {reactFlowEdges.length} connections
                 </div>
               </Panel>
-            </ReactFlow>
+            </ReactFlowComponent>
           </ReactFlowProvider>
         </div>
       </CardContent>

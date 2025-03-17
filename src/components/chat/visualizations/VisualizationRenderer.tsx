@@ -22,6 +22,12 @@ export const VisualizationRenderer = ({
 }: VisualizationRendererProps) => {
   if (!visualization) return null;
 
+  // Helper function to map colorScheme to supported types
+  const mapColorScheme = (scheme: string | undefined, supportedValues: string[]): string => {
+    if (!scheme) return 'default';
+    return supportedValues.includes(scheme) ? scheme : 'default';
+  };
+
   switch (visualization.type) {
     case 'table':
       return (
@@ -31,29 +37,35 @@ export const VisualizationRenderer = ({
           title={visualization.title}
           sortable={true}
           compact={visualization.compact}
-          colorScheme={visualization.colorScheme || 'default'}
+          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green", "red"])}
           allowCustomization={allowCustomization}
           visualizationId={visualization.id}
           conversationId={conversationId}
         />
       );
       
-    case 'chart':
+    case 'chart': {
+      // Map chartType to supported values
+      const chartType = visualization.chartType === 'pie' 
+        ? 'bar' // Use bar as fallback for pie
+        : (visualization.chartType || 'bar');
+        
       return (
         <DataChart 
           data={visualization.data}
-          type={visualization.chartType || 'bar'}
+          type={chartType as "bar" | "line" | "area" | "radar" | "composed"}
           xKey={visualization.xKey || 'x'}
           yKeys={visualization.yKeys || ['y']}
           height={visualization.height || 300}
           title={visualization.title}
           subTitle={visualization.subTitle}
-          colorScheme={visualization.colorScheme || 'default'}
+          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
           allowCustomization={allowCustomization}
           visualizationId={visualization.id}
           conversationId={conversationId}
         />
       );
+    }
       
     case 'flowChart':
       return (
@@ -62,8 +74,8 @@ export const VisualizationRenderer = ({
             nodes: visualization.nodes || [],
             edges: visualization.edges || []
           }} 
-          title={visualization.title}
           height={visualization.height || 400}
+          // Use header title in flowData for now (title is not in FlowChartProps)
         />
       );
       
@@ -84,7 +96,7 @@ export const VisualizationRenderer = ({
           yAxisLabel={visualization.yAxisLabel}
           title={visualization.title}
           height={visualization.height || 400}
-          colorScheme={visualization.colorScheme}
+          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
         />
       );
       
@@ -94,7 +106,7 @@ export const VisualizationRenderer = ({
           tasks={visualization.tasks || []}
           roles={visualization.roles || []}
           title={visualization.title}
-          colorScheme={visualization.colorScheme}
+          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
         />
       );
       

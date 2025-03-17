@@ -26,6 +26,8 @@ export const extractJsonVisualizations = (
         const vizId = crypto.randomUUID();
         extractedVisualizations.push({
           id: vizId,
+          type: data.type as DiagramType,
+          data: data.data || [], // Ensure data is provided
           ...data
         });
         return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;
@@ -44,6 +46,7 @@ export const extractJsonVisualizations = (
           extractedVisualizations.push({
             id: vizId,
             type: diagramType,
+            data: data, // Ensure data is provided
             ...formattedData
           });
           return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;

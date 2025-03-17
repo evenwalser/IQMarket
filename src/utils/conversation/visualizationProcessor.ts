@@ -6,7 +6,11 @@ import { ChatVisualization, JsonObject } from "@/types/chat";
  */
 export const safeMapVisualization = (vizData: any): ChatVisualization => {
   if (!vizData || typeof vizData !== 'object') {
-    return { type: 'table', data: [] };
+    return { 
+      id: crypto.randomUUID(),
+      type: 'table', 
+      data: [] 
+    };
   }
   
   const type = typeof vizData.type === 'string' ? 
@@ -14,7 +18,11 @@ export const safeMapVisualization = (vizData: any): ChatVisualization => {
   
   const data = Array.isArray(vizData.data) ? vizData.data : [];
   
-  const viz: ChatVisualization = { type, data };
+  const viz: ChatVisualization = { 
+    id: vizData.id || crypto.randomUUID(),
+    type, 
+    data 
+  };
   
   if (Array.isArray(vizData.headers)) viz.headers = vizData.headers;
   
@@ -40,7 +48,9 @@ export const processAssistantResponse = (data: any): JsonObject[] => {
   }
   
   return data.visualizations.map((viz: any): JsonObject => {
-    const result: JsonObject = {};
+    const result: JsonObject = {
+      id: viz?.id || crypto.randomUUID() // Ensure id is always present
+    };
     
     if (viz?.type) result.type = viz.type;
     if (Array.isArray(viz?.data)) result.data = viz.data;

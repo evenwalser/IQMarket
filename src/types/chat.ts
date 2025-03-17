@@ -67,3 +67,12 @@ export interface ChatMessage {
     name: string;
   }>;
 }
+
+// Add ChatAttachment type
+export interface ChatAttachment {
+  url: string;
+  file_name: string;
+  content_type: string;
+  file_path: string;
+  id?: string;
+}

@@ -77,6 +77,9 @@ export const FunnelChart = ({
     return null;
   };
 
+  // Get the color array
+  const colorArray = getColors();
+
   return (
     <Card className="my-4">
       <CardHeader>
@@ -92,7 +95,7 @@ export const FunnelChart = ({
             <Funnel
               dataKey="value"
               nameKey="stage"
-              colors={getColors()}
+              fill={colorArray}
               isAnimationActive
             >
               <LabelList

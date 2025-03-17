@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { ChatAttachment } from "@/types/chat";
+import { ChatAttachment } from "@/types/chat";
 import type { Database } from "@/integrations/supabase/types";
 
 type DbChatAttachment = Database['public']['Tables']['chat_attachments']['Row'];
@@ -14,7 +14,7 @@ export const sendMessage = async (message: string, threadId: string | null, atta
     }
 
     // Process attachments if present
-    let formattedAttachments = [];
+    let formattedAttachments: ChatAttachment[] = [];
     
     if (attachments.length > 0) {
       console.log('Processing attachments:', attachments.map(a => ({ name: a.name, type: a.type, size: a.size })));

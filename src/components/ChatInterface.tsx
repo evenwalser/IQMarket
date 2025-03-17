@@ -37,8 +37,9 @@ export const ChatInterface = () => {
       const userMessage = message;
       setMessage("");
 
-      // Add user message to chat
+      // Add user message to chat with required id
       setMessages(prev => [...prev, { 
+        id: crypto.randomUUID(),
         role: 'user', 
         content: userMessage,
       }]);
@@ -80,8 +81,9 @@ export const ChatInterface = () => {
         ...extractedVisualizations
       ];
 
-      // Add assistant's response to chat
+      // Add assistant's response to chat with required id
       setMessages(prev => [...prev, { 
+        id: crypto.randomUUID(),
         role: 'assistant', 
         content: processedContent,
         visualizations: allVisualizations.length > 0 ? allVisualizations : undefined
