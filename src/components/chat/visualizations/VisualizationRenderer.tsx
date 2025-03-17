@@ -23,9 +23,9 @@ export const VisualizationRenderer = ({
   if (!visualization) return null;
 
   // Helper function to map colorScheme to supported types
-  const mapColorScheme = (scheme: string | undefined, supportedValues: string[]): string => {
-    if (!scheme) return 'default';
-    return supportedValues.includes(scheme) ? scheme : 'default';
+  const mapColorScheme = <T extends string>(scheme: string | undefined, supportedValues: T[]): T => {
+    if (!scheme) return 'default' as T;
+    return (supportedValues.includes(scheme as T) ? scheme : 'default') as T;
   };
 
   switch (visualization.type) {
@@ -37,7 +37,10 @@ export const VisualizationRenderer = ({
           title={visualization.title}
           sortable={true}
           compact={visualization.compact}
-          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green", "red"])}
+          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green" | "red">(
+            visualization.colorScheme, 
+            ["default", "purple", "blue", "green", "red"]
+          )}
           allowCustomization={allowCustomization}
           visualizationId={visualization.id}
           conversationId={conversationId}
@@ -59,7 +62,10 @@ export const VisualizationRenderer = ({
           height={visualization.height || 300}
           title={visualization.title}
           subTitle={visualization.subTitle}
-          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
+          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+            visualization.colorScheme, 
+            ["default", "purple", "blue", "green"]
+          )}
           allowCustomization={allowCustomization}
           visualizationId={visualization.id}
           conversationId={conversationId}
@@ -75,7 +81,6 @@ export const VisualizationRenderer = ({
             edges: visualization.edges || []
           }} 
           height={visualization.height || 400}
-          // Use header title in flowData for now (title is not in FlowChartProps)
         />
       );
       
@@ -84,7 +89,10 @@ export const VisualizationRenderer = ({
         <OrgChart 
           nodes={visualization.nodes || []} 
           title={visualization.title}
-          colorScheme={visualization.colorScheme}
+          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+            visualization.colorScheme, 
+            ["default", "purple", "blue", "green"]
+          )}
         />
       );
       
@@ -96,7 +104,10 @@ export const VisualizationRenderer = ({
           yAxisLabel={visualization.yAxisLabel}
           title={visualization.title}
           height={visualization.height || 400}
-          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
+          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+            visualization.colorScheme, 
+            ["default", "purple", "blue", "green"]
+          )}
         />
       );
       
@@ -106,7 +117,10 @@ export const VisualizationRenderer = ({
           tasks={visualization.tasks || []}
           roles={visualization.roles || []}
           title={visualization.title}
-          colorScheme={mapColorScheme(visualization.colorScheme, ["default", "purple", "blue", "green"])}
+          colorScheme={mapColorScheme<"default" | "purple" | "blue" | "green">(
+            visualization.colorScheme, 
+            ["default", "purple", "blue", "green"]
+          )}
         />
       );
       
@@ -116,7 +130,10 @@ export const VisualizationRenderer = ({
           stages={visualization.stages || []}
           title={visualization.title}
           height={visualization.height || 400}
-          colorScheme={visualization.colorScheme}
+          colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
+            visualization.colorScheme, 
+            ["default", "financial", "retention", "performance", "operational"]
+          )}
         />
       );
       

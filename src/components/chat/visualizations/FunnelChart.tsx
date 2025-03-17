@@ -95,7 +95,7 @@ export const FunnelChart = ({
             <Funnel
               dataKey="value"
               nameKey="stage"
-              fill={colorArray}
+              fill={colorArray[0]} 
               isAnimationActive
             >
               <LabelList
