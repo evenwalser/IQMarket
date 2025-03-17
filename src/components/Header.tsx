@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,15 +33,15 @@ export const Header = () => {
         
         <div className="flex items-center gap-8">
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="#" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            <a href="https://www.notion.vc/platform" className="text-sm font-medium hover:text-gray-600 transition-colors">
               Platform
-            </Link>
-            <Link to="#" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            </a>
+            <a href="https://www.notion.vc/portfolio" className="text-sm font-medium hover:text-gray-600 transition-colors">
               Portfolio
-            </Link>
-            <Link to="#" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            </a>
+            <a href="https://www.notion.vc/why-notion" className="text-sm font-medium hover:text-gray-600 transition-colors">
               About
-            </Link>
+            </a>
           </nav>
           
           {user ? (
