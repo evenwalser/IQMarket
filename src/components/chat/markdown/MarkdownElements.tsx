@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CodeBlock } from './CodeBlock';
 
@@ -21,12 +22,12 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
 
   return {
     // Heading components with data attributes to avoid Tailwind circular dependencies
-    h1: ({ node, ...props }: any) => <h1 data-heading="1" className={`text-xl my-4 ${headingClassName}`} {...props} />,
-    h2: ({ node, ...props }: any) => <h2 data-heading="2" className={`text-lg my-3 ${headingClassName}`} {...props} />,
-    h3: ({ node, ...props }: any) => <h3 data-heading="3" className={`text-base my-2 ${headingClassName}`} {...props} />,
+    h1: ({ node, ...props }: any) => <h1 data-heading="1" className={`text-xl my-4 ${headingClassName} break-normal block`} {...props} />,
+    h2: ({ node, ...props }: any) => <h2 data-heading="2" className={`text-lg my-3 ${headingClassName} break-normal block`} {...props} />,
+    h3: ({ node, ...props }: any) => <h3 data-heading="3" className={`text-base my-2 ${headingClassName} break-normal block`} {...props} />,
     
     // Paragraph with proper spacing
-    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed`} {...props} />,
+    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed break-words`} {...props} />,
     
     // List items with proper styling
     ul: ({ node, ...props }: any) => <ul className="my-3 pl-4 md:pl-6 space-y-1 list-disc" {...props} />,
@@ -44,7 +45,7 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
       return (
         <li className={`${textClassName} ${hasComplexContent ? 'mb-1' : ''} leading-relaxed`}>
           <div className="flex items-start">
-            <div className="flex-1">
+            <div className="flex-1 break-words">
               {props.children}
             </div>
           </div>
@@ -103,11 +104,11 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
     tr: ({ node, ...props }: any) => <tr className={isUserMessage ? "hover:bg-blue-500" : "hover:bg-gray-50"} {...props} />,
     th: ({ node, ...props }: any) => (
       <th 
-        className={`px-4 py-3 text-left text-xs font-medium ${isUserMessage ? 'text-blue-100' : 'text-gray-500'} uppercase tracking-wider`} 
+        className={`px-4 py-3 text-left text-xs font-medium ${isUserMessage ? 'text-blue-100' : 'text-gray-500'} uppercase tracking-wider break-words`} 
         {...props} 
       />
     ),
-    td: ({ node, ...props }: any) => <td className={`px-4 py-3 text-sm ${isUserMessage ? 'text-white' : 'text-gray-700'}`} {...props} />,
+    td: ({ node, ...props }: any) => <td className={`px-4 py-3 text-sm ${isUserMessage ? 'text-white' : 'text-gray-700'} break-words`} {...props} />,
     
     // Superscript with styling for citations
     sup: ({ node, className, ...props }: any) => {

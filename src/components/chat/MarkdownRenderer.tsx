@@ -10,7 +10,8 @@ import {
   formatMarkdownLinks, 
   convertHtmlToMarkdown,
   fixReplyThreadFormatting,
-  cleanListFormatting
+  cleanListFormatting,
+  fixBrokenHeadings
 } from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
@@ -38,6 +39,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     processedContent = convertHtmlToMarkdown(processedContent);
     processedContent = fixReplyThreadFormatting(processedContent);
     processedContent = cleanListFormatting(processedContent);
+    processedContent = fixBrokenHeadings(processedContent);
     return processedContent;
   }, [content]);
 
@@ -61,6 +63,14 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     if (listItems.length > 0) {
       listItems.forEach((item) => {
         item.classList.add('my-1');
+      });
+    }
+    
+    // Add special handling for headings to prevent broken text
+    const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length > 0) {
+      headings.forEach((heading) => {
+        heading.classList.add('break-normal', 'whitespace-normal');
       });
     }
   }, [cleanContent]);

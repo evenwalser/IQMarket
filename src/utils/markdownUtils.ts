@@ -35,7 +35,19 @@ export const cleanMarkdownContent = (content: string): string => {
   // Fix numbered headings - e.g., "3. Action" to ensure proper formatting
   cleanedContent = fixNumberedHeadings(cleanedContent);
   
+  // Fix broken words and characters in headings
+  cleanedContent = fixBrokenHeadings(cleanedContent);
+  
   return cleanedContent;
+};
+
+/**
+ * Fix headings with broken characters or words
+ */
+export const fixBrokenHeadings = (content: string): string => {
+  // Find headings with potential broken content (uppercase letters split across lines)
+  const brokenHeadingRegex = /(#{1,6}\s+[^\n]*?)([A-Z])[\s\n]+([a-z])/g;
+  return content.replace(brokenHeadingRegex, '$1$2$3');
 };
 
 /**
@@ -53,6 +65,9 @@ export const fixHeadings = (content: string): string => {
   
   // Ensure consistent formatting for numbered headings like # 1. Heading
   processedContent = processedContent.replace(/^(#{1,6})\s+(\d+\.\s*)(.*?)$/gm, '$1 $2$3');
+  
+  // Fix any split headings where text might be broken across lines
+  processedContent = processedContent.replace(/^(#{1,6}\s+\w+)[\s\n]+(\w+)/gm, '$1 $2');
   
   return processedContent;
 };
@@ -375,6 +390,9 @@ export const fixReplyThreadFormatting = (content: string): string => {
   // Add proper spacing around headings with numbers (like # 9. Process Refinement)
   processedContent = processedContent.replace(/^(#{1,6})\s+(\d+)\.?\s+(.*)$/gm, '$1 $2. $3');
   
+  // Fix any headings that might be split across lines or have broken words
+  processedContent = processedContent.replace(/^(#{1,6}\s+[^\n]+?)[\s\n]+([A-Z][a-z]+)$/gm, '$1 $2');
+  
   // Convert plain numbered points at beginning of lines to proper markdown list items
   processedContent = processedContent.replace(/^(\d+)\.\s+(.*?)$/gm, (match, num, text) => {
     // Only convert if this looks like a standalone number rather than a heading
@@ -384,5 +402,20 @@ export const fixReplyThreadFormatting = (content: string): string => {
     return `${num}. ${text}`;
   });
   
-  return processedContent;
+  // Fix any split words in headings (especially at the end of a heading)
+  const lines = processedContent.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+    const currentLine = lines[i];
+    const nextLine = lines[i + 1];
+    
+    // Check if current line is heading with a potentially broken word
+    const headingMatch = currentLine.match(/^(#{1,6}\s+.*\s+)([A-Za-z]+)$/);
+    if (headingMatch && nextLine.match(/^[A-Za-z]+$/)) {
+      // Combine the broken word
+      lines[i] = headingMatch[1] + headingMatch[2] + nextLine;
+      lines[i + 1] = '';
+    }
+  }
+  
+  return lines.filter(line => line !== '').join('\n');
 };
