@@ -62,7 +62,7 @@ export const ConversationThread = ({
                 toggleSpeakResponse={toggleSpeakResponse}
                 visualizations={conversation.visualizations}
                 assistantType={assistantType}
-                structuredResponse={conversation.structured_response}
+                structuredResponse={conversation.structured_response || null}
               />
             );
           })}

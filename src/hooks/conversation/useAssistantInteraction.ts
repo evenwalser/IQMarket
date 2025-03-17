@@ -101,31 +101,64 @@ export function useAssistantInteraction(
         structuredResponseData = data.structuredResponse;
       }
 
-      const { error: dbError } = await supabase
-        .from('conversations')
-        .insert({
-          query: searchQuery,
-          response: data.response,
-          assistant_type: selectedMode,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          structured_response: structuredResponseData,
-          session_id: sessionId,
-          user_id: user.id
-        });
+      // Create a base conversation object
+      const conversationData = {
+        query: searchQuery,
+        response: data.response,
+        assistant_type: selectedMode,
+        thread_id: data.thread_id,
+        assistant_id: data.assistant_id,
+        visualizations: visualizations,
+        session_id: sessionId,
+        user_id: user.id
+      };
 
-      if (dbError) {
+      // Only add structured_response if the database supports it
+      try {
+        // First try with structured response
+        if (structuredResponseData) {
+          const { error: dbError } = await supabase
+            .from('conversations')
+            .insert({
+              ...conversationData,
+              structured_response: structuredResponseData
+            });
+
+          // If structured_response column doesn't exist, fall back to basic insert
+          if (dbError && (dbError.message.includes("structured_response") || dbError.code === "PGRST204")) {
+            console.warn("Structured response not supported in database schema, falling back to basic insert");
+            const { error: fallbackError } = await supabase
+              .from('conversations')
+              .insert(conversationData);
+
+            if (fallbackError) {
+              throw fallbackError;
+            }
+          } else if (dbError) {
+            throw dbError;
+          }
+        } else {
+          // No structured response, do basic insert
+          const { error: dbError } = await supabase
+            .from('conversations')
+            .insert(conversationData);
+
+          if (dbError) {
+            throw dbError;
+          }
+        }
+      } catch (dbError) {
         console.error('Error storing conversation:', dbError);
         toast.error('Failed to save conversation');
-      } else {
-        await loadConversations(sessionId);
-        clearAttachments();
-        
-        setLatestResponse(data.response);
-        
-        toast.success("Response received!");
+        throw dbError;
       }
+
+      await loadConversations(sessionId);
+      clearAttachments();
+      
+      setLatestResponse(data.response);
+      
+      toast.success("Response received!");
     } catch (error) {
       console.error("Full error details:", error);
       toast.error("Failed to get response. Please try again.");
@@ -184,22 +217,55 @@ export function useAssistantInteraction(
         structuredResponseData = data.structuredResponse;
       }
       
-      const { error: dbError } = await supabase
-        .from('conversations')
-        .insert({
-          query: message,
-          response: data.response,
-          assistant_type: typedAssistantType,
-          thread_id: data.thread_id,
-          assistant_id: data.assistant_id,
-          visualizations: visualizations,
-          structured_response: structuredResponseData,
-          session_id: sessionId,
-          user_id: user.id
-        });
-      
-      if (dbError) {
+      // Create a base conversation object
+      const conversationData = {
+        query: message,
+        response: data.response,
+        assistant_type: typedAssistantType,
+        thread_id: data.thread_id,
+        assistant_id: data.assistant_id,
+        visualizations: visualizations,
+        session_id: sessionId,
+        user_id: user.id
+      };
+
+      // Only add structured_response if the database supports it
+      try {
+        // First try with structured response
+        if (structuredResponseData) {
+          const { error: dbError } = await supabase
+            .from('conversations')
+            .insert({
+              ...conversationData,
+              structured_response: structuredResponseData
+            });
+
+          // If structured_response column doesn't exist, fall back to basic insert
+          if (dbError && (dbError.message.includes("structured_response") || dbError.code === "PGRST204")) {
+            console.warn("Structured response not supported in database schema, falling back to basic insert");
+            const { error: fallbackError } = await supabase
+              .from('conversations')
+              .insert(conversationData);
+
+            if (fallbackError) {
+              throw fallbackError;
+            }
+          } else if (dbError) {
+            throw dbError;
+          }
+        } else {
+          // No structured response, do basic insert
+          const { error: dbError } = await supabase
+            .from('conversations')
+            .insert(conversationData);
+
+          if (dbError) {
+            throw dbError;
+          }
+        }
+      } catch (dbError) {
         console.error('Error storing conversation:', dbError);
+        toast.error('Failed to save reply');
         throw dbError;
       }
       
