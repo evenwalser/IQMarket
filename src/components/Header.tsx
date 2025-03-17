@@ -11,6 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
 
 export const Header = () => {
   const { user, signOut } = useAuth();
@@ -24,14 +34,68 @@ export const Header = () => {
   return (
     <header className="bg-white border-b sticky top-0 z-40">
       <div className="container mx-auto p-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-2">
-          <img 
-            src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
-            alt="Notion" 
-            className="w-24 h-auto object-cover"
-          />
-          <span className="font-bold text-xl">Intelligence</span>
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/" className="flex items-center">
+            <img 
+              src="/lovable-uploads/8440a119-0b53-46c9-a6c7-4bcef311d38f.png" 
+              alt="Notion" 
+              className="w-24 h-auto object-cover"
+            />
+          </Link>
+          
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link to="/" className="text-sm font-medium p-2 hover:bg-gray-100 rounded-md transition-colors">
+                  Home
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="#" className="text-sm font-medium p-2 hover:bg-gray-100 rounded-md transition-colors">
+                  Wikis
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="#" className="text-sm font-medium p-2 hover:bg-gray-100 rounded-md transition-colors">
+                  Projects
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link to="#" className="text-sm font-medium p-2 hover:bg-gray-100 rounded-md transition-colors">
+                  Docs
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="text-sm font-medium">More</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[200px] gap-1 p-2">
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <Link to="#" className="block select-none space-y-1 rounded-md p-3 hover:bg-gray-100 transition-colors">
+                          Calendar
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <Link to="#" className="block select-none space-y-1 rounded-md p-3 hover:bg-gray-100 transition-colors">
+                          Tasks
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                    <li>
+                      <NavigationMenuLink asChild>
+                        <Link to="#" className="block select-none space-y-1 rounded-md p-3 hover:bg-gray-100 transition-colors">
+                          Inbox
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </div>
         
         <div className="flex items-center gap-4">
           {user ? (

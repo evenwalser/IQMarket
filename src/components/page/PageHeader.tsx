@@ -12,9 +12,6 @@ export const PageHeader = () => {
             alt="Notion" 
             className="w-32 h-auto object-cover"
           />
-          <h1 className="font-bold bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 bg-clip-text text-transparent animate-gradient relative hover:scale-[1.02] transition-transform tracking-tight text-4xl">
-            Intelligence
-          </h1>
         </div>
         <Sparkles className="w-7 h-7 text-purple-500 group-hover:text-purple-600 transition-colors animate-pulse" />
       </div>
