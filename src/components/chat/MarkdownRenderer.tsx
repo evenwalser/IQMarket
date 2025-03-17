@@ -10,7 +10,7 @@ import { MermaidRenderer } from './markdown/MermaidRenderer';
 import { FlowChartRenderer } from '@/components/chat/visualizations/FlowChartRenderer';
 import { DataChart } from '@/components/chat/visualizations/DataChart';
 import { DataTable } from '@/components/chat/visualizations/DataTable';
-import { StructuredResponse } from '@/types/structuredResponse';
+import { StructuredResponse, StructuredSection } from '@/types/structuredResponse';
 
 interface MarkdownRendererProps {
   content: string;
@@ -100,7 +100,16 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
               />
             </div>
           );
-        } else if ((section.type === 'flowChart' || section.type === 'orgChart') && section.flowData) {
+        } else if (section.type === 'flowChart' && section.flowData) {
+          return (
+            <div key={index} className="my-4">
+              <FlowChartRenderer 
+                flowData={section.flowData} 
+                height={section.height || 400} 
+              />
+            </div>
+          );
+        } else if (section.type === 'orgChart' && section.flowData) {
           return (
             <div key={index} className="my-4">
               <FlowChartRenderer 
@@ -130,7 +139,11 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
           );
         }
         
-        return null;
+        return (
+          <div key={index} className="text-red-500 p-2 my-2 border border-red-200 rounded">
+            Unsupported section type: {section.type}
+          </div>
+        );
       })}
     </div>
   );
