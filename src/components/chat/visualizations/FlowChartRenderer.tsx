@@ -36,15 +36,18 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
     data: { label: node.label },
     position: node.position || { x: 0, y: 0 },
     style: {
-      background: '#f8f9fa',
-      border: '1px solid #e9ecef',
-      borderRadius: '8px',
-      padding: '10px',
+      background: '#f0f4f8',
+      border: '1px solid #d0d7de',
+      borderRadius: '12px',
+      padding: '16px',
       width: node.width || 'auto',
-      minWidth: '150px',
+      minWidth: '180px',
       textAlign: 'center',
-      fontSize: '14px',
-      color: '#495057',
+      fontSize: '15px',
+      fontWeight: 500,
+      color: '#1e293b',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+      transition: 'all 0.2s ease',
     },
     ...node,
   }));
@@ -60,8 +63,16 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
     type: 'smoothstep',
     animated: edge.animated || false,
     style: {
-      stroke: '#6c757d',
+      stroke: '#94a3b8',
       strokeWidth: 2,
+    },
+    labelStyle: {
+      fontSize: '12px',
+      fontWeight: 500,
+      fill: '#64748b',
+      background: 'white',
+      padding: '4px 8px',
+      borderRadius: '4px',
     },
     label: edge.label,
     ...edge,
@@ -82,9 +93,9 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
   }, [nodes, edges]);
 
   return (
-    <div style={{ height: `${height}px`, width: '100%', border: '1px solid #e9ecef', borderRadius: '8px' }}>
+    <div style={{ height: `${height}px`, width: '100%', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
       {flowData.title && (
-        <div className="text-center font-medium p-2 border-b">{flowData.title}</div>
+        <div className="text-center font-medium text-gray-800 p-3 border-b bg-gray-50">{flowData.title}</div>
       )}
       <ReactFlow
         nodes={nodes}
@@ -93,12 +104,22 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
         attributionPosition="bottom-right"
-        style={{ background: 'white', borderRadius: '8px' }}
+        style={{ background: 'white' }}
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          style: { stroke: '#94a3b8', strokeWidth: 2 },
+        }}
       >
-        <Controls />
-        <MiniMap />
-        <Background color="#f8f9fa" gap={16} />
+        <Controls className="shadow-md rounded-md" />
+        <MiniMap 
+          nodeStrokeWidth={3}
+          nodeColor="#8b5cf6"
+          nodeBorderRadius={8}
+          maskColor="rgba(240, 242, 245, 0.7)"
+        />
+        <Background color="#f1f5f9" gap={16} variant="dots" />
       </ReactFlow>
     </div>
   );
@@ -118,11 +139,11 @@ const autoLayoutNodes = (nodes: Node[]): Node[] => {
     const isHorizontal = nodeCount <= 5;
     
     if (isHorizontal) {
-      // Horizontal layout
+      // Horizontal layout with more spacing
       return {
         ...node,
         position: { 
-          x: 100 + index * 200, 
+          x: 100 + index * 220, 
           y: 100 
         }
       };
@@ -135,8 +156,8 @@ const autoLayoutNodes = (nodes: Node[]): Node[] => {
       return {
         ...node,
         position: { 
-          x: 100 + col * 250, 
-          y: 100 + row * 150 
+          x: 100 + col * 280, 
+          y: 100 + row * 180 
         }
       };
     }

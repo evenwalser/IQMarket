@@ -14,7 +14,7 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
 
   const headingClassName = isUserMessage
     ? "text-white font-bold"
-    : "text-gray-900 font-bold";
+    : "text-gray-900 font-semibold";
 
   const linkClassName = isUserMessage
     ? "text-blue-200 underline hover:text-blue-100"
@@ -27,12 +27,19 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
     h3: ({ node, ...props }: any) => <h3 data-heading="3" className={`text-base my-2 ${headingClassName}`} {...props} />,
     
     // Paragraph with proper spacing
-    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName}`} {...props} />,
+    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed`} {...props} />,
     
     // List items with proper styling
-    ul: ({ node, ...props }: any) => <ul className="my-3 pl-6 space-y-1 list-disc" {...props} />,
-    ol: ({ node, ...props }: any) => <ol className="my-3 pl-6 space-y-1 list-decimal" {...props} />,
-    li: ({ node, ...props }: any) => <li className={textClassName} {...props} />,
+    ul: ({ node, ...props }: any) => <ul className="my-3 pl-6 space-y-2 list-disc" {...props} />,
+    ol: ({ node, ...props }: any) => <ol className="my-3 pl-6 space-y-2 list-decimal" {...props} />,
+    li: ({ node, ...props }: any) => (
+      <li className={`${textClassName} leading-relaxed`}>
+        <span className="flex">
+          <span className="mr-2">{isUserMessage ? '•' : ''}</span>
+          <span {...props} />
+        </span>
+      </li>
+    ),
     
     // Emphasis and strong text
     em: ({ node, ...props }: any) => <em className={`italic ${textClassName}`} {...props} />,

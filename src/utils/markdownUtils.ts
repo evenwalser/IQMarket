@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for markdown processing
  */
@@ -26,6 +25,9 @@ export const cleanMarkdownContent = (content: string): string => {
   
   // Fix spacing issues
   cleanedContent = fixSpacing(cleanedContent);
+  
+  // Enhance numbered lists
+  cleanedContent = enhanceNumberedLists(cleanedContent);
   
   return cleanedContent;
 };
@@ -104,7 +106,18 @@ export const fixSpacing = (content: string): string => {
   // Ensure proper spacing after paragraphs
   processedContent = processedContent.replace(/([^\n])\n(?!(#{1,6}|\d+\.|[*-]|\n|```|>))/g, '$1\n\n');
   
+  // Ensure proper spacing before lists
+  processedContent = processedContent.replace(/([^\n])(\n[*-])/g, '$1\n$2');
+  
   return processedContent;
+};
+
+/**
+ * Enhances numbered lists for better rendering
+ */
+export const enhanceNumberedLists = (content: string): string => {
+  // Match numbered list items
+  return content.replace(/^(\d+)\.(?!\s)(.*?)$/gm, '$1. $2');
 };
 
 /**

@@ -48,7 +48,7 @@ export const MessageExchange = ({
   const renderSection = (section: StructuredSection) => {
     switch (section.type) {
       case 'text':
-        return <p className="whitespace-pre-wrap">{section.content}</p>;
+        return <div className="text-gray-700 leading-relaxed">{section.content}</div>;
       case 'heading':
         return renderHeading(section.content || '', section.level || 2);
       case 'chart':
@@ -68,7 +68,7 @@ export const MessageExchange = ({
       case 'orgChart':
         if (section.flowData && Array.isArray(section.flowData.nodes) && Array.isArray(section.flowData.edges)) {
           return (
-            <div className="my-4">
+            <div className="my-5 rounded-lg overflow-hidden shadow-md">
               <FlowChartRenderer 
                 flowData={section.flowData} 
                 height={section.height || 400} 
@@ -101,15 +101,15 @@ export const MessageExchange = ({
   const renderHeading = (content: string, level: number) => {
     switch (level) {
       case 1:
-        return <h1 className="text-2xl font-bold mt-6 mb-4">{content}</h1>;
+        return <h1 className="text-2xl font-bold mt-6 mb-4 text-gray-900">{content}</h1>;
       case 2:
-        return <h2 className="text-xl font-semibold mt-5 mb-3">{content}</h2>;
+        return <h2 className="text-xl font-semibold mt-5 mb-3 text-gray-900">{content}</h2>;
       case 3:
-        return <h3 className="text-lg font-semibold mt-4 mb-2">{content}</h3>;
+        return <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-800">{content}</h3>;
       case 4:
-        return <h4 className="text-base font-semibold mt-3 mb-2">{content}</h4>;
+        return <h4 className="text-base font-semibold mt-3 mb-2 text-gray-800">{content}</h4>;
       default:
-        return <h5 className="text-sm font-semibold mt-2 mb-1">{content}</h5>;
+        return <h5 className="text-sm font-semibold mt-2 mb-1 text-gray-700">{content}</h5>;
     }
   };
 
@@ -124,7 +124,7 @@ export const MessageExchange = ({
       
       {/* Assistant response */}
       <div className="flex justify-start">
-        <div className={`rounded-lg p-3 max-w-[80%] ${isCurrentlySpeaking ? 'bg-indigo-50 border border-indigo-100' : 'bg-gray-100'}`}>
+        <div className={`rounded-lg p-4 max-w-[80%] ${isCurrentlySpeaking ? 'bg-indigo-50 border border-indigo-100' : 'bg-white border border-gray-100 shadow-sm'}`}>
           {/* If we have structured response, render it, otherwise fall back to regular response */}
           {structuredResponse ? (
             <div className="relative pr-8">
@@ -145,8 +145,8 @@ export const MessageExchange = ({
               </Button>
             </div>
           ) : (
-            <div className="whitespace-pre-wrap text-gray-800 relative pr-8">
-              {response}
+            <div className="prose prose-sm max-w-none text-gray-800 relative pr-8">
+              <MarkdownRenderer content={response} />
               
               {/* Text-to-speech button */}
               <Button

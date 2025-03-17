@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -51,7 +52,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       <ReactMarkdown
         className={cn(
           "prose prose-sm max-w-none", 
-          isUserMessage ? "dark" : "dark:prose-invert", 
+          isUserMessage ? "dark" : "dark:prose-invert prose-headings:font-semibold prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-strong:font-semibold", 
           className
         )}
         remarkPlugins={[remarkGfm]}
@@ -83,7 +84,7 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
         } else if (section.type === 'heading') {
           const HeadingTag = `h${section.level || 2}` as keyof JSX.IntrinsicElements;
           return (
-            <HeadingTag key={index} className="text-gray-900 font-semibold mt-6 mb-2">
+            <HeadingTag key={index} className="text-gray-900 font-semibold mt-6 mb-3">
               {section.content}
             </HeadingTag>
           );
@@ -101,7 +102,7 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
           );
         } else if (section.type === 'flowChart' && section.flowData) {
           return (
-            <div key={index} className="my-4">
+            <div key={index} className="my-5 rounded-lg overflow-hidden shadow-sm">
               <FlowChartRenderer 
                 flowData={section.flowData} 
                 height={section.height || 400} 
@@ -110,7 +111,7 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
           );
         } else if (section.type === 'orgChart' && section.flowData) {
           return (
-            <div key={index} className="my-4">
+            <div key={index} className="my-5 rounded-lg overflow-hidden shadow-sm">
               <FlowChartRenderer 
                 flowData={section.flowData} 
                 height={section.height || 400} 
