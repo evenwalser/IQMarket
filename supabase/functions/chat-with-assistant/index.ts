@@ -1,7 +1,6 @@
 
-// Version 3.0.0 - STRUCTURED OUTPUT FORMAT IMPLEMENTATION
+// Version 3.0.1 - Structured Output Format Fix
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,9 +54,9 @@ serve(async (req) => {
       });
       
       if (!threadResponse.ok) {
-        const error = await threadResponse.text();
-        console.error('Thread retrieval error:', error);
-        throw new Error(`Failed to retrieve thread: ${error}`);
+        const errorBody = await threadResponse.text();
+        console.error('Thread retrieval error:', errorBody);
+        throw new Error(`Failed to retrieve thread: ${errorBody}`);
       }
       
       thread = await threadResponse.json();
@@ -69,9 +68,9 @@ serve(async (req) => {
       });
       
       if (!createThreadResponse.ok) {
-        const error = await createThreadResponse.text();
-        console.error('Thread creation error:', error);
-        throw new Error(`Failed to create thread: ${error}`);
+        const errorBody = await createThreadResponse.text();
+        console.error('Thread creation error:', errorBody);
+        throw new Error(`Failed to create thread: ${errorBody}`);
       }
       
       thread = await createThreadResponse.json();
@@ -89,9 +88,9 @@ serve(async (req) => {
     });
 
     if (!createMessageResponse.ok) {
-      const error = await createMessageResponse.text();
-      console.error('Message creation error:', error);
-      throw new Error(`Failed to create message: ${error}`);
+      const errorBody = await createMessageResponse.text();
+      console.error('Message creation error:', errorBody);
+      throw new Error(`Failed to create message: ${errorBody}`);
     }
     
     const createdMessage = await createMessageResponse.json();
@@ -187,11 +186,11 @@ serve(async (req) => {
             attachment_id: attachData.id
           });
         } catch (err) {
-          console.error(`Error processing attachment ${attachment.file_name}:`, err);
+          console.error(`Error processing attachment ${attachment.file_name || 'unknown'}:`, err);
           processingResults.push({
             status: 'error',
             message: err.message,
-            file: attachment.file_name
+            file: attachment.file_name || 'unknown'
           });
         }
       }
@@ -246,9 +245,9 @@ Return ONLY valid JSON that follows this schema.`;
     });
 
     if (!runResponse.ok) {
-      const error = await runResponse.text();
-      console.error('Run creation error:', error);
-      throw new Error(`Failed to create run: ${error}`);
+      const errorBody = await runResponse.text();
+      console.error('Run creation error:', errorBody);
+      throw new Error(`Failed to create run: ${errorBody}`);
     }
 
     const runData = await runResponse.json();
@@ -274,9 +273,9 @@ Return ONLY valid JSON that follows this schema.`;
       );
 
       if (!statusResponse.ok) {
-        const error = await statusResponse.text();
-        console.error('Status check error:', error);
-        throw new Error(`Failed to check run status: ${error}`);
+        const errorBody = await statusResponse.text();
+        console.error('Status check error:', errorBody);
+        throw new Error(`Failed to check run status: ${errorBody}`);
       }
 
       runStatus = await statusResponse.json();
@@ -294,9 +293,9 @@ Return ONLY valid JSON that follows this schema.`;
       );
 
       if (!messagesResponse.ok) {
-        const error = await messagesResponse.text();
-        console.error('Messages retrieval error:', error);
-        throw new Error(`Failed to retrieve messages: ${error}`);
+        const errorBody = await messagesResponse.text();
+        console.error('Messages retrieval error:', errorBody);
+        throw new Error(`Failed to retrieve messages: ${errorBody}`);
       }
 
       const messagesData = await messagesResponse.json();
@@ -318,7 +317,10 @@ Return ONLY valid JSON that follows this schema.`;
           const jsonMatch = rawTextResponse.match(/```(?:json)?\n([\s\S]*?)\n```/);
           const jsonContent = jsonMatch ? jsonMatch[1] : rawTextResponse;
           
-          structuredResponseObj = JSON.parse(jsonContent);
+          // Additional safety check - try to clean up the JSON string
+          const cleanedJson = jsonContent.replace(/\/\/.*$/gm, '').trim();
+          
+          structuredResponseObj = JSON.parse(cleanedJson);
           console.log('Successfully parsed structured JSON response');
         } catch (err) {
           console.warn('Failed to parse structured JSON response:', err);
@@ -336,15 +338,18 @@ Return ONLY valid JSON that follows this schema.`;
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    } else if (runStatus.status === 'failed') {
+      console.error('Run failed with details:', runStatus.last_error);
+      throw new Error(`Run failed: ${runStatus.last_error?.message || 'Unknown error'}`);
     } else {
-      console.error('Run failed with status:', runStatus);
+      console.error('Run ended with unexpected status:', runStatus);
       throw new Error(`Run ended with status: ${runStatus.status}`);
     }
 
   } catch (error) {
     console.error('Error in chat-with-assistant:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

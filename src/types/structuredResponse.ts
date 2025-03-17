@@ -9,6 +9,7 @@ export interface StructuredSection {
   tableData?: any; // For tables
   imageUrl?: string; // For images
   flowChartData?: any; // For flow charts
+  [key: string]: any; // Add index signature to make it compatible with Json type
 }
 
 export interface StructuredResponse {

@@ -23,7 +23,11 @@ serve(async (req) => {
 
   try {
     const { message, threadId, attachments } = await req.json();
-    console.log('Received request:', { message, threadId, attachments });
+    console.log('Received request:', { 
+      messagePreview: message?.substring(0, 50), 
+      threadId, 
+      attachmentsCount: attachments?.length 
+    });
 
     if (!aiAdvisorAssistantId) {
       throw new Error('AI Advisor Assistant ID not found');
@@ -185,15 +189,18 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    } else if (runStatus.status === 'failed') {
+      console.error('Run failed with details:', runStatus.last_error);
+      throw new Error(`Run failed: ${runStatus.last_error?.message || 'Unknown error'}`);
     } else {
-      console.error('Run failed with status:', runStatus);
+      console.error('Run ended with unexpected status:', runStatus);
       throw new Error(`Run ended with status: ${runStatus.status}`);
     }
 
   } catch (error) {
     console.error('Error in chat-with-ai-advisor:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,11 +1,5 @@
 
-// Version 1.0.0 - BASELINE STABLE VERSION
-// Features working correctly:
-// - File upload and attachment handling
-// - OpenAI integration with GPT-4o
-// - Processing of attachments in search queries
-// - CORS support and error handling
-
+// Version 1.0.1 - FIX ERROR HANDLING AND RESPONSE PROCESSING
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { Configuration, OpenAIApi } from 'https://esm.sh/openai@3.2.1'
@@ -73,7 +67,7 @@ serve(async (req) => {
             name: attachment.file_name
           })
         } catch (error) {
-          console.error(`Error processing attachment ${attachment.file_name}:`, error)
+          console.error(`Error processing attachment ${attachment.file_name || 'unknown'}:`, error)
           // Continue with other attachments instead of failing the entire request
         }
       }
@@ -163,7 +157,7 @@ Be detailed and thorough in your answers.`
   } catch (error) {
     console.error('Error processing search:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error' }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400 
