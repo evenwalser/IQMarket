@@ -39,6 +39,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     processedContent = convertHtmlToMarkdown(processedContent);
     processedContent = fixReplyThreadFormatting(processedContent);
     processedContent = cleanListFormatting(processedContent);
+    // Apply heading fixes - most crucial for our current issue
     processedContent = fixBrokenHeadings(processedContent);
     return processedContent;
   }, [content]);

@@ -8,7 +8,7 @@ import { FlowChartRenderer } from "@/components/chat/visualizations/FlowChartRen
 import type { ChatVisualization } from "@/types/chat";
 import { StructuredResponse, StructuredSection } from "@/types/structuredResponse";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
-import { fixReplyThreadFormatting, cleanMarkdownContent, cleanListFormatting } from "@/utils/markdownUtils";
+import { fixReplyThreadFormatting, cleanMarkdownContent, cleanListFormatting, fixBrokenHeadings } from "@/utils/markdownUtils";
 
 interface MessageExchangeProps {
   id: string;
@@ -36,6 +36,7 @@ export const MessageExchange = ({
     let processed = cleanMarkdownContent(response);
     processed = fixReplyThreadFormatting(processed);
     processed = cleanListFormatting(processed);
+    processed = fixBrokenHeadings(processed); // Add this crucial step
     return processed;
   }, [response]);
 

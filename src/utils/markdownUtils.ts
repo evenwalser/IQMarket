@@ -45,9 +45,28 @@ export const cleanMarkdownContent = (content: string): string => {
  * Fix headings with broken characters or words
  */
 export const fixBrokenHeadings = (content: string): string => {
-  // Find headings with potential broken content (uppercase letters split across lines)
-  const brokenHeadingRegex = /(#{1,6}\s+[^\n]*?)([A-Z])[\s\n]+([a-z])/g;
-  return content.replace(brokenHeadingRegex, '$1$2$3');
+  // First pass: Fix basic breaks in headings (uppercase letter followed by lowercase)
+  let processedContent = content.replace(/(#{1,6}\s+[^\n]*?)([A-Z])[\s\n]+([a-z])/g, '$1$2$3');
+  
+  // Second pass: Fix any headings with letters or characters split across lines
+  processedContent = processedContent.replace(/(#{1,6}\s+[^\n]*?)(\w)[\s\n]+(\w)/g, '$1$2$3');
+  
+  // Third pass: Fix split words at the end of headings
+  const lines = processedContent.split('\n');
+  for (let i = 0; i < lines.length - 1; i++) {
+    const currentLine = lines[i];
+    const nextLine = lines[i + 1];
+    
+    // Check if current line is heading with a potentially broken word
+    const headingMatch = currentLine.match(/^(#{1,6}\s+.*\s*)(\w+)?$/);
+    if (headingMatch && nextLine.match(/^\s*\w+\s*$/)) {
+      // Combine the broken word from heading
+      lines[i] = `${headingMatch[1]}${headingMatch[2] || ''} ${nextLine.trim()}`;
+      lines[i + 1] = '';
+    }
+  }
+  
+  return lines.filter(line => line !== '').join('\n');
 };
 
 /**
@@ -409,10 +428,10 @@ export const fixReplyThreadFormatting = (content: string): string => {
     const nextLine = lines[i + 1];
     
     // Check if current line is heading with a potentially broken word
-    const headingMatch = currentLine.match(/^(#{1,6}\s+.*\s+)([A-Za-z]+)$/);
-    if (headingMatch && nextLine.match(/^[A-Za-z]+$/)) {
+    const headingMatch = currentLine.match(/^(#{1,6}\s+.*\s*)(\w+)?$/);
+    if (headingMatch && nextLine.match(/^\s*\w+\s*$/)) {
       // Combine the broken word
-      lines[i] = headingMatch[1] + headingMatch[2] + nextLine;
+      lines[i] = headingMatch[1] + headingMatch[2] || '' + ' ' + nextLine.trim();
       lines[i + 1] = '';
     }
   }

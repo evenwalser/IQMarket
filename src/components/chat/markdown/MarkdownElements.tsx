@@ -21,13 +21,13 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
     : "text-blue-600 hover:text-blue-800 hover:underline";
 
   return {
-    // Heading components with data attributes to avoid Tailwind circular dependencies
-    h1: ({ node, ...props }: any) => <h1 data-heading="1" className={`text-xl my-4 ${headingClassName} break-normal block`} {...props} />,
-    h2: ({ node, ...props }: any) => <h2 data-heading="2" className={`text-lg my-3 ${headingClassName} break-normal block`} {...props} />,
-    h3: ({ node, ...props }: any) => <h3 data-heading="3" className={`text-base my-2 ${headingClassName} break-normal block`} {...props} />,
+    // Heading components with improved word-break prevention
+    h1: ({ node, ...props }: any) => <h1 data-heading="1" className={`text-xl my-4 ${headingClassName} break-words whitespace-normal overflow-visible w-full inline-block`} {...props} />,
+    h2: ({ node, ...props }: any) => <h2 data-heading="2" className={`text-lg my-3 ${headingClassName} break-words whitespace-normal overflow-visible w-full inline-block`} {...props} />,
+    h3: ({ node, ...props }: any) => <h3 data-heading="3" className={`text-base my-2 ${headingClassName} break-words whitespace-normal overflow-visible w-full inline-block`} {...props} />,
     
-    // Paragraph with proper spacing
-    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed break-words`} {...props} />,
+    // Paragraph with proper spacing and word wrapping
+    p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed break-words whitespace-normal`} {...props} />,
     
     // List items with proper styling
     ul: ({ node, ...props }: any) => <ul className="my-3 pl-4 md:pl-6 space-y-1 list-disc" {...props} />,
@@ -45,7 +45,7 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
       return (
         <li className={`${textClassName} ${hasComplexContent ? 'mb-1' : ''} leading-relaxed`}>
           <div className="flex items-start">
-            <div className="flex-1 break-words">
+            <div className="flex-1 break-words whitespace-normal">
               {props.children}
             </div>
           </div>
