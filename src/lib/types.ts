@@ -8,7 +8,7 @@ export interface AssistantMessage {
   content: string;
 }
 
-// Simplified Conversation type without nested references
+// Update Conversation type to include visualizations
 export interface Conversation {
   id: string;
   created_at: string;

@@ -36,3 +36,8 @@ export interface WebSocketMessage {
   timestamp: number;
   type?: 'message' | 'ping' | 'system';
 }
+
+// Add the JsonObject interface that was missing
+export interface JsonObject {
+  [key: string]: string | number | boolean | null | JsonObject | JsonObject[];
+}

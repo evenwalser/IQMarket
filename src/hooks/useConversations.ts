@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Conversation, AssistantType } from "@/lib/types";
-import type { JsonObject } from "@/types/chat";
+import type { ChatVisualization, JsonObject } from "@/types/chat";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UploadedAttachment {
@@ -27,37 +26,31 @@ export function useConversations() {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Initialize or retrieve session ID
     initializeSession();
 
-    // Add event listener for attachment removal
     const handleAttachmentRemoved = (event: CustomEvent) => {
       const { index, updatedAttachments } = event.detail;
       setAttachments(updatedAttachments);
       
-      // Also update the uploadedAttachments state
       const newUploadedAttachments = [...uploadedAttachments];
       newUploadedAttachments.splice(index, 1);
       setUploadedAttachments(newUploadedAttachments);
     };
 
-    // Cast Event to CustomEvent to satisfy TypeScript
     window.addEventListener('attachmentRemoved', handleAttachmentRemoved as EventListener);
     
     return () => {
       window.removeEventListener('attachmentRemoved', handleAttachmentRemoved as EventListener);
     };
-  }, [uploadedAttachments]); // Add uploadedAttachments as a dependency
+  }, [uploadedAttachments]);
 
   const handleLatestResponse = (response: string) => {
     setLatestResponse(response);
   };
 
   const initializeSession = () => {
-    // Check if session ID exists in local storage
     let existingSessionId = localStorage.getItem("conversation_session_id");
     
-    // If no session ID exists, create a new one
     if (!existingSessionId) {
       existingSessionId = crypto.randomUUID();
       localStorage.setItem("conversation_session_id", existingSessionId);
@@ -65,26 +58,21 @@ export function useConversations() {
     
     setSessionId(existingSessionId);
     
-    // Load conversations for this session
     loadConversations(existingSessionId);
   };
 
-  const safeMapVisualization = (vizData: any) => {
-    // Default visualization if input is invalid
+  const safeMapVisualization = (vizData: any): ChatVisualization => {
     if (!vizData || typeof vizData !== 'object') {
       return { type: 'table', data: [] };
     }
     
-    // Explicitly type each field to avoid deep inference issues
     const type = typeof vizData.type === 'string' ? 
       (vizData.type === 'chart' ? 'chart' : 'table') : 'table';
     
     const data = Array.isArray(vizData.data) ? vizData.data : [];
     
-    // Create the base visualization object
-    const viz = { type, data };
+    const viz: ChatVisualization = { type, data };
     
-    // Only add optional properties if they exist and are valid
     if (Array.isArray(vizData.headers)) viz.headers = vizData.headers;
     
     if (typeof vizData.chartType === 'string') {
@@ -117,12 +105,10 @@ export function useConversations() {
         return;
       }
       
-      // Manually construct conversations list to avoid deep type issues
-      const result = [];
+      const result: Conversation[] = [];
       
       for (const item of data) {
-        // Process visualizations one by one to avoid deep nesting
-        const visualizationList = [];
+        const visualizationList: ChatVisualization[] = [];
         
         if (Array.isArray(item.visualizations)) {
           for (const vizData of item.visualizations) {
@@ -130,22 +116,17 @@ export function useConversations() {
           }
         }
         
-        // Build the conversation object with explicit property assignments
-        const conversation = {
+        const conversation: Conversation = {
           id: item.id,
           created_at: item.created_at,
           query: item.query,
           response: item.response,
           assistant_type: item.assistant_type,
           thread_id: item.thread_id,
-          session_id: item.session_id || sessId, // Use session ID or fallback to current
-          assistant_id: item.assistant_id
+          session_id: item.session_id || sessId,
+          assistant_id: item.assistant_id,
+          visualizations: visualizationList
         };
-        
-        // Only add visualizations if there are any
-        if (visualizationList.length > 0) {
-          conversation.visualizations = visualizationList;
-        }
         
         result.push(conversation);
       }
@@ -222,16 +203,13 @@ export function useConversations() {
   };
 
   const processAssistantResponse = (data: any): JsonObject[] => {
-    // Early return for invalid data
     if (!data.visualizations || !Array.isArray(data.visualizations)) {
       return [];
     }
     
-    // Convert visualizations to simple JSON objects
     return data.visualizations.map((viz: any): JsonObject => {
       const result: JsonObject = {};
       
-      // Only include properties that exist and are valid
       if (viz?.type) result.type = viz.type;
       if (Array.isArray(viz?.data)) result.data = viz.data;
       if (viz?.headers) result.headers = viz.headers;
@@ -283,7 +261,6 @@ export function useConversations() {
         structuredOutput: structuredOutput
       });
 
-      // For new conversations, don't pass threadId
       const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
         body: {
           message: searchQuery,
@@ -327,7 +304,6 @@ export function useConversations() {
         await loadConversations(sessionId);
         clearAttachments();
         
-        // Store latest response for possible TTS
         setLatestResponse(data.response);
         
         toast.success("Response received!");
@@ -396,7 +372,6 @@ export function useConversations() {
       
       await loadConversations(sessionId);
       
-      // Store latest response for possible TTS
       setLatestResponse(data.response);
       
       toast.success("Reply sent!");
@@ -408,17 +383,13 @@ export function useConversations() {
   };
 
   const startNewSession = () => {
-    // Generate new session ID
     const newSessionId = crypto.randomUUID();
     
-    // Update localStorage and state
     localStorage.setItem("conversation_session_id", newSessionId);
     setSessionId(newSessionId);
     
-    // Clear thread ID to start a new conversation thread
     setThreadId(null);
     
-    // Clear conversations list
     setConversations([]);
     
     toast.success("Started a new conversation session");
