@@ -38,6 +38,9 @@ export const cleanMarkdownContent = (content: string): string => {
   // Fix broken words and characters in headings
   cleanedContent = fixBrokenHeadings(cleanedContent);
   
+  // Fix multiple bullets in list items
+  cleanedContent = fixMultipleBulletsInLists(cleanedContent);
+  
   return cleanedContent;
 };
 
@@ -92,10 +95,32 @@ export const fixHeadings = (content: string): string => {
 };
 
 /**
+ * Fix lists with multiple bullet points in a single line
+ */
+export const fixMultipleBulletsInLists = (content: string): string => {
+  // Fix lines with multiple bullets at the beginning (like • • • in the example)
+  let processedContent = content.replace(/^(\s*)([•*\-+]\s+)+([•*\-+]\s+)/gm, '$1* ');
+  
+  // Fix lines that have bullets in the middle with additional bullets
+  processedContent = processedContent.replace(/([•*\-+]\s+)([•*\-+]\s+)/g, '$1');
+  
+  // Fix nested bullets with inconsistent prefixes
+  processedContent = processedContent.replace(/^(\s+)[•*\-+]\s+/gm, '$1* ');
+  
+  // Convert numbered lists starting with digits to markdown format
+  processedContent = processedContent.replace(/^(\s*)(\d+)[\.\)]\s+/gm, '$1$2. ');
+  
+  return processedContent;
+};
+
+/**
  * Fixes markdown lists that aren't properly formatted
  */
 export const fixLists = (content: string): string => {
   let processedContent = content;
+  
+  // First, normalize bullet points (convert all bullet types to '*')
+  processedContent = processedContent.replace(/^(\s*)([•\-+])(?!\s)(.*?)$/gm, '$1* $3');
   
   // Add space after list markers if missing
   processedContent = processedContent.replace(/^(\s*)([*\-+]|\d+\.)(?!\s)(.*?)$/gm, '$1$2 $3');
@@ -106,8 +131,11 @@ export const fixLists = (content: string): string => {
   // Ensure there's a blank line before lists start (but not between items)
   processedContent = processedContent.replace(/([^\n])(\n[*\-+]|\n\d+\.)/g, '$1\n\n$2');
   
-  // Fix list items with numbered prefixes (like "3. Action") to ensure they're properly formatted
-  processedContent = processedContent.replace(/^(\s*)(\d+)\.\s+(.*?)$/gm, '$1* $3');
+  // Fix deeply nested bullet points with multiple markers
+  processedContent = processedContent.replace(/^(\s*)([*\-+•]\s+)+/gm, '$1* ');
+  
+  // Handle numbered items with bullet prefix (like • 1. Item)
+  processedContent = processedContent.replace(/^(\s*)[•*\-+]\s+(\d+\.)\s+/gm, '$1$2 ');
   
   return processedContent;
 };
@@ -139,7 +167,7 @@ export const fixNestedLists = (content: string): string => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     // Check if this is a list item (bullet or numbered)
-    const listItemMatch = line.match(/^(\s*)([*\-+]|\d+\.)\s/);
+    const listItemMatch = line.match(/^(\s*)([*\-+•]|\d+\.)\s/);
     
     if (listItemMatch) {
       const indentLevel = listItemMatch[1].length;
@@ -162,7 +190,7 @@ export const fixNestedLists = (content: string): string => {
         // Empty line after a list - could be ending the list
         if (i < lines.length - 1) {
           const nextLine = lines[i + 1];
-          const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
+          const nextIsListItem = nextLine.match(/^\s*([*\-+•]|\d+\.)\s/);
           
           if (!nextIsListItem) {
             inList = false;
@@ -175,7 +203,7 @@ export const fixNestedLists = (content: string): string => {
         const nextLineIndex = i + 1;
         if (nextLineIndex < lines.length) {
           const nextLine = lines[nextLineIndex];
-          const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
+          const nextIsListItem = nextLine.match(/^\s*([*\-+•]|\d+\.)\s/);
           
           if (!nextIsListItem && !line.match(/^\s+/)) {
             inList = false;

@@ -4,7 +4,8 @@ import { ProcessedContentResult } from "./types";
 import { 
   cleanMarkdownContent, 
   formatMarkdownLinks, 
-  enhanceMarkdownTables 
+  enhanceMarkdownTables,
+  fixMultipleBulletsInLists 
 } from "../markdownUtils";
 import { extractJsonVisualizations } from "./visualizationExtractor";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
@@ -28,6 +29,9 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   
   // Format markdown links consistently
   processedContent = formatMarkdownLinks(processedContent);
+  
+  // Fix multiple bullets issue
+  processedContent = fixMultipleBulletsInLists(processedContent);
 
   // Extract JSON visualizations
   const jsonResult = extractJsonVisualizations(processedContent);

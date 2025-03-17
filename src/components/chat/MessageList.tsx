@@ -3,7 +3,11 @@ import { ChatMessage } from "@/types/chat";
 import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { preprocessContent } from "@/utils/content/preprocessor";
-import { cleanListFormatting, fixReplyThreadFormatting } from "@/utils/markdownUtils";
+import { 
+  cleanListFormatting, 
+  fixReplyThreadFormatting, 
+  fixMultipleBulletsInLists 
+} from "@/utils/markdownUtils";
 import { VisualizationRenderer } from "./visualizations/VisualizationRenderer";
 
 interface MessageListProps {
@@ -32,6 +36,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
         let messageContent = msg.content;
         messageContent = fixReplyThreadFormatting(messageContent);
         messageContent = cleanListFormatting(messageContent);
+        messageContent = fixMultipleBulletsInLists(messageContent); // Add this to fix multiple bullets
         
         // Process all messages through the preprocessor to handle formatting and extract visualizations
         const { processedContent, extractedVisualizations } = preprocessContent(messageContent);

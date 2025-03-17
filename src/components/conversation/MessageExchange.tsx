@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
@@ -6,7 +5,13 @@ import { VisualizationRenderer } from "@/components/chat/visualizations/Visualiz
 import type { ChatVisualization } from "@/types/chat";
 import { StructuredResponse, StructuredSection } from "@/types/structuredResponse";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
-import { fixReplyThreadFormatting, cleanMarkdownContent, cleanListFormatting, fixBrokenHeadings } from "@/utils/markdownUtils";
+import { 
+  fixReplyThreadFormatting, 
+  cleanMarkdownContent, 
+  cleanListFormatting, 
+  fixBrokenHeadings,
+  fixMultipleBulletsInLists 
+} from "@/utils/markdownUtils";
 
 interface MessageExchangeProps {
   id: string;
@@ -34,7 +39,8 @@ export const MessageExchange = ({
     let processed = cleanMarkdownContent(response);
     processed = fixReplyThreadFormatting(processed);
     processed = cleanListFormatting(processed);
-    processed = fixBrokenHeadings(processed); // Add this crucial step
+    processed = fixBrokenHeadings(processed);
+    processed = fixMultipleBulletsInLists(processed); // Add this to fix multiple bullets
     return processed;
   }, [response]);
 
@@ -59,7 +65,7 @@ export const MessageExchange = ({
       case 'text':
         return section.content ? (
           <MarkdownRenderer 
-            content={fixReplyThreadFormatting(cleanMarkdownContent(section.content))} 
+            content={fixMultipleBulletsInLists(fixReplyThreadFormatting(cleanMarkdownContent(section.content)))} 
             className="text-gray-700 leading-relaxed"
           />
         ) : null;
@@ -132,7 +138,7 @@ export const MessageExchange = ({
         console.log("Unsupported section type in MessageExchange:", section.type, section);
         return section.content ? (
           <MarkdownRenderer 
-            content={fixReplyThreadFormatting(cleanMarkdownContent(section.content))} 
+            content={fixMultipleBulletsInLists(fixReplyThreadFormatting(cleanMarkdownContent(section.content)))} 
           />
         ) : (
           <p className="text-gray-500">This content couldn't be displayed correctly</p>

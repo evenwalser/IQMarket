@@ -11,7 +11,8 @@ import {
   convertHtmlToMarkdown,
   fixReplyThreadFormatting,
   cleanListFormatting,
-  fixBrokenHeadings
+  fixBrokenHeadings,
+  fixMultipleBulletsInLists
 } from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
@@ -41,6 +42,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     processedContent = cleanListFormatting(processedContent);
     // Apply heading fixes - most crucial for our current issue
     processedContent = fixBrokenHeadings(processedContent);
+    // Fix multiple bullets in list items - critical for frameworks output
+    processedContent = fixMultipleBulletsInLists(processedContent);
     return processedContent;
   }, [content]);
 
