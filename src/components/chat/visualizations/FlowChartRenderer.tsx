@@ -11,6 +11,7 @@ import {
   Connection,
   Edge,
   Node,
+  BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -47,7 +48,6 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
       fontWeight: 500,
       color: '#1e293b',
       boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-      transition: 'all 0.2s ease',
     },
     ...node,
   }));
