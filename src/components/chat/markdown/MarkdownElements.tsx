@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CodeBlock } from './CodeBlock';
 
@@ -30,8 +29,8 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
     p: ({ node, ...props }: any) => <p className={`my-2 ${textClassName} leading-relaxed`} {...props} />,
     
     // List items with proper styling
-    ul: ({ node, ...props }: any) => <ul className="my-3 pl-6 space-y-2 list-disc" {...props} />,
-    ol: ({ node, ...props }: any) => <ol className="my-3 pl-6 space-y-2 list-decimal" {...props} />,
+    ul: ({ node, ...props }: any) => <ul className="my-3 pl-4 md:pl-6 space-y-1 list-disc" {...props} />,
+    ol: ({ node, ...props }: any) => <ol className="my-3 pl-4 md:pl-6 space-y-1 list-decimal" {...props} />,
     li: ({ node, ...props }: any) => {
       // Check if the node has children and if any of them are paragraphs or lists
       const hasComplexContent = node?.children?.some(
@@ -43,11 +42,8 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
       );
       
       return (
-        <li className={`${textClassName} ${hasComplexContent ? 'mb-2' : ''} leading-relaxed`}>
-          <div className="flex">
-            <div className="flex-shrink-0 mr-2">
-              {isUserMessage ? '•' : ''}
-            </div>
+        <li className={`${textClassName} ${hasComplexContent ? 'mb-1' : ''} leading-relaxed`}>
+          <div className="flex items-start">
             <div className="flex-1">
               {props.children}
             </div>

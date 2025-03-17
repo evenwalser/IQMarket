@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 import { DataTable } from "@/components/chat/visualizations/DataTable";
@@ -7,7 +6,7 @@ import { FlowChartRenderer } from "@/components/chat/visualizations/FlowChartRen
 import type { ChatVisualization } from "@/types/chat";
 import { StructuredResponse, StructuredSection } from "@/types/structuredResponse";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
-import { fixReplyThreadFormatting, cleanMarkdownContent } from "@/utils/markdownUtils";
+import { fixReplyThreadFormatting, cleanMarkdownContent, cleanListFormatting } from "@/utils/markdownUtils";
 
 interface MessageExchangeProps {
   id: string;
@@ -31,7 +30,12 @@ export const MessageExchange = ({
   structuredResponse
 }: MessageExchangeProps) => {
   // Pre-process the response before rendering to fix formatting issues
-  const processedResponse = fixReplyThreadFormatting(cleanMarkdownContent(response));
+  const processedResponse = React.useMemo(() => {
+    let processed = cleanMarkdownContent(response);
+    processed = fixReplyThreadFormatting(processed);
+    processed = cleanListFormatting(processed);
+    return processed;
+  }, [response]);
 
   const renderStructuredResponse = () => {
     if (!structuredResponse || !structuredResponse.sections) {

@@ -9,7 +9,8 @@ import {
   enhanceMarkdownTables, 
   formatMarkdownLinks, 
   convertHtmlToMarkdown,
-  fixReplyThreadFormatting
+  fixReplyThreadFormatting,
+  cleanListFormatting
 } from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
@@ -36,6 +37,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     processedContent = formatMarkdownLinks(processedContent);
     processedContent = convertHtmlToMarkdown(processedContent);
     processedContent = fixReplyThreadFormatting(processedContent);
+    processedContent = cleanListFormatting(processedContent);
     return processedContent;
   }, [content]);
 

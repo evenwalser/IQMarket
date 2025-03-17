@@ -1,9 +1,11 @@
+
 import { ChatMessage } from "@/types/chat";
 import { DataTable } from "./visualizations/DataTable";
 import { DataChart } from "./visualizations/DataChart";
 import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { preprocessContent } from "@/utils/content/preprocessor";
+import { cleanListFormatting, fixReplyThreadFormatting } from "@/utils/markdownUtils";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -67,8 +69,13 @@ export const MessageList = ({ messages }: MessageListProps) => {
   return (
     <>
       {messages.map((msg, index) => {
+        // Apply additional formatting to fix list and heading issues
+        let messageContent = msg.content;
+        messageContent = fixReplyThreadFormatting(messageContent);
+        messageContent = cleanListFormatting(messageContent);
+        
         // Process all messages through the preprocessor to handle formatting and extract visualizations
-        const { processedContent, extractedVisualizations } = preprocessContent(msg.content);
+        const { processedContent, extractedVisualizations } = preprocessContent(messageContent);
         
         // Combine explicit visualizations from the message with extracted ones
         const allVisualizations = [

@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for markdown processing
  */
@@ -32,6 +31,9 @@ export const cleanMarkdownContent = (content: string): string => {
   
   // Fix nested list structure
   cleanedContent = fixNestedLists(cleanedContent);
+  
+  // Fix numbered headings - e.g., "3. Action" to ensure proper formatting
+  cleanedContent = fixNumberedHeadings(cleanedContent);
   
   return cleanedContent;
 };
@@ -70,7 +72,24 @@ export const fixLists = (content: string): string => {
   // Ensure there's a blank line before lists start (but not between items)
   processedContent = processedContent.replace(/([^\n])(\n[*\-+]|\n\d+\.)/g, '$1\n\n$2');
   
+  // Fix list items with numbered prefixes (like "3. Action") to ensure they're properly formatted
+  processedContent = processedContent.replace(/^(\s*)(\d+)\.\s+(.*?)$/gm, '$1* $3');
+  
   return processedContent;
+};
+
+/**
+ * Fixes numbered headings like "3. Action" to ensure proper formatting
+ */
+export const fixNumberedHeadings = (content: string): string => {
+  // This regex pattern matches lines that start with a number followed by a period,
+  // which are likely to be numbered headings but not properly formatted as such
+  const pattern = /^(\d+)\.\s+([A-Z][a-zA-Z\s]+)$/gm;
+  
+  // Replace with properly formatted headings
+  return content.replace(pattern, (match, number, heading) => {
+    return `## ${number}. ${heading}\n`;
+  });
 };
 
 /**
@@ -81,6 +100,7 @@ export const fixNestedLists = (content: string): string => {
   let result = [];
   let inList = false;
   let prevIndentLevel = 0;
+  let listStartIndex = -1;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -89,7 +109,6 @@ export const fixNestedLists = (content: string): string => {
     
     if (listItemMatch) {
       const indentLevel = listItemMatch[1].length;
-      const listMarker = listItemMatch[2];
       
       // Starting a new list
       if (!inList) {
@@ -98,42 +117,36 @@ export const fixNestedLists = (content: string): string => {
           result.push('');
         }
         inList = true;
-      } else if (indentLevel > prevIndentLevel) {
-        // If this is a nested list item with increased indentation,
-        // make sure the previous line doesn't end with a blank line
-        if (result[result.length - 1] === '') {
-          result.pop();
-        }
-      } else if (indentLevel < prevIndentLevel && i < lines.length - 1) {
-        // If indentation decreases (ending a nested list), ensure proper spacing
-        const nextLine = lines[i + 1];
-        const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
-        
-        // If next line isn't a list item or has less indentation, add space
-        if (!nextIsListItem) {
-          result.push(line, '');
-          prevIndentLevel = indentLevel;
-          continue;
-        }
-      }
+        listStartIndex = result.length;
+      } 
       
+      // Update indent level
       prevIndentLevel = indentLevel;
     } else {
       // Not a list item
       if (inList && line.trim() === '') {
         // Empty line after a list - could be ending the list
-        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
-        const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
-        
-        if (!nextIsListItem) {
+        if (i < lines.length - 1) {
+          const nextLine = lines[i + 1];
+          const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
+          
+          if (!nextIsListItem) {
+            inList = false;
+          }
+        } else {
           inList = false;
         }
       } else if (inList && line.trim() !== '') {
-        // Text content that should be part of a list item needs proper indentation
-        const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
-        const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
-        
-        if (!nextIsListItem) {
+        // Text content that should be part of a list item
+        const nextLineIndex = i + 1;
+        if (nextLineIndex < lines.length) {
+          const nextLine = lines[nextLineIndex];
+          const nextIsListItem = nextLine.match(/^\s*([*\-+]|\d+\.)\s/);
+          
+          if (!nextIsListItem && !line.match(/^\s+/)) {
+            inList = false;
+          }
+        } else {
           inList = false;
         }
       }
@@ -310,19 +323,40 @@ export const cleanListFormatting = (content: string): string => {
   
   // Fix numbered list continuity
   let lastNumber = 0;
-  processedContent = processedContent.replace(/^(\s*)(\d+)\.\s+(.*?)$/gm, (match, indent, num, text) => {
-    // Reset numbering when indentation changes or there's a gap in the list
-    if (match.startsWith('  ')) {
-      // This is a sublist, so we want to maintain the number
-      return `${indent}${num}. ${text}`;
-    } else {
-      // This is a main list, so we increment the number
-      lastNumber++;
-      return `${indent}${lastNumber}. ${text}`;
-    }
-  });
+  let inNumberedList = false;
   
-  return processedContent;
+  // Process line by line
+  const lines = processedContent.split('\n');
+  const resultLines = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const numberedListMatch = line.match(/^(\s*)(\d+)\.\s+(.*?)$/);
+    
+    if (numberedListMatch) {
+      // Found a numbered list item
+      const [, indent, num, text] = numberedListMatch;
+      
+      if (!inNumberedList || indent.length > 0) {
+        // Start of a new list or a sublist
+        inNumberedList = true;
+        lastNumber = 1;
+      } else {
+        // Continue existing list
+        lastNumber++;
+      }
+      
+      resultLines.push(`${indent}${lastNumber}. ${text}`);
+    } else {
+      // Not a numbered list item
+      if (line.trim() === '') {
+        inNumberedList = false;
+      }
+      resultLines.push(line);
+    }
+  }
+  
+  return resultLines.join('\n');
 };
 
 /**
@@ -332,11 +366,23 @@ export const fixReplyThreadFormatting = (content: string): string => {
   let processedContent = content;
   
   // Ensure list items have proper list markers and spacing
-  // First handle bullet points
+  // First handle bullet points with dots
   processedContent = processedContent.replace(/^(\s*)•\s+(.*?)$/gm, '$1* $2');
+  
+  // Handle numbered items at the start of lines that aren't proper numbered lists
+  processedContent = processedContent.replace(/^(\s*)(\d+)\.(?!\s)(.*?)$/gm, '$1$2. $3');
   
   // Add proper spacing around headings with numbers (like # 9. Process Refinement)
   processedContent = processedContent.replace(/^(#{1,6})\s+(\d+)\.?\s+(.*)$/gm, '$1 $2. $3');
+  
+  // Convert plain numbered points at beginning of lines to proper markdown list items
+  processedContent = processedContent.replace(/^(\d+)\.\s+(.*?)$/gm, (match, num, text) => {
+    // Only convert if this looks like a standalone number rather than a heading
+    if (text.length < 30 && text.charAt(0).match(/[A-Z]/)) {
+      return `## ${num}. ${text}\n`;
+    }
+    return `${num}. ${text}`;
+  });
   
   return processedContent;
 };
