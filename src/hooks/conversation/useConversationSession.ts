@@ -65,7 +65,8 @@ export function useConversationSession() {
           thread_id: item.thread_id,
           session_id: item.session_id || sessId,
           assistant_id: item.assistant_id,
-          visualizations: visualizationList
+          visualizations: visualizationList,
+          structured_response: item.structured_response || null
         };
         
         result.push(conversation);

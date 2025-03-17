@@ -47,7 +47,7 @@ export const ConversationThread = ({
         </div>
       </div>
       
-      <ScrollArea className="max-h-[500px] overflow-y-auto">
+      <ScrollArea className="max-h-[600px] overflow-y-auto">
         <div className="p-4 space-y-6">
           {sortedConversations.map((conversation) => {
             const isCurrentlySpeaking = isSpeaking && currentSpeakingId === conversation.id;
@@ -62,7 +62,7 @@ export const ConversationThread = ({
                 toggleSpeakResponse={toggleSpeakResponse}
                 visualizations={conversation.visualizations}
                 assistantType={assistantType}
-                structuredResponse={conversation.structured_response || null}
+                structuredResponse={conversation.structured_response}
               />
             );
           })}
