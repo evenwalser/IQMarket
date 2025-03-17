@@ -1,14 +1,14 @@
 
 import { useEffect, useState } from 'react';
-import ReactFlow, {
-  Node,
-  Edge,
-  Controls,
-  Background,
-  Panel,
-  useNodesState,
-  useEdgesState,
-  Position,
+import { 
+  ReactFlow, 
+  Node, 
+  Edge, 
+  Controls, 
+  Background, 
+  Panel, 
+  useNodesState, 
+  useEdgesState 
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -88,7 +88,7 @@ export const FlowChartRenderer: React.FC<FlowChartRendererProps> = ({
         console.error('Error converting flow data:', error);
       }
     }
-  }, [flowData]);
+  }, [flowData, setNodes, setEdges]);
 
   if (!flowData || !flowData.nodes || !flowData.edges) {
     return <div className="p-4 text-red-500">Invalid flow chart data</div>;
@@ -102,7 +102,6 @@ export const FlowChartRenderer: React.FC<FlowChartRendererProps> = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         fitView
-        attributionPosition="bottom-right"
       >
         <Controls />
         <Background color="#f1f5f9" gap={16} />

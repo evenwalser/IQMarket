@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +8,9 @@ import { cleanMarkdownContent, enhanceMarkdownTables, formatMarkdownLinks, conve
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
 import { FlowChartRenderer } from '@/components/chat/visualizations/FlowChartRenderer';
+import { DataChart } from '@/components/chat/visualizations/DataChart';
+import { DataTable } from '@/components/chat/visualizations/DataTable';
+import { StructuredResponse } from '@/types/structuredResponse';
 
 interface MarkdownRendererProps {
   content: string;
@@ -90,6 +94,9 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
               <DataChart 
                 data={section.chartData} 
                 height={section.height || 300} 
+                type="bar"
+                xKey={section.chartData[0] ? Object.keys(section.chartData[0])[0] : "x"}
+                yKeys={section.chartData[0] ? Object.keys(section.chartData[0]).slice(1) : ["y"]}
               />
             </div>
           );
