@@ -31,11 +31,11 @@ export const ModeExplainer = ({ mode }: ModeExplainerProps) => {
     frameworks: {
       icon: <BookCopy className="w-5 h-5 text-green-500" />,
       title: "Frameworks",
-      description: "Explore go-to-market strategies, growth frameworks, and operational methods.",
+      description: "Get strategic frameworks and implementation plans with visual diagrams.",
       examples: [
-        "What framework should I use for product prioritization?",
-        "How can I implement a growth loops strategy?",
-        "What's the best framework for customer segmentation?"
+        "Show me a GTM framework for B2B SaaS",
+        "Create an org chart for a growth team",
+        "Explain the RevOps process with a flowchart"
       ]
     }
   };

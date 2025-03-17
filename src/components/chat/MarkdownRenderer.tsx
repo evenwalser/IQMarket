@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { cleanMarkdownContent, enhanceMarkdownTables, formatMarkdownLinks, convertHtmlToMarkdown } from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
+import { FlowChartRenderer } from '@/components/chat/visualizations/FlowChartRenderer';
 
 interface MarkdownRendererProps {
   content: string;
@@ -19,29 +19,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   className,
   isUserMessage = false
 }) => {
-  // Fix markdown formatting issues before rendering
   const cleanContent = React.useMemo(() => {
-    // Apply the enhanced cleaning pipeline
     let processedContent = cleanMarkdownContent(content);
-    
-    // Apply table enhancements
     processedContent = enhanceMarkdownTables(processedContent);
-    
-    // Format links consistently
     processedContent = formatMarkdownLinks(processedContent);
-    
-    // Convert any HTML elements to markdown
     processedContent = convertHtmlToMarkdown(processedContent);
-    
     return processedContent;
   }, [content]);
 
-  // Get markdown components
   const markdownComponents = useMarkdownComponents({ isUserMessage });
 
-  // Effect to handle special content
   useEffect(() => {
-    // Handle citations
     const citations = document.querySelectorAll('.citation');
     if (citations.length > 0) {
       citations.forEach((citation) => {
@@ -49,10 +37,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       });
     }
     
-    // Handle math equations if needed
     const mathElements = document.querySelectorAll('.math-block, .math-inline');
     if (mathElements.length > 0 && typeof window !== 'undefined') {
-      // You can integrate with KaTeX or MathJax if needed
     }
   }, [cleanContent]);
 
@@ -66,11 +52,79 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           className
         )}
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]} // This is critical to allow HTML in markdown content
+        rehypePlugins={[rehypeRaw]}
         components={markdownComponents}
       >
         {cleanContent}
       </ReactMarkdown>
     </>
+  );
+};
+
+export const StructuredResponseRenderer: React.FC<{ structuredResponse: StructuredResponse }> = ({ 
+  structuredResponse 
+}) => {
+  if (!structuredResponse || !structuredResponse.sections || !Array.isArray(structuredResponse.sections)) {
+    return <div className="text-red-500">Invalid structured response format</div>;
+  }
+  
+  return (
+    <div className="space-y-6">
+      {structuredResponse.sections.map((section, index) => {
+        if (section.type === 'text') {
+          return (
+            <div key={index} className="prose prose-slate max-w-none">
+              <MarkdownRenderer content={section.content || ''} />
+            </div>
+          );
+        } else if (section.type === 'heading') {
+          const HeadingTag = `h${section.level || 2}` as keyof JSX.IntrinsicElements;
+          return (
+            <HeadingTag key={index} className="text-gray-900 font-semibold mt-6 mb-2">
+              {section.content}
+            </HeadingTag>
+          );
+        } else if (section.type === 'chart' && section.chartData) {
+          return (
+            <div key={index} className="my-4">
+              <DataChart 
+                data={section.chartData} 
+                height={section.height || 300} 
+              />
+            </div>
+          );
+        } else if ((section.type === 'flowChart' || section.type === 'orgChart') && section.flowData) {
+          return (
+            <div key={index} className="my-4">
+              <FlowChartRenderer 
+                flowData={section.flowData} 
+                height={section.height || 400} 
+              />
+            </div>
+          );
+        } else if (section.type === 'table' && section.tableData) {
+          return (
+            <div key={index} className="my-4 overflow-x-auto">
+              <DataTable data={section.tableData} />
+            </div>
+          );
+        } else if (section.type === 'image' && section.imageUrl) {
+          return (
+            <div key={index} className="my-4">
+              <img 
+                src={section.imageUrl} 
+                alt={section.content || "Image"} 
+                className="max-w-full rounded-md"
+              />
+              {section.content && (
+                <p className="text-sm text-gray-500 mt-1">{section.content}</p>
+              )}
+            </div>
+          );
+        }
+        
+        return null;
+      })}
+    </div>
   );
 };

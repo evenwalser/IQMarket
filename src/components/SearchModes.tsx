@@ -17,7 +17,7 @@ const searchModes: SearchMode[] = [
     id: "knowledge",
     icon: <BookOpen className="w-5 h-5" style={{ color: "rgb(114, 29, 255)" }} />,
     title: "Knowledge Base",
-    description: "Search across founder interview",
+    description: "Search across founder interviews",
     enabled: true,
     titleColor: "rgb(114, 29, 255)"
   },
@@ -33,7 +33,7 @@ const searchModes: SearchMode[] = [
     id: "frameworks",
     icon: <BookCopy className="w-5 h-5" style={{ color: "rgb(70, 218, 114)" }} />,
     title: "Frameworks",
-    description: "Explore GTM and product strategies",
+    description: "Get strategic frameworks with diagrams",
     enabled: true,
     titleColor: "rgb(70, 218, 114)"
   }

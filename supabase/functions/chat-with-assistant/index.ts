@@ -225,6 +225,43 @@ Format your responses like a polished email or letter, with greeting, main body,
 Cite founders using something like '— {FounderName}' or reference them in the text directly.
 Break your response into logical sections with appropriate headings where needed.
 Return ONLY valid JSON that follows this schema.`;
+      } else if (assistantType === 'frameworks') {
+        assistantInstructions = `
+You are a Frameworks Assistant. Always return valid JSON with the following structure:
+
+{
+  "assistantType": "frameworks",
+  "sections": [
+    {
+      "type": "text",
+      "content": "Step 1: Identify your ICP (Ideal Customer Profile)..."
+    },
+    {
+      "type": "heading",
+      "content": "Framework Title",
+      "level": 2
+    },
+    {
+      "type": "flowChart",
+      "flowData": {
+        "title": "RevOps Process Flow",
+        "nodes": [
+          {"id": "prospect", "label": "Prospect"},
+          {"id": "qualify", "label": "Qualify"}
+        ],
+        "edges": [
+          {"from": "prospect", "to": "qualify"}
+        ]
+      }
+    }
+  ]
+}
+
+Always set assistantType to "frameworks".
+Provide consultant-style text in type: "text" blocks.
+If you want to illustrate organizational design or flow, provide a type: "flowChart", with structured data about the nodes and connections.
+Try to keep your text in a bullet or step-by-step format when appropriate.
+Return ONLY valid JSON that follows this schema.`;
       } else {
         // Default structured output instructions for other assistant types
         assistantInstructions = "Please provide your response in a clear, structured format. When presenting data, provide it as properly formatted tables and visualizations. Extract all relevant metrics, numbers, and statistics from user's query and attachments.";

@@ -1,5 +1,5 @@
 
-export type StructuredSectionType = 'text' | 'heading' | 'chart' | 'image' | 'flowChart' | 'table';
+export type StructuredSectionType = 'text' | 'heading' | 'chart' | 'image' | 'flowChart' | 'orgChart' | 'table';
 
 export interface StructuredSection {
   type: StructuredSectionType;
@@ -8,7 +8,12 @@ export interface StructuredSection {
   chartData?: any; // For charts
   tableData?: any; // For tables
   imageUrl?: string; // For images
-  flowChartData?: any; // For flow charts
+  flowData?: {
+    title?: string;
+    nodes: Array<{id: string; label: string; [key: string]: any}>;
+    edges: Array<{from: string; to: string; [key: string]: any}>;
+    [key: string]: any;
+  }; // For flow charts and org charts
   [key: string]: any; // Add index signature to make it compatible with Json type
 }
 
