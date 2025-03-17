@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -139,11 +138,12 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
           );
         }
         
-        // For any unsupported section type, show a more user-friendly message
+        console.log("Unsupported section type:", section.type, section);
+        
         return (
           <div key={index} className="text-gray-600 p-2 my-2 bg-gray-100 rounded">
             {section.content ? (
-              <p>{section.content}</p>
+              <MarkdownRenderer content={section.content} />
             ) : (
               <p>This content couldn't be displayed correctly</p>
             )}

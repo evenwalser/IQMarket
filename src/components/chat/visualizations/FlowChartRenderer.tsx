@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -28,6 +28,8 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
   flowData, 
   height = 400 
 }) => {
+  console.log("FlowChart rendering with data:", flowData);
+
   // Transform nodes data to React Flow format
   const initialNodes: Node[] = flowData.nodes.map((node) => ({
     id: node.id,
@@ -50,11 +52,11 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
   // Auto-position nodes if positions aren't provided
   const positionedNodes = autoLayoutNodes(initialNodes);
 
-  // Transform edges data to React Flow format
+  // Transform edges data to React Flow format - handle both 'from/to' and 'source/target' formats
   const initialEdges: Edge[] = flowData.edges.map((edge, index) => ({
     id: `e${index}`,
-    source: edge.from,
-    target: edge.to,
+    source: edge.from || edge.source,
+    target: edge.to || edge.target,
     type: 'smoothstep',
     animated: edge.animated || false,
     style: {
@@ -72,6 +74,12 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  // Log what's being rendered
+  useEffect(() => {
+    console.log("Rendering flow chart with nodes:", nodes);
+    console.log("Rendering flow chart with edges:", edges);
+  }, [nodes, edges]);
 
   return (
     <div style={{ height: `${height}px`, width: '100%', border: '1px solid #e9ecef', borderRadius: '8px' }}>

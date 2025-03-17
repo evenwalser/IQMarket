@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 import { DataTable } from "@/components/chat/visualizations/DataTable";
 import { DataChart } from "@/components/chat/visualizations/DataChart";
+import { FlowChartRenderer } from "@/components/chat/visualizations/FlowChartRenderer";
 import type { ChatVisualization } from "@/types/chat";
 import { StructuredResponse, StructuredSection } from "@/types/structuredResponse";
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 
 interface MessageExchangeProps {
   id: string;
@@ -62,6 +64,20 @@ export const MessageExchange = ({
             conversationId={id}
           />
         );
+      case 'flowChart':
+      case 'orgChart':
+        if (section.flowData && Array.isArray(section.flowData.nodes) && Array.isArray(section.flowData.edges)) {
+          return (
+            <div className="my-4">
+              <FlowChartRenderer 
+                flowData={section.flowData} 
+                height={section.height || 400} 
+              />
+            </div>
+          );
+        }
+        console.log("Invalid flowChart data:", section.flowData);
+        return <p className="text-orange-500">Could not render flow chart: missing or invalid data</p>;
       case 'table':
         return (
           <DataTable 
@@ -73,7 +89,12 @@ export const MessageExchange = ({
           />
         );
       default:
-        return <p className="text-gray-600">Unsupported section type: {section.type}</p>;
+        console.log("Unsupported section type in MessageExchange:", section.type, section);
+        return section.content ? (
+          <MarkdownRenderer content={section.content} />
+        ) : (
+          <p className="text-gray-500">This content couldn't be displayed correctly</p>
+        );
     }
   };
 
