@@ -38,11 +38,10 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
       border: '1px solid #e9ecef',
       borderRadius: '8px',
       padding: '10px',
-      width: 'auto',
-      minWidth: '120px',
+      width: node.width || 'auto',
+      minWidth: '150px',
       textAlign: 'center',
-      fontSize: '12px',
-      fontWeight: 'bold',
+      fontSize: '14px',
       color: '#495057',
     },
     ...node,
@@ -62,6 +61,7 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
       stroke: '#6c757d',
       strokeWidth: 2,
     },
+    label: edge.label,
     ...edge,
   }));
 
@@ -74,9 +74,9 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
   );
 
   return (
-    <div style={{ height: `${height}px`, width: '100%' }}>
+    <div style={{ height: `${height}px`, width: '100%', border: '1px solid #e9ecef', borderRadius: '8px' }}>
       {flowData.title && (
-        <div className="text-center font-medium mb-2">{flowData.title}</div>
+        <div className="text-center font-medium p-2 border-b">{flowData.title}</div>
       )}
       <ReactFlow
         nodes={nodes}
@@ -103,7 +103,7 @@ const autoLayoutNodes = (nodes: Node[]): Node[] => {
   
   // Simple horizontal or vertical layout based on node count
   return nodes.map((node, index) => {
-    if (node.position && node.position.x !== 0 && node.position.y !== 0) {
+    if (node.position && (node.position.x !== 0 || node.position.y !== 0)) {
       return node; // Keep original position if it's already meaningful
     }
     

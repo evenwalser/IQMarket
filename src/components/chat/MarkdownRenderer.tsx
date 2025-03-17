@@ -139,9 +139,14 @@ export const StructuredResponseRenderer: React.FC<{ structuredResponse: Structur
           );
         }
         
+        // For any unsupported section type, show a more user-friendly message
         return (
-          <div key={index} className="text-red-500 p-2 my-2 border border-red-200 rounded">
-            Unsupported section type: {section.type}
+          <div key={index} className="text-gray-600 p-2 my-2 bg-gray-100 rounded">
+            {section.content ? (
+              <p>{section.content}</p>
+            ) : (
+              <p>This content couldn't be displayed correctly</p>
+            )}
           </div>
         );
       })}
