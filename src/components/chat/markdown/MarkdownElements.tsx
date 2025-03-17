@@ -32,14 +32,29 @@ export const useMarkdownComponents = ({ isUserMessage }: MarkdownElementsProps) 
     // List items with proper styling
     ul: ({ node, ...props }: any) => <ul className="my-3 pl-6 space-y-2 list-disc" {...props} />,
     ol: ({ node, ...props }: any) => <ol className="my-3 pl-6 space-y-2 list-decimal" {...props} />,
-    li: ({ node, ...props }: any) => (
-      <li className={`${textClassName} leading-relaxed`}>
-        <span className="flex">
-          <span className="mr-2">{isUserMessage ? '•' : ''}</span>
-          <span {...props} />
-        </span>
-      </li>
-    ),
+    li: ({ node, ...props }: any) => {
+      // Check if the node has children and if any of them are paragraphs or lists
+      const hasComplexContent = node?.children?.some(
+        (child: any) => 
+          child.type === 'paragraph' || 
+          child.type === 'list' || 
+          child.type === 'ul' || 
+          child.type === 'ol'
+      );
+      
+      return (
+        <li className={`${textClassName} ${hasComplexContent ? 'mb-2' : ''} leading-relaxed`}>
+          <div className="flex">
+            <div className="flex-shrink-0 mr-2">
+              {isUserMessage ? '•' : ''}
+            </div>
+            <div className="flex-1">
+              {props.children}
+            </div>
+          </div>
+        </li>
+      );
+    },
     
     // Emphasis and strong text
     em: ({ node, ...props }: any) => <em className={`italic ${textClassName}`} {...props} />,

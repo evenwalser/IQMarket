@@ -4,7 +4,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { cn } from "@/lib/utils";
-import { cleanMarkdownContent, enhanceMarkdownTables, formatMarkdownLinks, convertHtmlToMarkdown } from '@/utils/markdownUtils';
+import { 
+  cleanMarkdownContent, 
+  enhanceMarkdownTables, 
+  formatMarkdownLinks, 
+  convertHtmlToMarkdown,
+  fixReplyThreadFormatting
+} from '@/utils/markdownUtils';
 import { useMarkdownComponents } from './markdown/MarkdownElements';
 import { MermaidRenderer } from './markdown/MermaidRenderer';
 import { FlowChartRenderer } from '@/components/chat/visualizations/FlowChartRenderer';
@@ -24,10 +30,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   isUserMessage = false
 }) => {
   const cleanContent = React.useMemo(() => {
+    // Apply multiple cleaning steps to ensure correct formatting
     let processedContent = cleanMarkdownContent(content);
     processedContent = enhanceMarkdownTables(processedContent);
     processedContent = formatMarkdownLinks(processedContent);
     processedContent = convertHtmlToMarkdown(processedContent);
+    processedContent = fixReplyThreadFormatting(processedContent);
     return processedContent;
   }, [content]);
 
@@ -43,6 +51,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     
     const mathElements = document.querySelectorAll('.math-block, .math-inline');
     if (mathElements.length > 0 && typeof window !== 'undefined') {
+      // Math rendering support can be added here if needed
+    }
+    
+    // Add special handling for lists
+    const listItems = document.querySelectorAll('li');
+    if (listItems.length > 0) {
+      listItems.forEach((item) => {
+        item.classList.add('my-1');
+      });
     }
   }, [cleanContent]);
 

@@ -7,6 +7,7 @@ import { FlowChartRenderer } from "@/components/chat/visualizations/FlowChartRen
 import type { ChatVisualization } from "@/types/chat";
 import { StructuredResponse, StructuredSection } from "@/types/structuredResponse";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import { fixReplyThreadFormatting, cleanMarkdownContent } from "@/utils/markdownUtils";
 
 interface MessageExchangeProps {
   id: string;
@@ -29,6 +30,9 @@ export const MessageExchange = ({
   assistantType,
   structuredResponse
 }: MessageExchangeProps) => {
+  // Pre-process the response before rendering to fix formatting issues
+  const processedResponse = fixReplyThreadFormatting(cleanMarkdownContent(response));
+
   const renderStructuredResponse = () => {
     if (!structuredResponse || !structuredResponse.sections) {
       return null;
@@ -48,7 +52,12 @@ export const MessageExchange = ({
   const renderSection = (section: StructuredSection) => {
     switch (section.type) {
       case 'text':
-        return <div className="text-gray-700 leading-relaxed">{section.content}</div>;
+        return section.content ? (
+          <MarkdownRenderer 
+            content={fixReplyThreadFormatting(cleanMarkdownContent(section.content))} 
+            className="text-gray-700 leading-relaxed"
+          />
+        ) : null;
       case 'heading':
         return renderHeading(section.content || '', section.level || 2);
       case 'chart':
@@ -91,7 +100,9 @@ export const MessageExchange = ({
       default:
         console.log("Unsupported section type in MessageExchange:", section.type, section);
         return section.content ? (
-          <MarkdownRenderer content={section.content} />
+          <MarkdownRenderer 
+            content={fixReplyThreadFormatting(cleanMarkdownContent(section.content))} 
+          />
         ) : (
           <p className="text-gray-500">This content couldn't be displayed correctly</p>
         );
@@ -146,7 +157,7 @@ export const MessageExchange = ({
             </div>
           ) : (
             <div className="prose prose-sm max-w-none text-gray-800 relative pr-8">
-              <MarkdownRenderer content={response} />
+              <MarkdownRenderer content={processedResponse} />
               
               {/* Text-to-speech button */}
               <Button
