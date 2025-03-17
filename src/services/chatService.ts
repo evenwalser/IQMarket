@@ -13,85 +13,89 @@ export const sendMessage = async (message: string, threadId: string | null, atta
       throw new Error('You must be logged in to send messages');
     }
 
+    // Process attachments if present
+    let formattedAttachments = [];
+    
     if (attachments.length > 0) {
       console.log('Processing attachments:', attachments.map(a => ({ name: a.name, type: a.type, size: a.size })));
       
-      // First get the file records directly by their size and name
-      const { data: uploadedAttachments, error: fetchError } = await supabase
-        .from('chat_attachments')
-        .select('*')
-        .in('file_name', attachments.map(file => file.name))
-        .in('size', attachments.map(file => file.size))
-        .eq('user_id', user.id);
-
-      if (fetchError) {
-        console.error('Error fetching attachments:', fetchError);
-        throw fetchError;
-      }
-
-      console.log('Found uploaded attachments:', uploadedAttachments);
-
-      if (!uploadedAttachments || uploadedAttachments.length === 0) {
-        console.error('No matching attachments found for:', attachments.map(a => `${a.name} (${a.size} bytes)`));
-        throw new Error('No matching attachments found in database. Please try uploading the file again.');
-      }
-
-      const formattedAttachments = uploadedAttachments.map((att: DbChatAttachment) => {
-        const publicUrl = supabase.storage.from('chat-attachments').getPublicUrl(att.file_path).data.publicUrl;
-        console.log(`Formatted attachment ${att.file_name}:`, { 
-          url: publicUrl, 
-          type: att.content_type,
-          path: att.file_path,
-          size: att.size
-        });
-        return {
+      // For each file in the attachments array, upload it to Supabase storage
+      for (const file of attachments) {
+        const fileName = `${crypto.randomUUID()}-${file.name}`;
+        const filePath = `${user.id}/${fileName}`;
+        
+        // Upload the file to storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(filePath, file);
+          
+        if (uploadError) {
+          console.error('Error uploading file:', uploadError);
+          throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        }
+        
+        console.log('File uploaded successfully:', uploadData);
+        
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(filePath);
+          
+        console.log('Generated public URL:', publicUrl);
+        
+        // Store record in the chat_attachments table
+        const { data: attachmentRecord, error: attachmentError } = await supabase
+          .from('chat_attachments')
+          .insert({
+            user_id: user.id,
+            file_name: file.name,
+            file_path: filePath,
+            content_type: file.type,
+            size: file.size
+          })
+          .select('*')
+          .single();
+          
+        if (attachmentError) {
+          console.error('Error storing attachment record:', attachmentError);
+          throw new Error(`Failed to store attachment record for ${file.name}`);
+        }
+        
+        console.log('Attachment record stored:', attachmentRecord);
+        
+        formattedAttachments.push({
           url: publicUrl,
-          file_name: att.file_name,
-          content_type: att.content_type,
-          file_path: att.file_path
-        };
-      });
+          file_name: file.name,
+          content_type: file.type,
+          file_path: filePath
+        });
+      }
+    }
 
-      console.log('Sending message with attachments:', {
+    // Send message to assistant edge function
+    console.log('Sending to edge function:', {
+      message,
+      threadId,
+      attachmentsCount: formattedAttachments.length
+    });
+
+    const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
+      body: {
         message,
         threadId,
-        attachmentsCount: formattedAttachments.length,
+        assistantType: 'benchmarks',
         attachments: formattedAttachments
-      });
+      },
+    });
 
-      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {
-          message,
-          threadId,
-          assistantType: 'benchmarks',
-          attachments: formattedAttachments
-        },
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      return data;
-    } else {
-      console.log('Sending message without attachments');
-      const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
-        body: {
-          message,
-          threadId,
-          assistantType: 'benchmarks',
-          attachments: []
-        },
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      return data;
+    if (error) {
+      console.error('Edge function error:', error);
+      throw error;
     }
+
+    console.log('Response received from edge function:', data);
+    return data;
+    
   } catch (err) {
     console.error('Error in sendMessage:', err);
     throw err;

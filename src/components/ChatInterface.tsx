@@ -43,11 +43,32 @@ export const ChatInterface = () => {
         content: userMessage,
       }]);
 
+      // Show loading message
+      toast.loading("Processing your request...", { id: "chat-loading" });
+
+      // Send message with any attachments
       const data = await sendMessage(userMessage, threadId, attachments);
+
+      // Hide loading toast
+      toast.dismiss("chat-loading");
 
       // Set thread ID for conversation continuity
       if (data.thread_id) {
         setThreadId(data.thread_id);
+      }
+
+      // Show file processing results if available
+      if (data.file_processing_results && data.file_processing_results.length > 0) {
+        const successCount = data.file_processing_results.filter(r => r.status === 'success').length;
+        const errorCount = data.file_processing_results.filter(r => r.status === 'error').length;
+        
+        if (errorCount > 0) {
+          toast.error(`${errorCount} file(s) could not be processed`);
+        }
+        
+        if (successCount > 0) {
+          toast.success(`${successCount} file(s) processed successfully`);
+        }
       }
 
       // Process the assistant's response content
@@ -66,9 +87,14 @@ export const ChatInterface = () => {
         visualizations: allVisualizations.length > 0 ? allVisualizations : undefined
       }]);
 
+      toast.success("Response received");
+
     } catch (error) {
       console.error("Error sending message:", error);
-      toast.error("Failed to send message. Please try again.");
+      toast.error(`Failed to send message: ${error.message || "Unknown error"}`, { 
+        duration: 5000,
+        id: "chat-loading"
+      });
     } finally {
       setIsLoading(false);
     }

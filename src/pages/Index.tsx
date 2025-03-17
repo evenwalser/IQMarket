@@ -52,6 +52,7 @@ const Index = () => {
   // When mode changes to benchmarks, automatically enable structured output
   const handleModeChange = (mode: AssistantType) => {
     setSelectedMode(mode);
+    // Always enable structured output for benchmarks mode
     if (mode === 'benchmarks') {
       setStructuredOutput(true);
     }
