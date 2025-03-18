@@ -83,8 +83,8 @@ export const VisualizationRenderer = ({
             nodes: visualization.nodes || [],
             edges: visualization.edges || []
           }} 
-          title={visualization.title}
           height={visualization.height || 400}
+          title={visualization.title}
         />
       );
       

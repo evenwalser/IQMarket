@@ -17,19 +17,24 @@ import '@xyflow/react/dist/style.css';
 
 interface FlowChartProps {
   flowData: {
-    title?: string;
     nodes: Array<{id: string; label: string; [key: string]: any}>;
     edges: Array<{from: string; to: string; [key: string]: any}>;
+    title?: string;
     [key: string]: any;
   };
   height?: number;
+  title?: string; // Add title property to the interface
 }
 
 export const FlowChartRenderer: React.FC<FlowChartProps> = ({ 
   flowData, 
-  height = 400 
+  height = 400,
+  title
 }) => {
   console.log("FlowChart rendering with data:", flowData);
+
+  // Get title from either the direct prop or from flowData
+  const chartTitle = title || flowData.title;
 
   // Transform nodes data to React Flow format
   const initialNodes: Node[] = flowData.nodes.map((node) => ({
@@ -94,8 +99,8 @@ export const FlowChartRenderer: React.FC<FlowChartProps> = ({
 
   return (
     <div style={{ height: `${height}px`, width: '100%', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-      {flowData.title && (
-        <div className="text-center font-medium text-gray-800 p-3 border-b bg-gray-50">{flowData.title}</div>
+      {chartTitle && (
+        <div className="text-center font-medium text-gray-800 p-3 border-b bg-gray-50">{chartTitle}</div>
       )}
       <ReactFlow
         nodes={nodes}
