@@ -6,7 +6,8 @@ import { preprocessContent } from "@/utils/content/preprocessor";
 import { 
   cleanListFormatting, 
   fixReplyThreadFormatting, 
-  fixMultipleBulletsInLists 
+  fixMultipleBulletsInLists,
+  fixBrokenHeadings
 } from "@/utils/markdownUtils";
 import { VisualizationRenderer } from "./visualizations/VisualizationRenderer";
 
@@ -36,10 +37,17 @@ export const MessageList = ({ messages }: MessageListProps) => {
         let messageContent = msg.content;
         messageContent = fixReplyThreadFormatting(messageContent);
         messageContent = cleanListFormatting(messageContent);
-        messageContent = fixMultipleBulletsInLists(messageContent); // Add this to fix multiple bullets
+        messageContent = fixMultipleBulletsInLists(messageContent);
+        messageContent = fixBrokenHeadings(messageContent);
         
         // Process all messages through the preprocessor to handle formatting and extract visualizations
         const { processedContent, extractedVisualizations } = preprocessContent(messageContent);
+        
+        // Log visualization extraction results for debugging
+        if (extractedVisualizations.length > 0) {
+          console.log(`Extracted ${extractedVisualizations.length} visualizations:`, 
+            extractedVisualizations.map(v => v.type));
+        }
         
         // Combine explicit visualizations from the message with extracted ones
         const allVisualizations = [
@@ -66,14 +74,18 @@ export const MessageList = ({ messages }: MessageListProps) => {
               )}
               
               {/* Render visualizations */}
-              {allVisualizations?.map((viz, i) => (
-                <div key={i} className="mt-4 border-t border-gray-100 pt-3">
-                  <VisualizationRenderer 
-                    visualization={viz} 
-                    allowCustomization={false}
-                  />
+              {allVisualizations && allVisualizations.length > 0 && (
+                <div className="space-y-4 mt-4 border-t border-gray-100 pt-3">
+                  {allVisualizations.map((viz, i) => (
+                    <div key={i} className="visualization-container">
+                      <VisualizationRenderer 
+                        visualization={viz} 
+                        allowCustomization={false}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
               
               {/* Render attachments */}
               {msg.attachments?.map((attachment, i) => (

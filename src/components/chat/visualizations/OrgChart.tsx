@@ -29,9 +29,10 @@ interface OrgChartProps {
 // Custom node component for org chart
 const OrgChartNode = ({ data }: { data: any }) => {
   return (
-    <div className="px-4 py-3 shadow-md rounded-md border border-gray-200 bg-white">
+    <div className={`px-4 py-3 shadow-md rounded-md border border-gray-200 bg-white ${data.isRoot ? 'ring-2 ring-blue-500' : ''}`}>
       <div className="font-bold text-sm text-gray-800">{data.label}</div>
-      {data.role && <div className="text-xs text-gray-500">{data.role}</div>}
+      {data.role && data.role !== data.label && <div className="text-xs text-gray-500">{data.role}</div>}
+      {data.department && <div className="text-xs italic text-gray-400">{data.department}</div>}
     </div>
   );
 };
@@ -47,15 +48,30 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
   const [reactFlowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
+  // Process nodes to ensure all have unique IDs
+  const processedNodes = React.useMemo(() => {
+    if (!nodes || nodes.length === 0) return [];
+    
+    // Make sure nodes have unique IDs
+    const uniqueNodes = Array.from(new Map(nodes.map(node => [node.id, node])).values());
+    
+    // Filter out nodes with invalid parentId references
+    const validNodeIds = new Set(uniqueNodes.map(node => node.id));
+    return uniqueNodes.map(node => ({
+      ...node,
+      parentId: node.parentId && validNodeIds.has(node.parentId) ? node.parentId : null
+    }));
+  }, [nodes]);
+
   // Calculate layout based on hierarchical structure
   useEffect(() => {
-    if (!nodes || nodes.length === 0) return;
+    if (!processedNodes || processedNodes.length === 0) return;
 
     // Create a map for quick lookup
-    const nodeMap = new Map(nodes.map(node => [node.id, node]));
+    const nodeMap = new Map(processedNodes.map(node => [node.id, node]));
     
     // Find root nodes (those without parents or with null parents)
-    const rootNodes = nodes.filter(node => !node.parentId);
+    const rootNodes = processedNodes.filter(node => !node.parentId);
     
     if (rootNodes.length === 0) {
       console.error("No root nodes found in org chart data");
@@ -63,7 +79,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
     }
 
     // Calculate levels for each node using BFS
-    const nodeWithLevels = [...nodes].map(node => ({...node, level: 0})); // Initialize all with level 0
+    const nodeWithLevels = [...processedNodes].map(node => ({...node, level: 0})); // Initialize all with level 0
     const queue = rootNodes.map(node => ({ ...node, level: 0 }));
     const processed = new Set<string>();
     
@@ -72,7 +88,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
       processed.add(current.id);
       
       // Find all children of this node
-      const children = nodes.filter(node => node.parentId === current.id);
+      const children = processedNodes.filter(node => node.parentId === current.id);
       
       for (const child of children) {
         if (!processed.has(child.id)) {
@@ -97,7 +113,6 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
 
     // Calculate and set node positions based on levels
     const reactFlowNodesData: Node[] = [];
-    const maxNodesInLevel = Math.max(...Array.from(nodesByLevel.values()).map(nodes => nodes.length));
     const nodeWidth = 180;
     const nodeHeight = 80;
     const levelHeight = 150;
@@ -117,7 +132,9 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
           position: { x: xPos, y: yPos },
           data: { 
             label: node.label,
-            role: node.role
+            role: node.role,
+            department: node.department,
+            isRoot: level === 0
           },
           sourcePosition: Position.Bottom,
           targetPosition: Position.Top,
@@ -127,7 +144,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
 
     // Create edges
     const edges: Edge[] = [];
-    nodes.forEach(node => {
+    processedNodes.forEach(node => {
       if (node.parentId) {
         edges.push({
           id: `${node.parentId}-${node.id}`,
@@ -141,7 +158,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
 
     setNodes(reactFlowNodesData);
     setEdges(edges);
-  }, [nodes, setNodes, setEdges]);
+  }, [processedNodes, setNodes, setEdges]);
   
   // Fit view after nodes are rendered
   useLayoutEffect(() => {
@@ -161,6 +178,22 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
       default: return 'bg-gray-50 border-gray-100';
     }
   };
+
+  // If no valid nodes, display an error message
+  if (!nodes || nodes.length === 0) {
+    return (
+      <Card className="my-4 bg-red-50 border-red-100">
+        <CardHeader className="py-3">
+          <CardTitle className="text-lg font-medium text-red-700">
+            {title || "Organization Chart Error"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 py-3">
+          <p className="text-red-600">Unable to render organization chart: No valid data provided.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={`my-4 ${getColorClassByScheme()}`}>
@@ -184,7 +217,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
             >
               <Panel position="bottom-center">
                 <div className="text-xs text-gray-500">
-                  {nodes.length} members • {reactFlowEdges.length} connections
+                  {processedNodes.length} members • {reactFlowEdges.length} connections
                 </div>
               </Panel>
             </ReactFlowComponent>

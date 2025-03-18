@@ -28,6 +28,9 @@ export const VisualizationRenderer = ({
     return (supportedValues.includes(scheme as T) ? scheme : 'default') as T;
   };
 
+  // Log the visualization type for debugging
+  console.log(`Rendering visualization of type: ${visualization.type}`, visualization);
+
   switch (visualization.type) {
     case 'table':
       return (
@@ -80,6 +83,7 @@ export const VisualizationRenderer = ({
             nodes: visualization.nodes || [],
             edges: visualization.edges || []
           }} 
+          title={visualization.title}
           height={visualization.height || 400}
         />
       );
@@ -88,7 +92,7 @@ export const VisualizationRenderer = ({
       return (
         <OrgChart 
           nodes={visualization.nodes || []} 
-          title={visualization.title}
+          title={visualization.title || "Organizational Chart"}
           colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 
             ["default", "financial", "retention", "performance", "operational"]
@@ -142,6 +146,9 @@ export const VisualizationRenderer = ({
       return (
         <div className="p-4 border rounded-md bg-gray-50">
           <p className="text-gray-500">Unsupported visualization type: {visualization.type}</p>
+          <pre className="mt-2 text-xs text-gray-400 overflow-auto max-h-[300px]">
+            {JSON.stringify(visualization, null, 2)}
+          </pre>
         </div>
       );
   }
