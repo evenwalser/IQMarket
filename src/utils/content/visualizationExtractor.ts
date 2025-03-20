@@ -15,22 +15,84 @@ export const extractJsonVisualizations = (
   const processedContent = content.replace(jsonRegex, (match, jsonContent) => {
     try {
       const data = JSON.parse(jsonContent);
+      console.log("Extracted JSON content:", JSON.stringify(data).substring(0, 100) + "...");
       
       // Check if it's explicitly a visualization
-      if (data.type && (data.type === 'table' || data.type === 'chart' || 
-          data.type === 'flowChart' || data.type === 'orgChart' || 
-          data.type === 'quadrantChart' || data.type === 'raciMatrix' || 
-          data.type === 'timeline' || data.type === 'funnel' || 
-          data.type === 'mindMap')) {
-        
+      if (data.type && isKnownVisualizationType(data.type)) {
         const vizId = crypto.randomUUID();
-        extractedVisualizations.push({
+        const visualization: ChatVisualization = {
           id: vizId,
           type: data.type as DiagramType,
           data: data.data || [], // Ensure data is provided
           ...data
-        });
+        };
+        
+        console.log(`Created visualization of type: ${data.type}`);
+        extractedVisualizations.push(visualization);
         return `\n\n*Visualization #${extractedVisualizations.length}*\n\n`;
+      }
+      
+      // If it's a structured section format (from our structured output format)
+      if (data.sections && Array.isArray(data.sections)) {
+        let visualizationsAdded = false;
+        
+        // Process each section and extract visualizations
+        data.sections.forEach((section: any) => {
+          if (!section.type) return;
+          
+          // Handle different section types
+          if (isKnownVisualizationType(section.type)) {
+            const vizId = crypto.randomUUID();
+            let visualization: ChatVisualization;
+            
+            // Create visualization based on section type
+            if (section.type === 'flowChart' || section.type === 'orgChart') {
+              visualization = {
+                id: vizId,
+                type: section.type as DiagramType,
+                title: section.flowData?.title || section.title,
+                nodes: section.flowData?.nodes || [],
+                edges: section.flowData?.edges || [],
+                data: []
+              };
+            } else if (section.type === 'table') {
+              visualization = {
+                id: vizId,
+                type: 'table',
+                title: section.tableData?.title || section.title,
+                headers: section.tableData?.headers || [],
+                data: section.tableData?.data || [],
+              };
+            } else if (section.type === 'chart') {
+              visualization = {
+                id: vizId,
+                type: 'chart',
+                title: section.chartData?.title || section.title,
+                chartType: section.chartData?.chartType || 'bar',
+                xKey: section.chartData?.xKey || 'x',
+                yKeys: section.chartData?.yKeys || ['y'],
+                data: section.chartData?.data || [],
+                height: section.chartData?.height || 300
+              };
+            } else {
+              // Generic handling for other visualization types
+              visualization = {
+                id: vizId,
+                type: section.type as DiagramType,
+                title: section.title,
+                data: section.data || []
+              };
+            }
+            
+            console.log(`Created visualization from section type: ${section.type}`);
+            extractedVisualizations.push(visualization);
+            visualizationsAdded = true;
+          }
+        });
+        
+        if (visualizationsAdded) {
+          return `\n\n*Visualizations extracted from structured data*\n\n`;
+        }
       }
       
       // If not explicitly a visualization, try to detect if it contains data we can visualize
@@ -59,6 +121,19 @@ export const extractJsonVisualizations = (
   });
   
   return { processedContent, extractedVisualizations };
+};
+
+/**
+ * Determines if the type is a known visualization type
+ */
+const isKnownVisualizationType = (type: string): boolean => {
+  const knownTypes = [
+    'table', 'chart', 'flowChart', 'orgChart', 
+    'quadrantChart', 'raciMatrix', 'timeline', 
+    'funnel', 'mindMap'
+  ];
+  
+  return knownTypes.includes(type);
 };
 
 /**

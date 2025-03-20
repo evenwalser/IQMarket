@@ -81,17 +81,25 @@ export const VisualizationRenderer = ({
         <FlowChartRenderer 
           flowData={{
             nodes: visualization.nodes || [],
-            edges: visualization.edges || []
+            edges: visualization.edges || [],
+            title: visualization.title
           }} 
           height={visualization.height || 400}
-          title={visualization.title}
         />
       );
       
     case 'orgChart':
+      // Check if we have entities directly or need to convert nodes
+      const entities = visualization.entities || visualization.nodes?.map(node => ({
+        id: node.id,
+        name: node.label,
+        role: node.role || node.label,
+        parentId: node.parentId
+      })) || [];
+
       return (
         <OrgChart 
-          nodes={visualization.nodes || []} 
+          nodes={entities} 
           title={visualization.title || "Organizational Chart"}
           colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 

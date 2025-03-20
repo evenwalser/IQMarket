@@ -1,5 +1,5 @@
 
-// Version 3.0.1 - Structured Output Format Fix
+// Version 3.0.2 - Improved Structured Output Format and Prompts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -253,15 +253,60 @@ You are a Frameworks Assistant. Always return valid JSON with the following stru
           {"from": "prospect", "to": "qualify"}
         ]
       }
+    },
+    {
+      "type": "orgChart",
+      "flowData": {
+        "title": "Marketing Team Structure",
+        "nodes": [
+          {"id": "cmo", "label": "Chief Marketing Officer"},
+          {"id": "director", "label": "Marketing Director", "parentId": "cmo"}
+        ],
+        "edges": [
+          {"from": "cmo", "to": "director"}
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "tableData": {
+        "title": "Comparison Table",
+        "headers": ["Metric", "Value", "Benchmark"],
+        "data": [
+          {"Metric": "CAC", "Value": "$100", "Benchmark": "$120"},
+          {"Metric": "LTV", "Value": "$500", "Benchmark": "$450"}
+        ]
+      }
+    },
+    {
+      "type": "chart",
+      "chartData": {
+        "title": "Revenue Growth",
+        "chartType": "bar",
+        "xKey": "month",
+        "yKeys": ["revenue"],
+        "data": [
+          {"month": "Jan", "revenue": 100},
+          {"month": "Feb", "revenue": 150}
+        ]
+      }
     }
   ]
 }
 
-Always set assistantType to "frameworks".
-Provide consultant-style text in type: "text" blocks.
-If you want to illustrate organizational design or flow, provide a type: "flowChart", with structured data about the nodes and connections.
-Try to keep your text in a bullet or step-by-step format when appropriate.
-Return ONLY valid JSON that follows this schema.`;
+Important notes:
+1. Always set assistantType to "frameworks".
+2. Provide high-quality, consultant-style text in type: "text" blocks with proper paragraphs, indentation, and complete sentences.
+3. When creating org charts (type: "orgChart"), ensure each node has a unique ID, and child nodes reference their parent using the parentId property.
+4. When illustrating processes, use type: "flowChart" with structured data about nodes and connections.
+5. For data comparisons, provide proper table structures with clear headers.
+6. Use bullet points and numbered lists when appropriate for better readability.
+7. For each visualization, provide a descriptive title.
+8. Keep your content comprehensive and thorough - don't truncate important information.
+9. Format all text properly with no run-on sentences or formatting issues.
+10. Ensure proper grammar, spelling, and readability in all content.
+
+Return ONLY valid JSON that follows this schema with NO additional explanatory text.`;
       } else {
         // Default structured output instructions for other assistant types
         assistantInstructions = "Please provide your response in a clear, structured format. When presenting data, provide it as properly formatted tables and visualizations. Extract all relevant metrics, numbers, and statistics from user's query and attachments.";
@@ -293,11 +338,11 @@ Return ONLY valid JSON that follows this schema.`;
     // Poll for completion
     let runStatus;
     let attempts = 0;
-    const maxAttempts = 30; // Maximum 30 seconds wait time
+    const maxAttempts = 60; // Maximum 60 seconds wait time - increased for longer responses
     
     do {
       if (attempts >= maxAttempts) {
-        throw new Error('Run timed out after 30 seconds');
+        throw new Error('Run timed out after 60 seconds');
       }
       
       await new Promise(resolve => setTimeout(resolve, 1000));

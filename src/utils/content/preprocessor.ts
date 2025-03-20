@@ -5,7 +5,8 @@ import {
   cleanMarkdownContent, 
   formatMarkdownLinks, 
   enhanceMarkdownTables,
-  fixMultipleBulletsInLists 
+  fixMultipleBulletsInLists,
+  fixBrokenHeadings
 } from "../markdownUtils";
 import { extractJsonVisualizations } from "./visualizationExtractor";
 import { extractMarkdownTables, extractAsciiTables } from "./tableExtractor";
@@ -32,6 +33,9 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   
   // Fix multiple bullets issue
   processedContent = fixMultipleBulletsInLists(processedContent);
+  
+  // Fix broken headings
+  processedContent = fixBrokenHeadings(processedContent);
 
   // Extract JSON visualizations (includes orgCharts and flowCharts)
   const jsonResult = extractJsonVisualizations(processedContent);
@@ -53,6 +57,9 @@ export const preprocessContent = (content: string): ProcessedContentResult => {
   processedContent = processedWithOrgCharts.processedContent;
   extractedVisualizations = processedWithOrgCharts.extractedVisualizations;
   
+  // Log the visualizations after all processing
+  console.log("Extracted visualizations:", extractedVisualizations.map(v => ({type: v.type, id: v.id})));
+  
   return {
     processedContent,
     extractedVisualizations,
@@ -67,7 +74,7 @@ const convertAsciiOrgCharts = (
   existingVisualizations: ChatVisualization[]
 ): { processedContent: string; extractedVisualizations: ChatVisualization[] } => {
   // Look for ASCII-style org charts with vertical lines and dashes
-  const orgChartRegex = /([\w\s]+(?:Manager|Director|Lead|Chief|Officer|Head|Specialist))\s*\n\s*\|\s*\n\s*[\*\-_=]+\s*\n([\s\S]*?)(?:\n\n|\n$|$)/g;
+  const orgChartRegex = /([\w\s]+(?:Manager|Director|Lead|Chief|Officer|Head|Specialist|CEO|CTO|CMO|COO|CFO))\s*\n\s*(?:\|\s*\n|\+[-\s]+\+\s*\n|\*[-\s]+\*\s*\n|\|[-\s]*\|\s*\n|[-_=]+\s*\n)([\s\S]*?)(?:\n\n|\n$|$)/g;
   
   let match;
   let processedContent = content;
@@ -83,13 +90,31 @@ const convertAsciiOrgCharts = (
     
     if (nodes.length > 0) {
       const vizId = crypto.randomUUID();
-      extractedVisualizations.push({
+      
+      // Create a proper org chart visualization
+      const orgChart: ChatVisualization = {
         id: vizId,
         type: 'orgChart',
         title: title.includes('Chart') ? title : `${title} Organizational Chart`,
         nodes: nodes,
-        data: []
+        data: [],
+        // Convert nodes to more explicit structure with parentId relationships
+        // This ensures the visualization can be properly rendered
+        entities: nodes.map(node => ({
+          id: node.id,
+          name: node.label,
+          role: node.role || node.label,
+          parentId: node.parentId
+        }))
+      };
+      
+      console.log("Created org chart visualization from ASCII:", {
+        id: vizId,
+        title: orgChart.title,
+        nodesCount: nodes.length
       });
+      
+      extractedVisualizations.push(orgChart);
       
       // Replace the ASCII chart with a placeholder
       processedContent = processedContent.replace(chartBody, `\n\n*Organizational Chart Visualization*\n\n`);
@@ -105,21 +130,21 @@ const convertAsciiOrgCharts = (
 const extractNodesFromAsciiChart = (asciiChart: string): Array<{id: string; label: string; role?: string; parentId?: string | null;}> => {
   const lines = asciiChart.split('\n');
   const nodes: Array<{id: string; label: string; role?: string; parentId?: string | null;}> = [];
-  const roleMap = new Map<string, string>();
   
   // First pass - identify all role names
   let currentId = 1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     // Skip lines with just pipes or dashes
-    if (line === '|' || line.match(/^[\-_=*]+$/)) continue;
+    if (line === '|' || line.match(/^[\-_=*+]+$/) || line.match(/^\|+$/) || line.match(/^\+[-\s]+\+$/)) {
+      continue;
+    }
     
     // Look for role names (words not just consisting of pipes or spaces)
     if (line.match(/[A-Za-z]/) && !line.match(/^\|+$/)) {
       const roleName = line.replace(/undefined/g, '').trim();
       if (roleName) {
         const id = `node_${currentId++}`;
-        roleMap.set(roleName, id);
         nodes.push({
           id,
           label: roleName,
@@ -130,27 +155,27 @@ const extractNodesFromAsciiChart = (asciiChart: string): Array<{id: string; labe
     }
   }
   
-  // Build relationship hierarchy - typically the first role is the top manager
+  // Build hierarchy by looking for indentation and connecting characters
   if (nodes.length > 0) {
     // Assume the first role is the top manager
     const topManager = nodes[0];
     topManager.parentId = null;
     
-    // Basic structure: any role 1-2 lines after a pipe character below another role is likely a direct report
+    // Simple tree structure - connect nodes based on their position in the list
+    // For a more sophisticated approach, we would need to analyze the ASCII connection lines
     for (let i = 1; i < nodes.length; i++) {
-      // For simplicity in ASCII charts, we'll set roles at lower positions as reports to higher positions
-      // In a real implementation, you would parse the ASCII structure more carefully
-      if (i < 4) {
+      const node = nodes[i];
+      
+      // Determine parent based on position - for simple structures, connect to previous node
+      // or to the top node for the first few positions
+      if (i <= 2) {
         // First few roles typically report to the top manager
-        nodes[i].parentId = topManager.id;
+        node.parentId = topManager.id;
       } else {
-        // Later roles are distributed among middle managers
-        const targetIndex = Math.floor((i - 1) / 3) + 1;
-        if (targetIndex < nodes.length) {
-          nodes[i].parentId = nodes[targetIndex].id;
-        } else {
-          nodes[i].parentId = topManager.id;
-        }
+        // Look for a parent among the previous nodes
+        // Simple heuristic: assign to node approximately 2-3 positions above
+        const parentIndex = Math.max(0, i - 2 - (i % 3));
+        node.parentId = nodes[parentIndex].id;
       }
     }
   }
