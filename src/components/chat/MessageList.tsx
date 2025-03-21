@@ -1,4 +1,3 @@
-
 import { ChatMessage } from "@/types/chat";
 import { useEffect, useRef } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
@@ -10,6 +9,7 @@ import {
   fixBrokenHeadings,
   fixBrokenWords
 } from "@/utils/markdownUtils";
+import { VisualizationRenderer } from "./visualizations/VisualizationRenderer";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -33,24 +33,20 @@ export const MessageList = ({ messages }: MessageListProps) => {
   return (
     <>
       {messages.map((msg, index) => {
-        // Apply additional formatting to fix list and heading issues
         let messageContent = msg.content;
         messageContent = fixReplyThreadFormatting(messageContent);
         messageContent = cleanListFormatting(messageContent);
         messageContent = fixMultipleBulletsInLists(messageContent);
         messageContent = fixBrokenHeadings(messageContent);
-        messageContent = fixBrokenWords(messageContent); // New utility to fix broken words
-        
-        // Process all messages through the preprocessor to handle formatting and extract visualizations
+        messageContent = fixBrokenWords(messageContent);
+
         const { processedContent, extractedVisualizations } = preprocessContent(messageContent);
         
-        // Log visualization extraction results for debugging
         if (extractedVisualizations.length > 0) {
           console.log(`Extracted ${extractedVisualizations.length} visualizations:`, 
             extractedVisualizations.map(v => v.type));
         }
         
-        // Combine explicit visualizations from the message with extracted ones
         const allVisualizations = [
           ...(msg.visualizations || []),
           ...extractedVisualizations
@@ -74,7 +70,6 @@ export const MessageList = ({ messages }: MessageListProps) => {
                 <MarkdownRenderer content={processedContent} />
               )}
               
-              {/* Render visualizations */}
               {allVisualizations && allVisualizations.length > 0 && (
                 <div className="space-y-4 mt-4 border-t border-gray-100 pt-3">
                   {allVisualizations.map((viz, i) => (
@@ -88,7 +83,6 @@ export const MessageList = ({ messages }: MessageListProps) => {
                 </div>
               )}
               
-              {/* Render attachments */}
               {msg.attachments?.map((attachment, i) => (
                 <div key={i} className="mt-3 border-t border-gray-100 pt-3">
                   {attachment.type === 'image' ? (
