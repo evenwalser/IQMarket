@@ -1,4 +1,3 @@
-
 import { ChatVisualization } from "@/types/chat";
 import { ProcessedContentResult } from "./types";
 import { 
@@ -98,8 +97,7 @@ const convertAsciiOrgCharts = (
         title: title.includes('Chart') ? title : `${title} Organizational Chart`,
         nodes: nodes,
         data: [],
-        // Convert nodes to more explicit structure with parentId relationships
-        // This ensures the visualization can be properly rendered
+        // Set entities explicitly with the correct structure
         entities: nodes.map(node => ({
           id: node.id,
           name: node.label,

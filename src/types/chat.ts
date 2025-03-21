@@ -32,6 +32,9 @@ export interface ChatVisualization {
   nodes?: Array<{id: string; label: string; [key: string]: any}>;
   edges?: Array<{from: string; to: string; [key: string]: any}>;
   
+  // For org charts
+  entities?: Array<{id: string; name: string; role?: string; parentId?: string | null}>;
+  
   // For quadrant charts
   items?: Array<{id: string; label: string; x: number; y: number; quadrant?: number}>;
   xAxisLabel?: string;

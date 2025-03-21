@@ -88,18 +88,20 @@ export const VisualizationRenderer = ({
         />
       );
       
-    case 'orgChart':
+    case 'orgChart': {
       // Check if we have entities directly or need to convert nodes
-      const entities = visualization.entities || visualization.nodes?.map(node => ({
-        id: node.id,
-        name: node.label,
-        role: node.role || node.label,
-        parentId: node.parentId
-      })) || [];
+      // Use the entities field or convert from nodes if needed
+      const orgEntities = visualization.entities || 
+        visualization.nodes?.map(node => ({
+          id: node.id,
+          name: node.label,
+          role: node.role || node.label,
+          parentId: node.parentId
+        })) || [];
 
       return (
         <OrgChart 
-          nodes={entities} 
+          nodes={orgEntities} 
           title={visualization.title || "Organizational Chart"}
           colorScheme={mapColorScheme<"default" | "financial" | "retention" | "performance" | "operational">(
             visualization.colorScheme, 
@@ -107,6 +109,7 @@ export const VisualizationRenderer = ({
           )}
         />
       );
+    }
       
     case 'quadrantChart':
       return (
