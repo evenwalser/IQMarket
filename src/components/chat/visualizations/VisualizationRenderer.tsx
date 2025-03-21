@@ -89,12 +89,11 @@ export const VisualizationRenderer = ({
       );
       
     case 'orgChart': {
-      // Check if we have entities directly or need to convert nodes
-      // Use the entities field or convert from nodes if needed
+      // Use the entities directly if available, or convert from nodes
       const orgEntities = visualization.entities || 
         visualization.nodes?.map(node => ({
           id: node.id,
-          name: node.label,
+          name: node.label, // Map label to name
           role: node.role || node.label,
           parentId: node.parentId
         })) || [];

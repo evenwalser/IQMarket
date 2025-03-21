@@ -97,10 +97,10 @@ const convertAsciiOrgCharts = (
         title: title.includes('Chart') ? title : `${title} Organizational Chart`,
         nodes: nodes,
         data: [],
-        // Set entities explicitly with the correct structure
+        // Set entities explicitly with the correct structure for OrgChart component
         entities: nodes.map(node => ({
           id: node.id,
-          name: node.label,
+          name: node.label, // Keep the original 'label' as 'name' for OrgChart
           role: node.role || node.label,
           parentId: node.parentId
         }))

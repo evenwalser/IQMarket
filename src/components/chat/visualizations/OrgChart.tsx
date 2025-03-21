@@ -1,4 +1,3 @@
-
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -16,7 +15,7 @@ import '@xyflow/react/dist/style.css';
 interface OrgChartProps {
   nodes: Array<{
     id: string;
-    label: string;
+    name: string;
     role?: string;
     department?: string;
     parentId?: string | null;
@@ -30,8 +29,8 @@ interface OrgChartProps {
 const OrgChartNode = ({ data }: { data: any }) => {
   return (
     <div className={`px-4 py-3 shadow-md rounded-md border border-gray-200 bg-white ${data.isRoot ? 'ring-2 ring-blue-500' : ''}`}>
-      <div className="font-bold text-sm text-gray-800">{data.label}</div>
-      {data.role && data.role !== data.label && <div className="text-xs text-gray-500">{data.role}</div>}
+      <div className="font-bold text-sm text-gray-800">{data.name}</div>
+      {data.role && data.role !== data.name && <div className="text-xs text-gray-500">{data.role}</div>}
       {data.department && <div className="text-xs italic text-gray-400">{data.department}</div>}
     </div>
   );
@@ -131,7 +130,7 @@ export const OrgChart = ({ nodes, title, colorScheme = 'default' }: OrgChartProp
           type: 'orgNode',
           position: { x: xPos, y: yPos },
           data: { 
-            label: node.label,
+            name: node.name,
             role: node.role,
             department: node.department,
             isRoot: level === 0
