@@ -7,9 +7,9 @@ import {
   cleanListFormatting, 
   fixReplyThreadFormatting, 
   fixMultipleBulletsInLists,
-  fixBrokenHeadings
+  fixBrokenHeadings,
+  fixBrokenWords
 } from "@/utils/markdownUtils";
-import { VisualizationRenderer } from "./visualizations/VisualizationRenderer";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -39,6 +39,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
         messageContent = cleanListFormatting(messageContent);
         messageContent = fixMultipleBulletsInLists(messageContent);
         messageContent = fixBrokenHeadings(messageContent);
+        messageContent = fixBrokenWords(messageContent); // New utility to fix broken words
         
         // Process all messages through the preprocessor to handle formatting and extract visualizations
         const { processedContent, extractedVisualizations } = preprocessContent(messageContent);

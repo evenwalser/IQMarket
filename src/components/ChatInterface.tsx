@@ -26,6 +26,7 @@ export const ChatInterface = () => {
   };
 
   const handleSendMessage = async () => {
+    // Allow sending with just attachments, even if no message text
     if (!message.trim() && attachments.length === 0) return;
     if (!user) {
       toast.error("You need to be logged in to send messages");
@@ -37,18 +38,23 @@ export const ChatInterface = () => {
       const userMessage = message;
       setMessage("");
 
+      // Craft a more descriptive message if there are attachments but no text
+      const enhancedMessage = !userMessage.trim() && attachments.length > 0 
+        ? `Please analyze the attached ${attachments.length === 1 ? 'file' : 'files'} and provide insights.` 
+        : userMessage;
+
       // Add user message to chat with required id
       setMessages(prev => [...prev, { 
         id: crypto.randomUUID(),
         role: 'user', 
-        content: userMessage,
+        content: enhancedMessage,
       }]);
 
       // Show loading message
       toast.loading("Processing your request...", { id: "chat-loading" });
 
       // Send message with any attachments
-      const data = await sendMessage(userMessage, threadId, attachments);
+      const data = await sendMessage(enhancedMessage, threadId, attachments);
 
       // Hide loading toast
       toast.dismiss("chat-loading");

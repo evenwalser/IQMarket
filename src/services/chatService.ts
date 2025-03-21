@@ -72,16 +72,28 @@ export const sendMessage = async (message: string, threadId: string | null, atta
       }
     }
 
+    // If message is empty but we have attachments, create a default prompt
+    const enhancedMessage = !message.trim() && attachments.length > 0
+      ? `Please analyze the attached ${attachments.length === 1 ? 'file' : 'files'} and provide insights.`
+      : message;
+
     // Send message to assistant edge function
     console.log('Sending to edge function:', {
-      message,
+      message: enhancedMessage,
       threadId,
       attachmentsCount: formattedAttachments.length
     });
 
+    // Add specific instruction for handling attachments
+    let finalMessage = enhancedMessage;
+    if (formattedAttachments.length > 0) {
+      // Add explicit instruction to analyze attachments in the initial message
+      finalMessage = `${enhancedMessage}\n\nPlease thoroughly analyze the attached file(s) and incorporate their content into your response.`;
+    }
+
     const { data, error } = await supabase.functions.invoke('chat-with-assistant', {
       body: {
-        message,
+        message: finalMessage,
         threadId,
         assistantType: 'benchmarks',
         attachments: formattedAttachments

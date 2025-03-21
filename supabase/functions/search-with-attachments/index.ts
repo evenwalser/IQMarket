@@ -1,5 +1,5 @@
 
-// Version 1.0.1 - FIX ERROR HANDLING AND RESPONSE PROCESSING
+// Version 1.0.2 - IMPROVED ATTACHMENT HANDLING AND RESPONSE PROCESSING
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { Configuration, OpenAIApi } from 'https://esm.sh/openai@3.2.1'
@@ -18,11 +18,14 @@ serve(async (req) => {
   try {
     const { query, attachments } = await req.json()
     
-    if (!query) {
-      throw new Error('No search query provided')
+    if (!query && (!attachments || attachments.length === 0)) {
+      throw new Error('No search query or attachments provided')
     }
 
-    console.log('Processing search query:', query)
+    // Default query if only attachments are provided with no explicit query
+    const effectiveQuery = query || "Please analyze these files and provide insights.";
+    
+    console.log('Processing search query:', effectiveQuery)
     console.log('Attachments received:', attachments?.length || 0)
 
     // Configure Supabase client
@@ -99,11 +102,12 @@ ${attachmentFiles.map(a => `- ${a.name} (${a.type}): ${a.url}`).join('\n')}
 
 For each attachment, first analyze its content based on the URL, then use that information to answer the user's query.
 If you cannot access or process an attachment, please mention this specifically in your response.
-Be detailed and thorough in your answers.`
+Be detailed and thorough in your answers, focusing primarily on analyzing the attached files.
+DO NOT treat the attachments as supplementary - they are the main focus of the analysis.`
       
       const messages = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: query }
+        { role: 'user', content: `${effectiveQuery}\n\nIMPORTANT: Please focus primarily on analyzing the content in the attachments.` }
       ]
 
       console.log('Sending to OpenAI:', {
@@ -131,7 +135,7 @@ Be detailed and thorough in your answers.`
           model: 'gpt-4o',
           messages: [
             { role: 'system', content: 'You are a helpful assistant.' },
-            { role: 'user', content: query }
+            { role: 'user', content: effectiveQuery }
           ],
         })
 
@@ -146,7 +150,7 @@ Be detailed and thorough in your answers.`
     return new Response(
       JSON.stringify({ 
         message: response,
-        query,
+        query: effectiveQuery,
         attachments: attachmentFiles
       }),
       { 

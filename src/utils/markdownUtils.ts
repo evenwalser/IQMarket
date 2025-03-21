@@ -41,6 +41,9 @@ export const cleanMarkdownContent = (content: string): string => {
   // Fix multiple bullets in list items
   cleanedContent = fixMultipleBulletsInLists(cleanedContent);
   
+  // Fix broken words in content
+  cleanedContent = fixBrokenWords(cleanedContent);
+  
   return cleanedContent;
 };
 
@@ -466,3 +469,49 @@ export const fixReplyThreadFormatting = (content: string): string => {
   
   return lines.filter(line => line !== '').join('\n');
 };
+
+/**
+ * Fixes broken words in content
+ */
+export const fixBrokenWords = (content: string): string => {
+  if (!content) return '';
+  
+  // Detect words that might be broken across lines (not after punctuation)
+  const lines = content.split('\n');
+  let result = [];
+  
+  for (let i = 0; i < lines.length - 1; i++) {
+    const currentLine = lines[i].trim();
+    const nextLine = lines[i + 1].trim();
+    
+    // Check for a word that might be broken across lines
+    // Current line ends with a word character and next line starts with a lowercase letter
+    if (currentLine.match(/\w$/) && nextLine.match(/^[a-z]/)) {
+      // Join the two lines with no space in between if it looks like a broken word
+      result.push(currentLine + nextLine);
+      i++; // Skip the next line since we've joined it
+    } else {
+      result.push(lines[i]);
+    }
+  }
+  
+  // Add the last line if we haven't processed it
+  if (lines.length > 0 && result.length < lines.length) {
+    result.push(lines[lines.length - 1]);
+  }
+  
+  // Apply additional fixes for common broken text patterns
+  let processedContent = result.join('\n');
+  
+  // Fix hyphenated words that might have been split
+  processedContent = processedContent.replace(/(\w+)-\s*\n\s*(\w+)/g, '$1$2');
+  
+  // Fix words with apostrophes that might be split
+  processedContent = processedContent.replace(/(\w+)'\s*\n\s*(\w+)/g, "$1'$2");
+  
+  // Fix broken sentences in bulleted lists
+  processedContent = processedContent.replace(/(^\s*[*\-+]\s+[^\n]*?)\n\s*([a-z])/gm, '$1 $2');
+  
+  return processedContent;
+};
+
