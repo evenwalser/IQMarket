@@ -1,69 +1,86 @@
-# Welcome to your Lovable project
+# IQ Marketplace
 
-## Project info
+A professional expertise marketplace with AI-powered analysis tools. Connect with experts, schedule consultations, and leverage custom RAG agents.
 
-**URL**: https://lovable.dev/projects/ba5fd953-a74a-45cc-8002-babb07bee49a
+![IQ Marketplace](https://placehold.co/600x400?text=IQ+Marketplace)
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+IQ Marketplace combines AI-powered document analysis with a marketplace for professional expertise. Users can:
 
-**Use Lovable**
+- Upload documents and get AI-generated insights, visualizations, and analysis
+- Find and book time with knowledge professionals across various domains
+- Create and monetize custom RAG agents trained on specialized knowledge
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ba5fd953-a74a-45cc-8002-babb07bee49a) and start prompting.
+## Quick Start
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/iq-marketplace.git
+cd iq-marketplace
 
-**Use your preferred IDE**
+# Install dependencies
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your Supabase and OpenAI keys
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Key Features
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### AI-Powered Analysis
+- Upload documents for instant visual insights
+- Conversational interface for interactive data exploration
+- Automatic chart and table generation with mermaid.js
 
-**Use GitHub Codespaces**
+### Professional Marketplace
+- Create a professional profile with expertise tags
+- Set availability and hourly rates
+- Book time with knowledge professionals
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Custom RAG Agents
+- Create specialized RAG agents for specific domains
+- Train on custom knowledge bases
+- Monetize premium agents
 
-## What technologies are used for this project?
+## Technology Stack
 
-This project is built with .
+- **Frontend**: React, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (Auth, Database, Storage, Edge Functions)
+- **AI**: OpenAI API with embeddings and advanced prompting
+- **Visualization**: mermaid.js for charts and diagrams
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Architecture
 
-## How can I deploy this project?
+IQ Marketplace is built with a modern, scalable architecture:
 
-Simply open [Lovable](https://lovable.dev/projects/ba5fd953-a74a-45cc-8002-babb07bee49a) and click on Share -> Publish.
+- **Database**: PostgreSQL with row-level security
+- **Authentication**: Supabase Auth with social providers
+- **File Handling**: Secure storage with access controls
+- **Application Logic**: Edge functions for serverless operations
 
-## I want to use a custom domain - is that possible?
+## Roadmap
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Our development roadmap:
+
+- **Q2 2024**: LinkedIn OAuth integration, booking system
+- **Q3 2024**: Payment processing, calendar integration
+- **Q4 2024**: Mobile app, expert analytics dashboard
+
+## Contributing
+
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is proprietary and not licensed for public use or modification.
+
+## Acknowledgments
+
+- [OpenAI](https://openai.com) for their powerful AI models
+- [Supabase](https://supabase.com) for the backend infrastructure
+- [Vercel](https://vercel.com) for hosting recommendations

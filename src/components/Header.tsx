@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +33,9 @@ export const Header = () => {
         
         <div className="flex items-center gap-8">
           <nav className="hidden md:flex items-center gap-8">
+            <Link to="/marketplace" className="text-sm font-medium hover:text-gray-600 transition-colors">
+              Marketplace
+            </Link>
             <a href="https://www.notion.vc/platform" className="text-sm font-medium hover:text-gray-600 transition-colors">
               Platform
             </a>
@@ -62,6 +64,13 @@ export const Header = () => {
                     <span className="text-xs text-muted-foreground">{user.email}</span>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/marketplace/my-profile">My Professional Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/marketplace/my-agents">My RAG Agents</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>
                   Log out
